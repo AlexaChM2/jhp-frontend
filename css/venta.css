@@ -1,0 +1,84 @@
+/* --- Estructura del Modal --- */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.897); /* Un poco más oscuro para resaltar */
+    display: none; 
+    justify-content: center;
+    align-items: center;
+    z-index: 3000; /* Aumentado para estar sobre todo */
+}
+
+.modal-card {
+    background: white;
+    width: 95%;
+    max-width: 550px; /* Un poco más ancho para que la tabla no se apriete */
+    max-height: 95vh; /* Ajustado para pantallas pequeñas */
+    border-radius: 12px;
+    box-shadow: 0 15px 40px rgba(22, 18, 75, 0.884);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Importante para que el footer se quede abajo */
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-header { 
+    padding: 15px 20px; 
+    background: #080522;
+    color: aliceblue;
+    border-bottom: 10px solid #dee2e6;
+}
+
+/* El cuerpo ahora es el que hace scroll, no todo el modal */
+.modal-body-scroll {
+    padding: 20px;
+     background: #f1f3f5;  
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+/* --- Componentes --- */
+.product-selector {
+    background: #f1f3f5;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #97b8da;
+    margin-bottom: 15px;
+}
+
+.table-container { 
+    max-height: 150px; 
+    overflow-y: auto; 
+    margin-bottom: 15px; 
+    border: 1px solid #dee6de;
+    border-radius: 4px;
+}
+
+.total-banner {
+    background: #d1e7dd; 
+    padding: 12px;
+    text-align: center;
+    font-weight: 800;
+    font-size: 22px;
+    color: #0f5132;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border: 1px solid #badbcc;
+}
+
+/* --- Footer Fijo (Donde van los botones) --- */
+.modal-footer-btns {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}

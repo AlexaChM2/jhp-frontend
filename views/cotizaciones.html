@@ -1,0 +1,97 @@
+<div class="container-fluid py-4">
+    <h2 class="mb-4"><i class="fa-solid fa-file-invoice"></i> Módulo de Cotizaciones</h2>
+
+    <div class="d-flex justify-content-between mb-4">
+        <div class="input-group w-50">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control" id="inputBuscarCot" placeholder="Buscar por cliente..." onkeyup="filtrarCotizacionesLocal()">
+        </div>
+        <button class="btn btn-warning fw-bold shadow-sm" onclick="abrirModalCot()">
+            Nueva Cotización <i class="fas fa-plus-circle ms-1"></i>
+        </button>
+    </div>
+
+    
+    <div class="card shadow-sm">
+        <table class="main-table">
+            <thead class="bg-dark text-white">
+            <tr>
+        <th>FOLIO</th>
+        <th>FECHA</th>
+        <th>CLIENTE</th>
+        <th>DESCRIPCIÓN</th> <th>VIGENCIA</th>
+        <th>TOTAL</th>
+        <th>ACCIONES</th>
+    </tr>
+</thead>
+<tbody id="tablaCotizaciones">
+    </tbody>
+              
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<div id="modalCotizacion" class="modal-overlay" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div class="modal-card" style="background:white; width:90%; max-width:800px; border-radius:8px; overflow:hidden;">
+        <div class="modal-header p-3 bg-warning d-flex justify-content-between">
+            <h4 class="m-0">Generar Presupuesto</h4>
+            <button class="btn-close" onclick="cerrarModalCot()"></button>
+        </div>
+
+        <div class="modal-body p-3" style="max-height:70vh; overflow-y:auto;">
+            <div class="row g-3 mb-4">
+                <div class="col-md-8">
+                    <label class="form-label fw-bold">Seleccionar Cliente</label>
+                    <input type="text" id="busCliCot" class="form-control" placeholder="Escribe nombre del cliente..." oninput="buscarClienteCot(this.value)">
+                    <div id="resCliCot" class="list-group position-absolute w-50 shadow" style="z-index:1100; display:none;"></div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Vigencia (Días)</label>
+                    <input type="number" id="cot_vigencia" class="form-control" value="15">
+                </div>
+            </div>
+
+            <div class="p-3 border rounded bg-light mb-4">
+                <label class="form-label fw-bold">Añadir Productos</label>
+                <div class="row g-2">
+                    <div class="col-md-7">
+                        <input type="text" id="busProdCot" class="form-control" placeholder="Buscar producto..." oninput="buscarProductoCot(this.value)">
+                        <div id="resProdCot" class="list-group position-absolute shadow" style="width:40%; z-index:1100; display:none;"></div>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" id="cantCot" class="form-control" value="1" min="1">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100" onclick="agregarItemCot()"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <table class="table table-hover border" id="tablaTemporalCot">
+                <thead class="table-secondary">
+                    <tr>
+                        <th>Descripción</th>
+                        <th>Cant.</th>
+                        <th>Precio</th>
+                        <th>Subtotal</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <div class="text-end h3 mt-3">
+                Total: <span class="text-success">$</span><span id="totalCot">0.00</span>
+            </div>
+        </div>
+
+        <div class="modal-footer p-3 border-top d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary" onclick="cerrarModalCot()">Cancelar</button>
+            <button class="btn btn-success px-4" onclick="guardarCotizacion()">Guardar y Finalizar</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/cotizaciones.js"></script>

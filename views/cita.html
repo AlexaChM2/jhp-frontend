@@ -1,0 +1,234 @@
+<div class="container-fluid py-4">
+    <h2 class="mb-4 fw-bold"><i class="fa-solid fa-calendar-check text-primary"></i> Gestión de Citas</h2>
+
+   
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 bg-light">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <img id="clima-icono" src="" alt="Clima" style="width:50px; display:none;">
+                    <div>
+                        <h6 class="mb-1"><i class="fas fa-cloud-sun text-warning"></i> Clima Actual</h6>
+                        <span id="clima-actual-texto" class="text-muted">Cargando clima...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="mb-1"><i class="fas fa-calendar-alt text-info"></i> Pronóstico para citas</h6>
+                    <span id="pronostico-texto" class="text-muted">Cargando...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="d-flex justify-content-between mb-4">
+        <div class="input-group w-50 shadow-sm">
+            <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control" id="inputBuscarCitaLocal" placeholder="Filtrar citas..." onkeyup="window.listarCitas()">
+        </div>
+        <button class="btn btn-warning fw-bold shadow-sm px-4" onclick="window.abrirModalCita()">
+            Nueva Cita <i class="fas fa-plus-circle ms-1"></i>
+        </button>
+    </div>
+
+    
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead style="background-color: #0c0c1d;" class="text-white">
+                    <tr>
+                        <th>FOLIO</th>
+                        <th>FECHA / HORA</th>
+                        <th>CLIENTE</th>
+                        <th>TÉCNICO/EMPLEADO</th>
+                        <th>MOTIVO</th>
+                        <th>ESTADO</th>
+                        <th class="text-center">ACCIONES</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaCitas"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<div id="modalCita" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1050; align-items:center; justify-content:center;">
+    <div class="modal-content bg-white shadow-lg" style="width:95%; max-width:650px; border-radius:12px; overflow:visible;">
+        <div class="modal-header p-3 bg-warning d-flex justify-content-between align-items-center">
+            <h5 class="m-0 fw-bold" id="tituloModalCita">Programar Cita</h5>
+            <button type="button" class="btn-close" onclick="window.cerrarModalCita()"></button>
+        </div>
+        <div class="modal-body p-4">
+            <form id="formCita">
+                <input type="hidden" id="edit_id_cita" name="id_cita">
+                
+                <div class="row g-3">
+                    
+                    <div class="col-md-12 position-relative">
+                        <label class="form-label fw-bold">Seleccionar Cliente</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            <input type="text" id="busCliCita" class="form-control" placeholder="Escribe nombre del cliente..." oninput="window.buscarClienteCita(this.value)" autocomplete="off">
+                        </div>
+                        <input type="hidden" name="id_cliente" id="id_cliente_hidden">
+                        <div id="resCliCita" class="list-group position-absolute w-100 shadow-lg" style="z-index:2000; display:none; max-height:200px; overflow-y:auto;"></div>
+                    </div>
+
+                   
+                    <div class="col-md-12 position-relative">
+                        <label class="form-label fw-bold">Empleado que registra / Atiende</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
+                            <input type="text" id="busEmpCita" class="form-control" placeholder="Escribe nombre del empleado..." oninput="window.buscarEmpleadoCita(this.value)" autocomplete="off">
+                        </div>
+                        <input type="hidden" name="id_empleado" id="id_empleado_hidden">
+                        <div id="resEmpCita" class="list-group position-absolute w-100 shadow-lg" style="z-index:2000; display:none; max-height:200px; overflow-y:auto;"></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Fecha Programada</label>
+                        <input type="datetime-local" name="cita_fecha_programada" id="cita_fecha" class="form-control" required onchange="consultarClimaFecha(this.value)">
+                    </div>
+
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Clima para la fecha</label>
+                        <div id="clima-cita-info" class="alert alert-info py-2 mb-0" style="display:none;">
+                            <i class="fas fa-cloud-sun me-1"></i>
+                            <span id="clima-fecha-texto">Selecciona una fecha</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Estado</label>
+                        <select name="cita_estado" id="cita_estado" class="form-select">
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Confirmada">Confirmada</option>
+                            <option value="Realizada">Realizada</option>
+                            <option value="Cancelada">Cancelada</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">Motivo de la Cita</label>
+                        <textarea name="cita_motivo" id="cita_motivo" class="form-control" rows="2" placeholder="Describa el servicio solicitado..."></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer p-3 bg-light">
+            <button class="btn btn-secondary" onclick="window.cerrarModalCita()">Cancelar</button>
+            <button class="btn btn-success px-4 fw-bold" onclick="window.guardarCita()">GUARDAR CAMBIOS</button>
+        </div>
+    </div>
+</div>
+
+
+<script src="js/cita.js"></script>
+
+
+<script>
+(function() {
+    const API_CLIMA = "http://localhost:8000/api/clima";
+
+    // Ejecutar inmediatamente (no esperar DOMContentLoaded)
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(() => {
+            cargarClimaActual();
+            cargarPronostico();
+        }, 500);
+    } else {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                cargarClimaActual();
+                cargarPronostico();
+            }, 500);
+        });
+    }
+
+    function cargarClimaActual() {
+        const el = document.getElementById('clima-actual-texto');
+        if (!el) return;
+        
+        fetch(`${API_CLIMA}/actual`)
+            .then(res => res.json())
+            .then(data => {
+                console.log(' Clima actual:', data);
+                if (data && !data.error) {
+                    const temp = data.temperatura || 'N/A';
+                    const desc = data.descripcion || '';
+                    const rec = data.recomendacion || '';
+                    el.innerHTML = `<strong>${temp}</strong> - ${desc}<br><small>${rec}</small>`;
+                    
+                    const icono = document.getElementById('clima-icono');
+                    if (icono && data.icono) {
+                        icono.src = data.icono;
+                        icono.style.display = 'inline';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error clima:', err);
+                el.textContent = 'No disponible';
+            });
+    }
+
+    function cargarPronostico() {
+        const el = document.getElementById('pronostico-texto');
+        if (!el) return;
+        
+        fetch(`${API_CLIMA}/pronostico`)
+            .then(res => res.json())
+            .then(data => {
+                console.log(' Pronóstico:', data);
+                if (Array.isArray(data) && data.length > 0) {
+                    const hoy = data[0];
+                    el.innerHTML = `Hoy: <strong>${hoy.temp_max} / ${hoy.temp_min}</strong> - ${hoy.descripcion}`;
+                }
+            })
+            .catch(err => {
+                console.error('Error pronóstico:', err);
+                el.textContent = 'No disponible';
+            });
+    }
+
+
+    window.consultarClimaFecha = function(fecha) {
+        if (!fecha) return;
+        
+        const fechaSolo = fecha.split('T')[0];
+        console.log('Consultando clima para:', fechaSolo);
+        
+        fetch(`${API_CLIMA}/pronostico`)
+            .then(res => res.json())
+            .then(data => {
+                const dia = Array.isArray(data) ? data.find(d => d.fecha === fechaSolo) : null;
+                const infoDiv = document.getElementById('clima-cita-info');
+                const infoTexto = document.getElementById('clima-fecha-texto');
+                
+                if (infoDiv && infoTexto) {
+                    if (dia) {
+                        infoDiv.style.display = 'block';
+                        if (dia.recomendable) {
+                            infoDiv.className = 'alert alert-success py-2 mb-0';
+                            infoTexto.innerHTML = ` ${dia.descripcion} | ${dia.temp_max} / ${dia.temp_min} | ¡Buen día!`;
+                        } else {
+                            infoDiv.className = 'alert alert-warning py-2 mb-0';
+                            infoTexto.innerHTML = ` ${dia.descripcion} | ${dia.temp_max} / ${dia.temp_min} | Lluvia: ${dia.lluvia}`;
+                        }
+                    } else {
+                        infoDiv.style.display = 'block';
+                        infoDiv.className = 'alert alert-info py-2 mb-0';
+                        infoTexto.innerHTML = ` Sin datos de clima para esta fecha`;
+                    }
+                }
+            })
+            .catch(err => console.error('Error clima fecha:', err));
+    };
+})();
+</script>

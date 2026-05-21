@@ -1,0 +1,210 @@
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: #575e55b7;
+    margin: 0;
+    display: flex;
+    flex-direction: column; /* Organiza Header, Medio y Footer */
+    min-height: 100vh;
+}
+
+/* 2. ENCABEZADO */
+.header-sistema {
+    background-color: #080522;
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 4px solid #e4e12c;
+}
+
+/* 3. EL CONTENEDOR DE EN MEDIO */
+.main-wrapper {
+    display: flex; 
+    padding: 20px;
+    gap: 20px;
+    /* Esto hace que el menú y el contenido midan lo mismo de alto */
+    align-items: stretch; 
+    flex-grow: 1;
+}
+
+/* 4. MENÚ LATERAL (Recuperado) */
+.menu {
+    width: 220px;
+  
+    background-color: #080522;
+    color: white;
+    padding: 20px;
+    border-radius: 14px;
+    flex-shrink: 0;
+}
+
+.menu h2 {
+    /* linea*/
+    font-size: 20px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eeff00;
+    padding-bottom: 10px;
+}
+
+.menu ul {
+    list-style: none; /* Quita los puntos negros que se ven en tu imagen */
+    padding: 0;
+}
+
+.menu li {
+    padding: 12px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: 0.3s;
+}
+
+.menu li:hover {
+    background-color:#54736e;
+    border-radius: 7px;
+}
+
+/* 5. ÁREA DE CONTENIDO (Recuperada) */
+/* Busca tu regla .contenido y agrégale estas líneas */
+.contenido {
+    flex-grow: 1;
+    padding: 30px;
+    background-color: #ffffff;
+    color: #0c0600;
+    border-radius: 14px;
+    min-height: auto; 
+    
+    /* NUEVAS LÍNEAS CLAVE */
+    width: 0; /* Esto permite que flex-grow controle el ancho sin que el contenido interno lo empuje */
+    overflow-x: hidden; 
+}
+
+/* 6. TABLAS (Recuperadas) */
+/* 6. TABLAS (Corregidas con separaciones) */
+table {
+    width: 100%;
+    border-collapse: collapse; /* Mantiene los bordes juntos pero definidos */
+    margin-top: 20px;
+    color: #010007;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden; /* Para que los bordes redondeados funcionen */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+th, td { 
+    /* Grosor de 1px para que no se vea tan tosco, usando tu color azul oscuro */
+    border: 1px solid #080522; 
+    padding: 14px 10px; /* Más espacio vertical para legibilidad */
+    text-align: center;
+}
+
+th {    
+    background-color: #080522; /* Tu azul oscuro oficial */
+    color: #ffffff;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 14px;
+    border-bottom: 3px solid #e4e12c; /* Línea amarilla debajo del encabezado */
+}
+
+/* Fila de cebra para distinguir mejor cada venta */
+tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+/* Efecto al pasar el mouse */
+tbody tr:hover {
+    background-color: #e9ecef;
+    transition: 0.2s;
+}
+
+/* 7. FORMULARIOS E INPUTS */
+input {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 10px 20px;
+    background-color:#080522;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #2f6466;
+}
+
+/* 8. PIE DE PÁGINA */
+.footer-sistema {
+    background-color: #080522;
+    color: #ffffff;
+    text-align: center;
+    padding: 15px;
+    border-top: 4px solid #e4e12c;
+}
+
+
+/* Rejilla para alinear las tarjetas */
+.cards-grid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+/* Diseño de cada tarjeta */
+.card {
+    background: white;
+    color: #000701;
+    border-radius: 10px;
+    padding: 25px;
+    min-width: 250px;
+    box-shadow: 0 4px 15px rgba(8, 8, 0, 0.911);
+    text-align: center;
+    border-top: 5px solid #e4e12c; /* Una línea azul arriba para estilo */
+}
+
+/* Estilo de los montos de dinero */
+.monto {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #0c6d19;
+    margin: 15px 0;
+}
+
+/* Badges (Etiquetas) de estado */
+.badge {
+    padding: 8px 1px;
+    border-radius: 10px;
+    font-weight: bold;
+    color: rgb(255, 255, 255);
+}
+.rojo { background-color: #b30505; }
+.verde { background-color: #042512; }
+
+/* Botón de apertura */
+.btn-abrir {
+    background-color: #080522;
+    color: rgb(255, 255, 255);
+    border: none;
+    padding: 12px 105px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+
+#totalProductos, #totalStock, #valorInventario {
+    color: #ffffff !important; /* Blanco puro */
+    font-size: 1.5rem;
+    font-weight: 800; /* Más negrita para que resalte */
+    margin: 10px 0 0 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); /* Sombra para dar profundidad */
+}

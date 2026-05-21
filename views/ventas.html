@@ -1,0 +1,105 @@
+  <h2 class="mb-4"><i class="fa-solid fa-cash-register"></i> Ventas</h2>
+<div class="input-group mb-4">
+    <input type="text" class="form-control" id="inputBuscarVenta" 
+           placeholder="Buscar por ID de venta o Cliente..." onkeyup="buscarHistorial()">
+    <button class="btn btn-dark" onclick="abrirNuevaVenta()">
+        Generar Venta <i class="fa-solid fa-circle-plus ms-1"></i>
+    </button>
+</div>
+
+<table class="main-table">
+    <thead>
+        <tr>
+            <th>Folio</th>
+            <th>Fecha</th>
+            <th>Total ($)</th>
+            <th>Pago</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody id="tablaVentas"></tbody>
+</table>
+
+<div id="modalVenta" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header text-center">
+            <h3 class="m-0">Nueva Venta</h3>
+            <small class="text-muted">Registro de salida de almacén / servicios</small>
+        </div>
+
+        <div class="modal-body-scroll">
+            <div class="input-group mb-3">
+                <span class="input-group-text">
+
+                  <img width="20" height="20" src="https://img.icons8.com/external-soft-fill-juicy-fish/60/external-recruitment-unemployment-soft-fill-soft-fill-juicy-fish.png" alt="external-recruitment-unemployment-soft-fill-soft-fill-juicy-fish"/>
+                </span>
+                <input type="text" id="buscarCliente" class="form-control" placeholder="Público General" oninput="seleccionarCliente(this.value)">
+                <div id="listaResultadosCliente" class="list-group position-absolute w-100" style="top:100%; z-index:10; display:none;"></div>
+            </div>
+
+            <div class="product-selector">
+                <div class="input-group mb-2">
+        <span class="input-group-text bg-white">
+           <img width="20" height="20" src="https://img.icons8.com/arcade/64/barcode.png" alt="barcode"/>
+        </span>
+                    <input type="text" id="buscarProducto" class="form-control" placeholder="Producto o Código..." oninput="seleccionarProducto(this.value)">
+                    <div id="listaResultadosProd" class="list-group position-absolute w-100" style="top:100%; z-index:10; display:none;"></div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <input type="number" id="cant_venta" class="form-control w-25" value="1" min="1">
+                    <div class="text-end">
+                        <small class="d-block text-muted">Precio: $<span id="precio_unitario">0.00</span></small>
+                        <span class="fw-bold text-primary">Subtotal: $<span id="subtotal_item">0.00</span></span>
+                    </div>
+                </div>
+                <button class="btn btn-outline-primary w-100 btn-sm" onclick="agregarArticulo()">
+                    <i class="fa-solid fa-cart-shopping"></i> Agregar
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="table table-sm table-striped m-0" id="detalleTemporal">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cant</th>
+                            <th>Sub</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="total-banner">
+                TOTAL: $<span id="total_final">0.00</span>
+            </div>
+
+            <div class="row g-2">
+                <div class="col-6">
+                    <select class="form-select" id="tipo_pago">
+                        <option value="Efectivo">Efectivo </option>
+                        <option value="Tarjeta">Tarjeta</option>
+                        <option value="Tarjeta">Transferencia</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <input type="text" id="referencia" class="form-control" placeholder="Referencia">
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer-btns">
+            <button class="btn btn-danger px-4" onclick="cerrarModal()">
+                Cancelar <i class="fa-solid fa-ban ms-1"></i>
+            </button>
+            <button class="btn btn-success px-4" onclick="finalizarVenta()">
+                Confirmar  <i class="fa-solid fa-check ms-1"></i>
+            </button>
+        </div>
+    </div>
+</div>  
+
+
+<script src="js/venta.js"></script>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Motocicletas</title>
+    <link rel="stylesheet" href="css/estilos.css">
+    <link rel="stylesheet" href="css/panel.css">
+    <link rel="stylesheet" href="css/venta.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <style>
+        /* Estilos específicos para la sección de Login */
+        .login-wrapper {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .form-container {
+            width: 350px;
+            height: auto;
+            background-color: #ffffff;
+            box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
+            border-radius: 30px;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        .title {
+            text-align: center;
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: 900;
+            font-size: 1.5em;
+            margin-top: 10px;
+            color: rgb(22, 22, 22);
+        }
+
+        .form {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input {
+            background-color: white;
+            border-radius: 10px;
+            border: 2px solid #c0c0c0;
+            margin-bottom: 15px;
+            padding: 12px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input:focus {
+            border-color: #ff3d00;
+        }
+
+        .page-link {
+            text-align: right;
+            margin-top: -5px;
+            margin-bottom: 15px;
+        }
+
+        .page-link-label {
+            cursor: pointer;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1976d2;
+        }
+
+        .form-btn {
+            padding: 12px;
+            background-color: #ff3d00;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .form-btn:hover {
+            background-color: #e03500;
+        }
+
+        .sign-up-label {
+            text-align: center;
+            font-size: 13px;
+            color: #727272;
+            margin-top: 20px;
+        }
+
+        .sign-up-link {
+            margin-left: 5px;
+            cursor: pointer;
+            font-weight: 700;
+            color: #1976d2;
+        }
+
+        .error-message, .success-message {
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .error-message { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .success-message { background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!--  AUTENTICACIÓN  -->
+    <div id="auth-section" class="login-wrapper">
+        <div class="form-container">
+            <p class="title" id="formTitle">Sistema de Motocicletas</p>
+            
+            <div id="error-box" class="error-message"></div>
+            <div id="success-box" class="success-message"></div>
+
+            <!-- VISTA 1: LOGIN -->
+            <div id="view-login">
+                <form class="form" id="loginForm">
+                    <input type="email" id="correo" class="input" placeholder="Correo electrónico" required autocomplete="email">
+                    <input type="password" id="password" class="input" placeholder="Contraseña" required autocomplete="current-password">
+                    <p class="page-link"><span class="page-link-label" id="btnForgot">¿Olvidaste tu contraseña?</span></p>
+                    <button type="submit" class="form-btn">Iniciar Sesión</button>
+                </form>
+                <p class="sign-up-label">¿No tienes cuenta? <span class="sign-up-link" id="linkToRegister">Regístrate</span></p>
+            </div>
+
+            <!-- REGISTRO -->
+            <div id="view-register" class="hidden">
+                <form class="form" id="registerForm">
+                    <input type="text" id="regNombre" class="input" placeholder="Nombre completo" required>
+                    <input type="email" id="regCorreo" class="input" placeholder="Correo electrónico" required>
+                    <input type="password" id="regPassword" class="input" placeholder="Contraseña (mín. 8 caracteres)" required>
+                    <input type="password" id="regPassword_confirmation" class="input" placeholder="Confirmar contraseña" required>
+                    <button type="submit" class="form-btn">Crear Cuenta</button>
+                </form>
+                <p class="sign-up-label">¿Ya tienes cuenta? <span class="sign-up-link" id="linkToLoginFromReg">Inicia Sesión</span></p>
+            </div>
+
+            <!-- RECUPERACIÓN -->
+            <div id="view-recovery" class="hidden">
+                <form class="form" id="recoveryForm">
+                    <p style="font-size: 13px; color: #555; margin-bottom: 15px; text-align: center;">
+                        Introduce tu correo y te enviaremos los detalles para restablecer tu contraseña.
+                    </p>
+                    <input type="email" id="recoverCorreo" class="input" placeholder="Tu correo electrónico" required>
+                    <button type="submit" class="form-btn">Enviar Instrucciones</button>
+                </form>
+                <p class="sign-up-label">Volver al <span class="sign-up-link" id="linkToLoginFromRec">Iniciar Sesión</span></p>
+            </div>
+        </div>
+    </div>
+
+    
+    <div id="main-system-section" class="hidden">
+        <header class="header-sistema">
+            <div class="logo">
+                <img src="img/logo.png" alt="Logo" style="height: 20px; width: auto;">
+                <span>JHP API</span>
+            </div>
+            <div class="usuario-info">Administrador <button class="btn btn-sm btn-light ms-3" onclick="cerrarSesion()">Salir</button></div>
+        </header>
+
+        <div class="main-wrapper">
+            <div class="menu">
+                <ul>   
+                    <h2>MENÚ</h2>
+                    <li onclick="cargarVista('views/panel.html')">Panel</li>
+                    <li onclick="cargarVista('views/ventas.html')">Ventas</li>
+                    <li onclick="cargarVista('views/compras.html')">Compras</li>
+                    <li onclick="cargarVista('views/catalogos.html')">Registros</li>
+                    <li onclick="cargarVista('views/productos.html')">Productos</li>
+                    <li onclick="cargarVista('views/categorias.html')">Categoria</li>
+                    <li onclick="cargarVista('views/cotizaciones.html')">Cotizaciones</li>               
+                    <li onclick="cargarVista('views/reportes.html')">Reportes</li>
+                    <li onclick="cargarVista('views/cita.html')">Agendas/citas</li>
+                    <li onclick="cargarVista('views/servicios.html')">Servicios</li>
+                </ul>                         
+            </div>
+
+            <div class="contenido" id="contenido">
+                
+            </div>
+        </div> 
+
+        <footer class="footer-sistema">
+            <p>&copy; 2026 Sistema de Gestión de Servicios y Venta de Motocicletas - Todos los derechos reservados</p>
+        </footer>
+    </div>
+
+  <script src="js/app.js"></script>
+
+   
+    <script src="/js/login.js"></script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
+</body>
+</html>

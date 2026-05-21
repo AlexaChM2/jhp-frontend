@@ -1,0 +1,241 @@
+/* El fondo oscuro (Este sí debe ser transparente) */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8) !important; /* Oscuridad fuerte */
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+
+/* La tarjeta (DEBE SER BLANCA Y OPACA) */
+.modal-content-custom {
+    background-color: #ffffff !important; /* Blanco puro */
+    opacity: 1 !important;                 /* Forzar opacidad total */
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5); /* Sombra para dar profundidad */
+    display: flex;
+    flex-direction: column;
+    color: #333 !important;                /* Texto oscuro para que se vea */
+}
+
+/* Estilo para los textos dentro del modal */
+.modal-content-custom h3, 
+.modal-content-custom p, 
+.modal-content-custom label {
+    color: #212529 !important; 
+    opacity: 1 !important;
+}
+
+/* Estilos para el input del modal */
+.modal-content-custom input {
+    width: 100%;
+    height: 45px;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+.modal-content-custom input:focus {
+    outline: none;
+    border-color: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+/* Botones del modal */
+.modal-content-custom .d-flex {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modal-content-custom .btn-light {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.modal-content-custom .btn-light:hover {
+    background-color: #e9ecef;
+}
+
+.modal-content-custom .btn-success {
+    background-color: #125021;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.modal-content-custom .btn-success:hover {
+    background-color: #1a7030;
+}
+
+/* Estilos para las cards del dashboard */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+
+/* Estilo base para todas las tarjetas con borde sutil */
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    /* Borde sutil perimetral */
+    border: 1px solid rgba(8, 5, 34, 0.1); 
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+/* Borde lateral distintivo para Ventas (Cian/Azul claro) */
+.card-ventas {
+    border-left: 6px solid #e4e12c !important;
+}
+
+/* Borde lateral distintivo para Caja (Azul Oscuro / Amarillo) */
+.card-caja {
+    border-left: 6px solid #e4e12c !important;
+    border-top: 2px solid #e4e12c; /* Línea amarilla superior para combinar con tu header */
+}
+
+/* Efecto al pasar el mouse para resaltar el borde */
+.card:hover {
+    box-shadow: 0 8px 25px rgba(8, 5, 34, 0.2);
+    transform: translateY(-5px);
+}
+
+.card-caja {
+    transition: all 0.3s ease;
+}
+
+.card h3 {
+    margin: 0 0 15px 0;
+    font-size: 1.2rem;
+    color: #495057;
+}
+
+.card .monto {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 10px 0;
+    color: #212529;
+}
+
+.card small {
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.badge.bg-success {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.badge.bg-danger {
+    background-color: #ac1120 !important; 
+    color: white !important;
+}
+
+/* Tus estilos originales - estos funcionan */
+/* Tus estilos personalizados */
+.badge.rojo {
+    background-color: #a3200f;
+    font-size: 1.2rem;    /* ← CAMBIA ESTE VALOR al tamaño que quieras */
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+.badge.verde {
+    background-color: #125021;
+    font-size: 1.2rem;    /* ← CAMBIA ESTE VALOR al tamaño que quieras */
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+/* Clase mb-3 para margen */
+.mb-3 {
+    margin-bottom: 1rem;
+}
+/* Botón de caja */
+#btn-caja {
+    font-size: 1rem;
+    padding: 12px !important;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 15px;
+}
+
+#btn-caja.btn-primary {
+    background-color: #080522
+; /*boton abrir caja*/
+    color: white;
+}
+
+#btn-caja.btn-primary:hover {
+    background-color: #1f6568be;
+}
+
+#btn-caja.btn-danger {
+    background-color: #a3200f;
+    color: white;
+}
+
+#btn-caja.btn-danger:hover {
+    background-color: #7a1a0b;
+}
+
+/* Texto de monto de apertura */
+#monto-apertura-texto {
+    font-size: 1rem;
+    color: #495057;
+    margin: 10px 0;
+}
+
+#monto-inicial-val {
+    font-size: 1.1rem;
+    color: #28a745;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .cards-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content-custom {
+        width: 95%;
+        padding: 20px;
+    }
+}

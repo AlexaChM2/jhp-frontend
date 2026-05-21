@@ -1,0 +1,139 @@
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-chart-pie me-2"></i>Panel de Reportes</h2>
+        <select id="filtroPeriodo" class="form-select w-auto" onchange="inicializarReportes()">
+            <option value="hoy">Hoy</option>
+            <option value="semana">Esta Semana</option>
+            <option value="mes" selected>Este Mes</option>
+        </select>
+    </div>
+
+  
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body text-center">
+                    <h6><i class="fas fa-arrow-up"></i> Ingresos (Ventas)</h6>
+                    <h2 id="txtIngresos">$0.00</h2>
+                    <small id="txtNumVentas">0 ventas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body text-center">
+                    <h6><i class="fas fa-arrow-down"></i> Egresos (Compras)</h6>
+                    <h2 id="txtEgresos">$0.00</h2>
+                    <small id="txtNumCompras">0 compras</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white shadow">
+                <div class="card-body text-center">
+                    <h6><i class="fas fa-balance-scale"></i> Balance</h6>
+                    <h2 id="txtBalance">$0.00</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body text-center">
+                    <h6><i class="fas fa-boxes"></i> Productos en Stock</h6>
+                    <h2 id="txtTotalProductos">0</h2>
+                    <small id="txtStockBajo">0 con stock bajo</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== GRAFICAS ===== -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">
+                    <i class="fas fa-chart-line"></i> Tendencia de Ventas vs Compras
+                </div>
+                <div class="card-body">
+                    <canvas id="chartVentasCompras" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow h-100">
+                <div class="card-header fw-bold">
+                    <i class="fas fa-trophy"></i> Top 5 Productos Vendidos
+                </div>
+                <div class="card-body">
+                    <canvas id="chartTopProductos" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--INVENTARIO Y STOCK  -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header fw-bold">
+                    <i class="fas fa-warehouse"></i> Estado del Inventario
+                </div>
+                <div class="card-body">
+                    <canvas id="chartInventario" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header fw-bold">
+                    <i class="fas fa-exclamation-triangle"></i> Productos con Stock Bajo (≤5)
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-hover" id="tablaStockBajo">
+                        <thead>
+                            <tr><th>Producto</th><th>Stock</th><th>Estado</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header fw-bold">
+                    <i class="fas fa-shopping-cart"></i> Últimas Ventas
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-hover" id="tablaUltimasVentas">
+                        <thead>
+                            <tr><th>#</th><th>Cliente</th><th>Total</th><th>Hora</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header fw-bold">
+                    <i class="fas fa-truck"></i> Últimas Compras
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-hover" id="tablaUltimasCompras">
+                        <thead>
+                            <tr><th>#</th><th>Proveedor</th><th>Total</th><th>Hora</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/reportes.js"></script>
