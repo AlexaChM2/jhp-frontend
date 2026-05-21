@@ -1,42 +1,50 @@
-
 const API_COT = "http://localhost:8000/api/cotizaciones";
-const API_CLI = "http://localhost:8000/api/clientes";
-const API_PROD = "http://localhost:8000/api/producto";
-const API_VENTAS = "http://localhost:8000/api/ventas";
-const API_CAJA = "http://localhost:8000/api/control_caja"; 
+const API_CLI_COT = "http://localhost:8000/api/clientes";
+const API_PROD_COT = "http://localhost:8000/api/producto";
+const API_VENTAS_COT = "http://localhost:8000/api/ventas";
+const API_CAJA = "http://localhost:8000/api/control_caja";
 
 let carritoCot = [];
 let clienteIdCot = null;
 let prodSeleccionadoCot = null;
 let editandoCotId = null;
-let todasLasCotizaciones = []; // Cache para busquedas
+let todasLasCotizaciones = [];
+let cotizacionesIniciadas = false;
 
-
+// ========== AUTO-INICIALIZACIÓN SIMPLIFICADA ==========
 (function() {
-    if (!document.getElementById('tablaCotizaciones') && !document.querySelector('.cotizaciones-container')) {
-        console.log("No es la vista de cotizaciones");
-        return;
-    }
-    console.log("🚀 Inicializando cotizaciones.js");
+    // Escuchar el evento de app.js
+    document.addEventListener('vista-cargada', function(e) {
+        if (e.detail && e.detail.vista && 
+            (e.detail.vista.includes('cotizacion') || e.detail.vista.includes('Cotizacion'))) {
+            console.log('📋 Cotizaciones: Vista detectada, iniciando...');
+            cotizacionesIniciadas = false;
+            setTimeout(initCotizaciones, 500);
+        }
+    });
     
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initCotizaciones);
-    } else {
-        initCotizaciones();
+    // Verificar si ya estamos en cotizaciones
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        const tabla = document.getElementById('tablaCotizaciones');
+        if (tabla) {
+            console.log('📋 Cotizaciones: Ya en vista, iniciando...');
+            setTimeout(initCotizaciones, 300);
+        }
     }
 })();
 
 function initCotizaciones() {
+    console.log("📋 Inicializando cotizaciones...");
     cargarClientesSelect();
     listarCotizaciones();
+    cotizacionesIniciadas = true;
 }
-
 
 function cargarClientesSelect() {
     const selectCliente = document.getElementById('filtroClienteCot');
     if (!selectCliente) return;
 
-    fetch(API_CLI)
+    fetch(API_CLI_COT) // ✅ CORREGIDO: antes decía API_CLI
         .then(res => res.json())
         .then(response => {
             const clientes = response.success ? (response.data?.data || response.data) : response;
@@ -51,20 +59,26 @@ function cargarClientesSelect() {
         .catch(err => console.error("Error al cargar clientes:", err));
 }
 
-
 function listarCotizaciones() {
+    const tbody = document.getElementById("tablaCotizaciones");
+    if (!tbody) {
+        console.warn('📋 Tabla de cotizaciones no encontrada');
+        return;
+    }
+
+    console.log('📋 Cargando cotizaciones...');
+
     fetch(API_COT)
         .then(res => res.json())
         .then(response => {
             const data = response.success ? (response.data?.data || response.data) : response;
             const cotizaciones = Array.isArray(data) ? data : [];
             
-            // Guardar en cache
             todasLasCotizaciones = cotizaciones;
-            
+            console.log(`✅ ${cotizaciones.length} cotizaciones cargadas`);
             renderizarCotizaciones(cotizaciones);
         })
-        .catch(err => console.error("Error al listar:", err));
+        .catch(err => console.error("❌ Error al listar:", err));
 }
 
 function renderizarCotizaciones(cotizaciones) {
@@ -87,7 +101,7 @@ function renderizarCotizaciones(cotizaciones) {
         fechaVenc.setDate(fechaVenc.getDate() + vigencia);
         const hoy = new Date();
         const vencida = hoy > fechaVenc;
-        const porVencer = !vencida && (fechaVenc - hoy) < (3 * 24 * 60 * 60 * 1000); // 3 días
+        const porVencer = !vencida && (fechaVenc - hoy) < (3 * 24 * 60 * 60 * 1000);
 
         const descripcionProductos = (c.detalles && c.detalles.length > 0) 
             ? c.detalles.map(d => {
@@ -96,7 +110,6 @@ function renderizarCotizaciones(cotizaciones) {
             }).join('')
             : '<span class="text-muted small">Sin productos</span>';
 
-   
         let vigenciaBadge = '';
         if (vencida) {
             vigenciaBadge = '<span class="badge bg-danger">VENCIDA</span>';
@@ -138,9 +151,6 @@ function renderizarCotizaciones(cotizaciones) {
     }).join('');
 }
 
-
-// BuSQUEDA POR CLIENTE
-
 function filtrarPorCliente() {
     const select = document.getElementById('filtroClienteCot');
     const inputBuscar = document.getElementById('inputBuscarCot');
@@ -150,12 +160,10 @@ function filtrarPorCliente() {
 
     let filtradas = todasLasCotizaciones;
 
-    // Filtrar por cliente
     if (clienteId !== '') {
         filtradas = filtradas.filter(c => c.id_cliente == clienteId);
     }
 
-    
     if (texto !== '') {
         filtradas = filtradas.filter(c => {
             const nombreCliente = c.cliente 
@@ -168,12 +176,264 @@ function filtrarPorCliente() {
     renderizarCotizaciones(filtradas);
 }
 
+function buscarClienteCot(v) {
+    const lista = document.getElementById("resCliCot");
+    if (!lista) return;
+    if (v.length < 2) { lista.style.display = "none"; return; }
 
-window.filtrarPorCliente = filtrarPorCliente;
-window.buscarCotizaciones = function() {
-    filtrarPorCliente();
-};
+    fetch(API_CLI_COT) // ✅ CORREGIDO
+        .then(res => res.json())
+        .then(response => {
+            const clientes = response.success ? (response.data?.data || response.data) : response;
+            const datos = Array.isArray(clientes) ? clientes : [];
+            const filtrados = datos.filter(c => {
+                const nombre = `${c.cli_nombre || ''} ${c.cli_apaterno || ''}`.toLowerCase();
+                return nombre.includes(v.toLowerCase());
+            });
+            lista.innerHTML = filtrados.map(c => {
+                const nombre = `${c.cli_nombre || ''} ${c.cli_apaterno || ''}`.trim();
+                return `<button type="button" class="list-group-item list-group-item-action" 
+                    onclick="seleccionarClienteCot(${c.id_cliente}, '${nombre.replace(/'/g, "\\'")}')">
+                    ${nombre || 'Sin nombre'}</button>`;
+            }).join('');
+            lista.style.display = filtrados.length > 0 ? "block" : "none";
+        });
+}
 
+function seleccionarClienteCot(id, nombre) {
+    clienteIdCot = id;
+    document.getElementById("busCliCot").value = nombre;
+    document.getElementById("resCliCot").style.display = "none";
+}
+
+function buscarProductoCot(v) {
+    const lista = document.getElementById("resProdCot");
+    if (!lista) return;
+    if (v.length < 2) { lista.style.display = "none"; return; }
+
+    fetch(API_PROD_COT)
+        .then(res => res.json())
+        .then(response => {
+            console.log('📦 Respuesta API productos:', response); // Debug
+            
+            // Intentar múltiples formas de extraer los datos
+            let productos = [];
+            if (response.success) {
+                productos = response.data?.data || response.data || [];
+            } else if (Array.isArray(response)) {
+                productos = response;
+            } else if (response.data) {
+                productos = Array.isArray(response.data) ? response.data : (response.data.data || []);
+            }
+            
+            console.log('📦 Productos extraídos:', productos); // Debug
+            
+            const filtrados = productos.filter(p => 
+                p.pro_nombre && p.pro_nombre.toLowerCase().includes(v.toLowerCase())
+            );
+            
+            lista.innerHTML = filtrados.map(p => {
+                // ✅ Intentar obtener el precio de diferentes campos posibles
+                const precio = p.pro_precio || p.pro_precio_venta || p.precio || 0;
+                console.log(`📦 ${p.pro_nombre}: precio=${precio}`, p); // Debug
+                
+                return `<button type="button" class="list-group-item list-group-item-action" 
+                    onclick="seleccionarProdCot(${p.id_producto}, '${(p.pro_nombre || '').replace(/'/g, "\\'")}', ${precio})">
+                    ${p.pro_nombre || 'Sin nombre'} - $${parseFloat(precio).toFixed(2)}
+                </button>`;
+            }).join('');
+            
+            lista.style.display = filtrados.length > 0 ? "block" : "none";
+        })
+        .catch(err => console.error("❌ Error al buscar productos:", err));
+}
+
+function seleccionarProdCot(id, nombre, precio) {
+    console.log('🔍 seleccionarProdCot recibido:', { id, nombre, precio, tipoPrecio: typeof precio });
+    
+    // ✅ Convertir precio a número, con múltiples fallbacks
+    const precioNumerico = parseFloat(precio) || 0;
+    
+    prodSeleccionadoCot = { 
+        id_producto: id, 
+        nombre: nombre, 
+        precio: precioNumerico
+    };
+    
+    console.log('✅ prodSeleccionadoCot guardado:', prodSeleccionadoCot);
+    
+    document.getElementById("busProdCot").value = nombre;
+    document.getElementById("resProdCot").style.display = "none";
+}
+
+function agregarItemCot() {
+    console.log('➕ Agregando item, prodSeleccionadoCot:', prodSeleccionadoCot);
+    
+    if (!prodSeleccionadoCot) {
+        return Swal.fire("Aviso", "Selecciona un producto primero", "warning");
+    }
+    
+    const cantidad = parseInt(document.getElementById("cantidadProdCot").value) || 1;
+    
+    console.log(`➕ Cantidad: ${cantidad}, Precio: ${prodSeleccionadoCot.precio}`);
+    
+    const itemExistente = carritoCot.find(item => item.id_producto === prodSeleccionadoCot.id_producto);
+    if (itemExistente) {
+        itemExistente.cantidad += cantidad;
+        itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio;
+        console.log('🔄 Item actualizado:', itemExistente);
+    } else {
+        const nuevoItem = {
+            id_producto: prodSeleccionadoCot.id_producto,
+            nombre: prodSeleccionadoCot.nombre,
+            precio: prodSeleccionadoCot.precio,
+            cantidad: cantidad,
+            subtotal: cantidad * prodSeleccionadoCot.precio
+        };
+        carritoCot.push(nuevoItem);
+        console.log('➕ Nuevo item:', nuevoItem);
+    }
+    
+    actualizarTablaTemporal();
+    document.getElementById("busProdCot").value = '';
+    document.getElementById("cantidadProdCot").value = '1';
+    prodSeleccionadoCot = null;
+}
+
+function actualizarTablaTemporal() {
+    const tbody = document.querySelector("#tablaTempCot tbody");
+    const totalSpan = document.getElementById("totalCot");
+    
+    console.log('🔄 Actualizando tabla temporal, carrito:', carritoCot);
+    
+    if (!tbody) {
+        console.error('❌ No se encontró #tablaTempCot tbody');
+        return;
+    }
+
+    if (carritoCot.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin productos</td></tr>';
+        if (totalSpan) totalSpan.innerText = '0.00';
+        return;
+    }
+
+    let total = 0;
+    tbody.innerHTML = carritoCot.map((item, i) => {
+        const subtotal = item.cantidad * item.precio;
+        item.subtotal = subtotal; // Actualizar subtotal
+        total += subtotal;
+        
+        console.log(`📊 Item ${i}: ${item.nombre} - Cant:${item.cantidad} Precio:${item.precio} Subtotal:${subtotal}`);
+        
+        return `
+        <tr>
+            <td>${item.nombre}</td>
+            <td>$${item.precio.toFixed(2)}</td>
+            <td>${item.cantidad}</td>
+            <td>$${subtotal.toFixed(2)}</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger" onclick="quitarItemCot(${i})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    if (totalSpan) totalSpan.innerText = total.toFixed(2);
+    console.log(`💰 Total: $${total.toFixed(2)}`);
+}
+function seleccionarProdCot(id, nombre, precio) {
+    console.log('🔍 seleccionarProdCot:', { id, nombre, precio, tipo: typeof precio });
+    prodSeleccionadoCot = { 
+        id_producto: id, 
+        nombre: nombre, 
+        precio: parseFloat(precio) || 0  
+    };
+    document.getElementById("busProdCot").value = nombre;
+    document.getElementById("resProdCot").style.display = "none";
+    console.log('✅ prodSeleccionadoCot:', prodSeleccionadoCot);
+}
+
+function agregarItemCot() {
+    if (!prodSeleccionadoCot) {
+        return Swal.fire("Aviso", "Selecciona un producto primero", "warning");
+    }
+    
+    const cantidad = parseInt(document.getElementById("cantidadProdCot").value) || 1;
+    
+    const itemExistente = carritoCot.find(item => item.id_producto === prodSeleccionadoCot.id_producto);
+    if (itemExistente) {
+        itemExistente.cantidad += cantidad;
+        itemExistente.subtotal = itemExistente.cantidad * itemExistente.precio;
+    } else {
+        carritoCot.push({
+            id_producto: prodSeleccionadoCot.id_producto,
+            nombre: prodSeleccionadoCot.nombre,
+            precio: prodSeleccionadoCot.precio,
+            cantidad: cantidad,
+            subtotal: cantidad * prodSeleccionadoCot.precio
+        });
+    }
+    
+    actualizarTablaTemporal();
+    document.getElementById("busProdCot").value = '';
+    document.getElementById("cantidadProdCot").value = '1';
+    prodSeleccionadoCot = null;
+}
+
+function actualizarTablaTemporal() {
+    const tbody = document.getElementById("tablaTempCot");
+    const totalSpan = document.getElementById("totalCot");
+    if (!tbody) return;
+
+    if (carritoCot.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Sin productos</td></tr>';
+        if (totalSpan) totalSpan.innerText = '0.00';
+        return;
+    }
+
+    let total = 0;
+    tbody.innerHTML = carritoCot.map((item, i) => {
+        total += item.subtotal;
+        return `
+        <tr>
+            <td>${item.nombre}</td>
+            <td>$${item.precio.toFixed(2)}</td>
+            <td>${item.cantidad}</td>
+            <td>$${item.subtotal.toFixed(2)}</td>
+            <td>
+                <button class="btn btn-sm btn-danger" onclick="quitarItemCot(${i})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    if (totalSpan) totalSpan.innerText = total.toFixed(2);
+}
+
+function quitarItemCot(i) {
+    carritoCot.splice(i, 1);
+    actualizarTablaTemporal();
+}
+
+function abrirModalCot() {
+    document.getElementById("modalCotizacion").style.display = "flex";
+    if (!editandoCotId) {
+        const titulo = document.querySelector("#modalCotizacion .modal-title");
+        if (titulo) titulo.innerText = "Nueva Cotización";
+    }
+}
+
+function cerrarModalCot() {
+    document.getElementById("modalCotizacion").style.display = "none";
+    document.getElementById("formCotizacion").reset();
+    editandoCotId = null;
+    clienteIdCot = null;
+    prodSeleccionadoCot = null;
+    carritoCot = [];
+    actualizarTablaTemporal();
+}
 
 function editarCotizacion(id) {
     fetch(`${API_COT}/${id}`)
@@ -184,7 +444,6 @@ function editarCotizacion(id) {
             editandoCotId = id;
             clienteIdCot = c.id_cliente;
 
-            // Llenar 
             const nombreCliente = c.cliente 
                 ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.trim()
                 : 'Cliente';
@@ -192,7 +451,6 @@ function editarCotizacion(id) {
             document.getElementById("busCliCot").value = nombreCliente;
             document.getElementById("cot_vigencia").value = c.cot_vigencia_dias || 15;
 
-            // Cargar 
             if (c.detalles && Array.isArray(c.detalles)) {
                 carritoCot = c.detalles.map(d => ({
                     id_producto: d.id_producto,
@@ -217,8 +475,6 @@ function editarCotizacion(id) {
         });
 }
 
-
-// GUARDAR 
 function guardarCotizacion() {
     if (!clienteIdCot || carritoCot.length === 0) {
         return Swal.fire("Aviso", "Debes seleccionar un cliente y al menos un producto", "warning");
@@ -241,8 +497,6 @@ function guardarCotizacion() {
     const url = editandoCotId ? `${API_COT}/${editandoCotId}` : API_COT;
     const metodo = editandoCotId ? "PUT" : "POST";
 
-    console.log(`💾 Guardando: ${metodo} ${url}`, data);
-
     fetch(url, {
         method: metodo,
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -254,13 +508,7 @@ function guardarCotizacion() {
         return json;
     })
     .then(() => {
-        Swal.fire({
-            icon: 'success',
-            title: '¡Éxito!',
-            text: editandoCotId ? 'Cotización actualizada' : 'Cotización creada',
-            timer: 1500,
-            showConfirmButton: false
-        });
+        Swal.fire({ icon: 'success', title: '¡Éxito!', text: editandoCotId ? 'Cotización actualizada' : 'Cotización creada', timer: 1500, showConfirmButton: false });
         cerrarModalCot();
         listarCotizaciones();
     })
@@ -268,364 +516,6 @@ function guardarCotizacion() {
         console.error(err);
         Swal.fire("Error", err.message, "error");
     });
-}
-
-
-// IMPRIMIR 
-
-function imprimirCot(id) {
-    fetch(`${API_COT}/${id}`)
-        .then(res => res.json())
-        .then(response => {
-            const c = response.success ? response.data : response;
-            
-            if (!c.detalles || c.detalles.length === 0) {
-                return Swal.fire("Aviso", "Esta cotización no tiene productos", "info");
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'mm', format: [80, 180] });
-
-            let y = 10;
-
-            // Encabezado
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("JHP MOTOCICLETAS", 40, y, { align: "center" });
-            y += 5;
-            
-            doc.setFontSize(10);
-            doc.text("COTIZACIÓN", 40, y, { align: "center" });
-            y += 5;
-
-            doc.setFontSize(7);
-            doc.setFont("helvetica", "normal");
-            doc.text(`Folio: #${c.id_cotizacion}`, 40, y, { align: "center" });
-            y += 4;
-            doc.text(`Fecha: ${new Date(c.cot_fecha).toLocaleDateString('es-MX')}`, 40, y, { align: "center" });
-            y += 4;
-
-            const nombreCliente = c.cliente 
-                ? `${c.cliente.cli_nombre} ${c.cliente.cli_apaterno}`.trim()
-                : 'Público General';
-            doc.text(`Cliente: ${nombreCliente}`, 40, y, { align: "center" });
-            y += 4;
-            doc.text(`Vigencia: ${c.cot_vigencia_dias || 15} días`, 40, y, { align: "center" });
-            y += 5;
-
-            // Línea
-            doc.line(5, y, 75, y);
-            y += 4;
-
-            // Tabla
-            const filas = c.detalles.map(d => {
-                const nombre = d.producto?.pro_nombre || d.pro_nombre || 'Producto';
-                const cant = d.det_cantidad || d.cantidad || 0;
-                const precio = d.det_precio_unitario || d.precio || 0;
-                return [
-                    { content: `${cant}`, styles: { halign: 'center' } },
-                    { content: nombre, styles: { fontSize: 7 } },
-                    { content: `$${(cant * precio).toFixed(2)}`, styles: { halign: 'right' } }
-                ];
-            });
-
-            doc.autoTable({
-                startY: y,
-                head: [['Cant', 'Producto', 'Total']],
-                body: filas,
-                theme: 'plain',
-                margin: { left: 5, right: 5 },
-                styles: { fontSize: 7, cellPadding: 1 },
-                columnStyles: {
-                    0: { cellWidth: 10 },
-                    1: { cellWidth: 40 },
-                    2: { cellWidth: 20 }
-                }
-            });
-
-            y = doc.lastAutoTable.finalY + 5;
-            doc.line(5, y, 75, y);
-            y += 5;
-            
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.text(`TOTAL: $${parseFloat(c.cot_total).toFixed(2)}`, 70, y, { align: "right" });
-            y += 8;
-            
-            doc.setFontSize(7);
-            doc.setFont("helvetica", "normal");
-            doc.text("Válido por " + (c.cot_vigencia_dias || 15) + " días", 40, y, { align: "center" });
-
-            window.open(doc.output('bloburl'), '_blank');
-        });
-}
-
-
-function convertirAVenta(id) {
-    fetch(`${API_COT}/${id}`)
-        .then(res => res.json())
-        .then(response => {
-            const c = response.success ? response.data : response;
-            
-            if (!c.detalles || c.detalles.length === 0) {
-                return Swal.fire("Aviso", "Esta cotización no tiene productos para vender", "info");
-            }
-
-            // Verificar caja primero
-            fetch(`${API_CAJA}/estado`)
-                .then(res => res.json())
-                .then(cajaData => {
-                    let idCaja = 1; 
-                    
-                    if (cajaData.caja_abierta) {
-                        idCaja = cajaData.id_caja;
-                    } else {
-                        console.warn("Caja cerrada, usando id_caja por defecto:", idCaja);
-                    }
-
-                    Swal.fire({
-                        title: '¿Convertir a Venta?',
-                        html: `
-                            <p>Cliente: <strong>${c.cliente ? c.cliente.cli_nombre : 'Público General'}</strong></p>
-                            <p>Total: <strong>$${parseFloat(c.cot_total).toFixed(2)}</strong></p>
-                            <p>Caja: <strong>#${idCaja}</strong></p>
-                            <select id="tipoPagoCot" class="form-select mt-2">
-                                <option value="Efectivo">Efectivo</option>
-                                <option value="Tarjeta">Tarjeta</option>
-                                <option value="Transferencia">Transferencia</option>
-                            </select>
-                        `,
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Sí, crear venta',
-                        confirmButtonColor: '#28a745',
-                        cancelButtonText: 'Cancelar',
-                        preConfirm: () => {
-                            return document.getElementById('tipoPagoCot')?.value || 'Efectivo';
-                        }
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            const tipoPago = result.value;
-
-                           
-                            const venta = {
-                                id_cliente: c.id_cliente || null,
-                                id_empleado: parseInt(localStorage.getItem('usuario_id')) || 1,
-                                id_caja: idCaja, // ← IMPORTANTE
-                                ven_total: parseFloat(c.cot_total),
-                                tipo_pago: tipoPago,
-                                detalles: c.detalles.map(d => ({
-                                    id_producto: d.id_producto,
-                                    cantidad: d.det_cantidad || d.cantidad || 1,
-                                    precio: d.det_precio_unitario || d.precio || 0
-                                }))
-                            };
-
-                            console.log("📤 Enviando venta:", JSON.stringify(venta));
-
-                            fetch(API_VENTAS, {
-                                method: 'POST',
-                                headers: { 
-                                    'Content-Type': 'application/json',
-                                    'Accept': 'application/json'
-                                },
-                                body: JSON.stringify(venta)
-                            })
-                            .then(res => res.json())
-                            .then(data => {
-                                console.log("Respuesta venta:", data);
-                                
-                                // El controlador responde: { message: '...', id_venta: N }
-                                if (data.message || data.id_venta) {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: '¡Venta creada!',
-                                        text: `Venta #${data.id_venta} generada desde cotización #${id}`,
-                                        timer: 2000,
-                                        showConfirmButton: false
-                                    });
-                                    listarCotizaciones();
-                                    
-                                   
-                                    if (typeof window.listarVentas === 'function') {
-                                        setTimeout(() => window.listarVentas(), 500);
-                                    }
-                                } else {
-                                    throw new Error(data.error || 'Error desconocido');
-                                }
-                            })
-                            .catch(err => {
-                                console.error("Error:", err);
-                                Swal.fire("Error", err.message || "No se pudo crear la venta", "error");
-                            });
-                        }
-                    });
-                })
-                .catch(err => {
-                    console.warn("No se pudo verificar caja, usando id_caja=1:", err);
-                    
-                   
-                    const venta = {
-                        id_cliente: c.id_cliente || null,
-                        id_empleado: parseInt(localStorage.getItem('usuario_id')) || 1,
-                        id_caja: 1,
-                        ven_total: parseFloat(c.cot_total),
-                        tipo_pago: 'Efectivo',
-                        detalles: c.detalles.map(d => ({
-                            id_producto: d.id_producto,
-                            cantidad: d.det_cantidad || d.cantidad || 1,
-                            precio: d.det_precio_unitario || d.precio || 0
-                        }))
-                    };
-
-                    fetch(API_VENTAS, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(venta)
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.message || data.id_venta) {
-                            Swal.fire('¡Venta creada!', `Venta #${data.id_venta}`, 'success');
-                            listarCotizaciones();
-                        }
-                    })
-                    .catch(err => Swal.fire("Error", err.message, "error"));
-                });
-        })
-        .catch(err => {
-            console.error("Error:", err);
-            Swal.fire("Error", "No se pudo cargar la cotización", "error");
-        });
-}
-
-
-function actualizarTablaTemporal() {
-    const tbody = document.querySelector("#tablaTemporalCot tbody");
-    if (!tbody) return;
-    
-    let total = 0;
-    tbody.innerHTML = carritoCot.map((item, i) => {
-        total += item.subtotal;
-        return `
-        <tr>
-            <td>${item.nombre}</td>
-            <td class="text-center">${item.cantidad}</td>
-            <td class="text-end">$${item.precio.toFixed(2)}</td>
-            <td class="text-end">$${item.subtotal.toFixed(2)}</td>
-            <td class="text-center">
-                <button class="btn btn-sm text-danger" onclick="quitarItemCot(${i})">
-                    <i class="fas fa-times"></i>
-                </button>
-            </td>
-        </tr>`;
-    }).join('');
-    
-    document.getElementById("totalCot").innerText = total.toFixed(2);
-}
-
-function buscarClienteCot(v) {
-    const lista = document.getElementById("resCliCot");
-    if (!lista) return;
-    
-    if (v.length < 2) {
-        lista.style.display = "none";
-        return;
-    }
-
-    fetch(API_CLI)
-        .then(res => res.json())
-        .then(response => {
-            const clientes = response.success ? (response.data?.data || response.data) : response;
-            const datos = Array.isArray(clientes) ? clientes : [];
-            
-            const filtrados = datos.filter(c => {
-                const nombre = `${c.cli_nombre || ''} ${c.cli_apaterno || ''}`.toLowerCase();
-                return nombre.includes(v.toLowerCase());
-            });
-
-            lista.innerHTML = filtrados.map(c => {
-                const nombre = `${c.cli_nombre || ''} ${c.cli_apaterno || ''}`.trim();
-                return `<button type="button" class="list-group-item list-group-item-action" 
-                    onclick="seleccionarClienteCot(${c.id_cliente}, '${nombre.replace(/'/g, "\\'")}')">
-                    ${nombre || 'Sin nombre'}
-                </button>`;
-            }).join('');
-            
-            lista.style.display = filtrados.length > 0 ? "block" : "none";
-        });
-}
-
-function seleccionarClienteCot(id, nombre) {
-    clienteIdCot = id;
-    document.getElementById("busCliCot").value = nombre;
-    document.getElementById("resCliCot").style.display = "none";
-}
-
-function buscarProductoCot(v) {
-    const lista = document.getElementById("resProdCot");
-    if (!lista) return;
-    
-    if (v.length < 1) {
-        lista.style.display = "none";
-        return;
-    }
-
-    fetch(API_PROD)
-        .then(res => res.json())
-        .then(response => {
-            const productos = response.success ? (response.data?.data || response.data) : response;
-            const datos = Array.isArray(productos) ? productos : [];
-            
-            const filtrados = datos.filter(p => 
-                p.pro_nombre && p.pro_nombre.toLowerCase().includes(v.toLowerCase())
-            );
-
-            lista.innerHTML = filtrados.map(p => `
-                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                    onclick='seleccionarProdCot(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
-                    <span>${p.pro_nombre || 'Sin nombre'}</span>
-                    <span class="badge bg-primary rounded-pill">$${parseFloat(p.pro_precio_venta || 0).toFixed(2)}</span>
-                </button>
-            `).join('');
-            
-            lista.style.display = filtrados.length > 0 ? "block" : "none";
-        });
-}
-
-function seleccionarProdCot(p) {
-    prodSeleccionadoCot = p;
-    document.getElementById("busProdCot").value = p.pro_nombre || '';
-    document.getElementById("resProdCot").style.display = "none";
-}
-
-function agregarItemCot() {
-    if (!prodSeleccionadoCot) {
-        return Swal.fire("Aviso", "Selecciona un producto primero", "warning");
-    }
-    
-    const cant = parseInt(document.getElementById("cantCot")?.value) || 1;
-    
-    carritoCot.push({
-        id_producto: prodSeleccionadoCot.id_producto,
-        nombre: prodSeleccionadoCot.pro_nombre,
-        precio: parseFloat(prodSeleccionadoCot.pro_precio_venta || 0),
-        cantidad: cant,
-        subtotal: cant * parseFloat(prodSeleccionadoCot.pro_precio_venta || 0)
-    });
-    
-    actualizarTablaTemporal();
-    document.getElementById("busProdCot").value = "";
-    document.getElementById("cantCot").value = 1;
-    prodSeleccionadoCot = null;
-}
-
-function quitarItemCot(i) {
-    carritoCot.splice(i, 1);
-    actualizarTablaTemporal();
 }
 
 function eliminarCotizacion(id) {
@@ -648,28 +538,189 @@ function eliminarCotizacion(id) {
     });
 }
 
-function abrirModalCot() {
-    document.getElementById("modalCotizacion").style.display = "flex";
+function imprimirCot(id) {
+    fetch(`${API_COT}/${id}`)
+        .then(res => res.json())
+        .then(response => {
+            const cot = response.success ? response.data : response;
+            const nombreCliente = cot.cliente 
+                ? `${cot.cliente.cli_nombre || ''} ${cot.cliente.cli_apaterno || ''}`.trim()
+                : 'Público General';
+            
+            let detalleHTML = '';
+            if (cot.detalles && cot.detalles.length > 0) {
+                detalleHTML = cot.detalles.map(d => {
+                    const nombreP = d.producto ? d.producto.pro_nombre : (d.pro_nombre || 'Producto');
+                    const precio = d.det_precio_unitario || d.precio || 0;
+                    const cantidad = d.det_cantidad || d.cantidad || 0;
+                    const subtotal = precio * cantidad;
+                    return `
+                        <tr>
+                            <td>${nombreP}</td>
+                            <td>$${parseFloat(precio).toFixed(2)}</td>
+                            <td>${cantidad}</td>
+                            <td>$${subtotal.toFixed(2)}</td>
+                        </tr>`;
+                }).join('');
+            }
+
+            const ventana = window.open('', 'Cotizacion', 'width=800,height=600');
+            ventana.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Cotización #${cot.id_cotizacion}</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                </head>
+                <body class="p-4">
+                    <div class="text-center mb-4">
+                        <h2>COTIZACIÓN #${cot.id_cotizacion}</h2>
+                        <p class="text-muted">Fecha: ${new Date(cot.cot_fecha).toLocaleDateString('es-MX')}</p>
+                    </div>
+                    <div class="mb-4">
+                        <strong>Cliente:</strong> ${nombreCliente}<br>
+                        <strong>Vigencia:</strong> ${cot.cot_vigencia_dias || 15} días<br>
+                        <strong>Vence:</strong> ${new Date(new Date(cot.cot_fecha).setDate(new Date(cot.cot_fecha).getDate() + (cot.cot_vigencia_dias || 15))).toLocaleDateString('es-MX')}
+                    </div>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Precio</th>
+                                <th>Cantidad</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${detalleHTML || '<tr><td colspan="4" class="text-center">Sin productos</td></tr>'}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="3" class="text-end">TOTAL:</th>
+                                <th>$${parseFloat(cot.cot_total || 0).toFixed(2)}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div class="text-center mt-4">
+                        <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+                    </div>
+                </body>
+                </html>
+            `);
+        });
 }
 
-function cerrarModalCot() {
-    document.getElementById("modalCotizacion").style.display = "none";
-    editandoCotId = null;
-    clienteIdCot = null;
-    carritoCot = [];
-    prodSeleccionadoCot = null;
-    document.getElementById("busCliCot").value = "";
-    document.getElementById("busProdCot").value = "";
-    document.getElementById("cot_vigencia").value = 15;
-    document.getElementById("cantCot").value = 1;
-    
-    const titulo = document.querySelector("#modalCotizacion .modal-title");
-    if (titulo) titulo.innerText = "Nueva Cotización";
-    
-    actualizarTablaTemporal();
+async function convertirAVenta(id) {
+    try {
+        const resCot = await fetch(`${API_COT}/${id}`);
+        const dataCot = await resCot.json();
+        const cotizacion = dataCot.success ? dataCot.data : dataCot;
+
+        // Verificar caja abierta
+        const cajaValida = await obtenerCajaValida();
+        if (!cajaValida) {
+            const abrir = await Swal.fire({
+                title: 'No hay caja abierta',
+                text: '¿Deseas abrir una caja rápida?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Abrir caja',
+                cancelButtonText: 'Cancelar'
+            });
+            if (abrir.isConfirmed) {
+                await abrirCajaRapida();
+                setTimeout(() => convertirAVenta(id), 500);
+            }
+            return;
+        }
+
+        mostrarDialogoPago(cotizacion, cajaValida.id_caja || cajaValida.id);
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('Error', 'No se pudo convertir la cotización', 'error');
+    }
 }
 
+async function obtenerCajaValida() {
+    try {
+        const res = await fetch(API_CAJA);
+        const data = await res.json();
+        const cajas = data.success ? (data.data?.data || data.data) : data;
+        const lista = Array.isArray(cajas) ? cajas : [];
+        return lista.find(c => c.caja_estado === 'Abierta' || c.estado === 'Abierta');
+    } catch {
+        return null;
+    }
+}
 
+async function abrirCajaRapida() {
+    try {
+        await fetch(API_CAJA, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                caja_monto_inicial: 0,
+                caja_estado: 'Abierta',
+                id_empleado: parseInt(localStorage.getItem('usuario_id')) || 1
+            })
+        });
+    } catch (error) {
+        console.error('Error al abrir caja:', error);
+    }
+}
+
+async function mostrarDialogoPago(cotizacion, idCaja) {
+    const { value: tipoPago } = await Swal.fire({
+        title: 'Convertir a Venta',
+        text: `Total: $${parseFloat(cotizacion.cot_total).toFixed(2)}`,
+        input: 'select',
+        inputOptions: {
+            'Efectivo': 'Efectivo',
+            'Tarjeta': 'Tarjeta',
+            'Transferencia': 'Transferencia'
+        },
+        inputPlaceholder: 'Selecciona método de pago',
+        showCancelButton: true
+    });
+
+    if (tipoPago) {
+        await crearVentaDesdeCotizacion(cotizacion, idCaja, tipoPago);
+    }
+}
+
+async function crearVentaDesdeCotizacion(cotizacion, idCaja, tipoPago) {
+    try {
+        const ventaData = {
+            id_cliente: cotizacion.id_cliente,
+            id_empleado: parseInt(localStorage.getItem('usuario_id')) || 1,
+            id_caja: idCaja,
+            ven_total: cotizacion.cot_total,
+            ven_tipo_pago: tipoPago,
+            detalles: cotizacion.detalles.map(d => ({
+                id_producto: d.id_producto,
+                det_cantidad: d.det_cantidad || d.cantidad,
+                det_precio_unitario: d.det_precio_unitario || d.precio
+            }))
+        };
+
+        const res = await fetch(API_VENTAS_COT, { // ✅ CORREGIDO
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ventaData)
+        });
+
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.message || 'Error al crear venta');
+
+        Swal.fire({ icon: 'success', title: '¡Venta creada!', timer: 1500, showConfirmButton: false });
+        listarCotizaciones();
+    } catch (error) {
+        console.error('Error:', error);
+        Swal.fire('Error', error.message, 'error');
+    }
+}
+
+// Exponer globalmente
 window.initCotizaciones = initCotizaciones;
 window.listarCotizaciones = listarCotizaciones;
 window.editarCotizacion = editarCotizacion;

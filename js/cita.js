@@ -1,42 +1,54 @@
-
 const API_CITA = "http://localhost:8000/api/citas";
-const API_CLI = "http://localhost:8000/api/clientes";
-const API_EMP = "http://localhost:8000/api/empleados";
+const API_CLI_CITAS = "http://localhost:8000/api/clientes"; // Renombrada para evitar conflictos
+const API_EMP_CITAS = "http://localhost:8000/api/empleados"; // Renombrada para evitar conflictos
 
 let clienteIdCita = null;
 let empleadoIdCita = null;
 let editandoCitaId = null;
+let citasIniciadas = false;
 
-
+// ========== AUTO-INICIALIZACIÓN SIMPLIFICADA ==========
 (function() {
-    if (!document.getElementById('tablaCitas') && !document.querySelector('.citas-container')) {
-        console.log("No es la vista de citas");
-        return;
-    }
-    console.log("Inicializando citas.js");
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', listarCitas);
-    } else {
-        listarCitas();
+    // Escuchar el evento de app.js
+    document.addEventListener('vista-cargada', function(e) {
+        if (e.detail && e.detail.vista && 
+            (e.detail.vista.includes('cita') || e.detail.vista.includes('Cita'))) {
+            console.log('📅 Citas: Vista detectada, iniciando...');
+            citasIniciadas = false;
+            setTimeout(listarCitas, 500);
+        }
+    });
+    
+    // Verificar si ya estamos en citas
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        const tabla = document.getElementById('tablaCitas');
+        if (tabla) {
+            console.log('📅 Citas: Ya en vista, iniciando...');
+            setTimeout(listarCitas, 300);
+        }
     }
 })();
 
-
-// LISTAR CITAS
+// ========== FUNCIONES DE CITAS ==========
 
 function listarCitas() {
+    const tbody = document.getElementById("tablaCitas");
+    if (!tbody) {
+        console.warn('📅 Tabla de citas no encontrada');
+        return;
+    }
+
+    console.log('📅 Cargando lista de citas...');
+    
     fetch(API_CITA)
         .then(res => res.json())
         .then(response => {
             const data = response.success ? (response.data?.data || response.data) : response;
             const citas = Array.isArray(data) ? data : [];
 
-            const tbody = document.getElementById("tablaCitas");
-            if (!tbody) return;
-
             if (citas.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3">No hay citas registradas</td></tr>';
+                citasIniciadas = true;
                 return;
             }
 
@@ -73,47 +85,42 @@ function listarCitas() {
                     </td>
                 </tr>`;
             }).join('');
+            
+            citasIniciadas = true;
+            console.log(`✅ Citas cargadas: ${citas.length} registros`);
         })
-        .catch(err => console.error("Error al listar citas:", err));
+        .catch(err => {
+            console.error("❌ Error al listar citas:", err);
+            citasIniciadas = false;
+        });
 }
-
-
-// PREPARAR SERVICIO 
 
 function prepararServicio(idCita) {
     localStorage.setItem('id_cita_seleccionada', idCita);
-    
     if (typeof window.cargarVista === 'function') {
         window.cargarVista('views/servicios.html');
     }
 }
 
-
-// BUSCAR CLIENTE
-
 function buscarClienteCita(v) {
     const lista = document.getElementById("resCliCita");
     if (!lista) return;
-    
     if (v.length < 2) { lista.style.display = "none"; return; }
 
-    fetch(API_CLI)
+    fetch(API_CLI_CITAS) // ✅ CORREGIDO: antes decía API_CLI
         .then(res => res.json())
         .then(response => {
             const clientes = response.success ? (response.data?.data || response.data) : response;
             const datos = Array.isArray(clientes) ? clientes : [];
-
             const filtrados = datos.filter(c => {
                 const nombre = `${c.cli_nombre || ''} ${c.cli_apaterno || ''}`.toLowerCase();
                 return nombre.includes(v.toLowerCase());
             });
-
             lista.innerHTML = filtrados.map(c => {
                 const nombre = `${c.cli_nombre || ''} ${c.cli_apaterno || ''}`.trim();
                 return `<button type="button" class="list-group-item list-group-item-action" 
                     onclick="window.seleccionarClienteCita(${c.id_cliente}, '${nombre.replace(/'/g, "\\'")}')">
-                    ${nombre || 'Sin nombre'}
-                </button>`;
+                    ${nombre || 'Sin nombre'}</button>`;
             }).join('');
             lista.style.display = filtrados.length > 0 ? "block" : "none";
         });
@@ -125,30 +132,24 @@ function seleccionarClienteCita(id, nombre) {
     document.getElementById("resCliCita").style.display = "none";
 }
 
-
 function buscarEmpleadoCita(v) {
     const lista = document.getElementById("resEmpCita");
     if (!lista) return;
-    
     if (v.length < 2) { lista.style.display = "none"; return; }
 
-    fetch(API_EMP)
+    fetch(API_EMP_CITAS) // ✅ CORREGIDO: antes decía API_EMP
         .then(res => res.json())
         .then(response => {
             const empleados = response.success ? (response.data?.data || response.data) : response;
             const datos = Array.isArray(empleados) ? empleados : [];
-
-            // Solo mostrar mecánicos
-            const mecanicos = datos.filter(e => e.emp_rol === 'Mecanico');
+            const mecanicos = datos.filter(e => e.emp_rol === 'Mecanico' || e.emp_rol === 'mecanico' || e.emp_rol === 'Mecánico');
             const filtrados = mecanicos.filter(e => 
                 e.emp_nombre && e.emp_nombre.toLowerCase().includes(v.toLowerCase())
             );
-
             lista.innerHTML = filtrados.map(e => `
                 <button type="button" class="list-group-item list-group-item-action" 
-                    onclick="window.seleccionarEmpleadoCita(${e.id_empleados}, '${e.emp_nombre}')">
-                    ${e.emp_nombre} <span class="badge bg-info">Mecánico</span>
-                </button>`).join('');
+                    onclick="window.seleccionarEmpleadoCita(${e.id_empleados}, '${e.emp_nombre.replace(/'/g, "\\'")}')">
+                    ${e.emp_nombre} <span class="badge bg-info">Mecánico</span></button>`).join('');
             lista.style.display = filtrados.length > 0 ? "block" : "none";
         });
 }
@@ -159,29 +160,32 @@ function seleccionarEmpleadoCita(id, nombre) {
     document.getElementById("resEmpCita").style.display = "none";
 }
 
-
 function abrirModalCita() {
-    document.getElementById("modalCita").style.display = "flex";
+    const modal = document.getElementById("modalCita");
+    if (modal) {
+        modal.style.display = "flex";
+    }
 }
 
 function cerrarModalCita() {
-    document.getElementById("modalCita").style.display = "none";
-    document.getElementById("formCita").reset();
+    const modal = document.getElementById("modalCita");
+    if (modal) {
+        modal.style.display = "none";
+    }
+    const form = document.getElementById("formCita");
+    if (form) {
+        form.reset();
+    }
     editandoCitaId = null;
     clienteIdCita = null;
     empleadoIdCita = null;
 }
 
-
-// GUARDAR CITA
-
 function guardarCita(e) {
     if (e) e.preventDefault();
-
     if (!clienteIdCita || !empleadoIdCita) {
         return Swal.fire("Aviso", "Selecciona cliente y mecánico", "warning");
     }
-
     const data = {
         id_cliente: parseInt(clienteIdCita),
         id_empleado: parseInt(empleadoIdCita),
@@ -189,12 +193,9 @@ function guardarCita(e) {
         cita_estado: document.getElementById("cita_estado").value || 'Pendiente',
         cita_motivo: document.getElementById("cita_motivo").value
     };
-
     const url = editandoCitaId ? `${API_CITA}/${editandoCitaId}` : API_CITA;
     const metodo = editandoCitaId ? "PUT" : "POST";
-
     console.log(`Guardando cita: ${metodo} ${url}`, data);
-
     fetch(url, {
         method: metodo,
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -202,13 +203,7 @@ function guardarCita(e) {
     })
     .then(res => res.json())
     .then(() => {
-        Swal.fire({
-            icon: 'success',
-            title: '¡Éxito!',
-            text: editandoCitaId ? 'Cita actualizada' : 'Cita registrada',
-            timer: 1500,
-            showConfirmButton: false
-        });
+        Swal.fire({ icon: 'success', title: '¡Éxito!', text: editandoCitaId ? 'Cita actualizada' : 'Cita registrada', timer: 1500, showConfirmButton: false });
         cerrarModalCita();
         listarCitas();
     })
@@ -218,39 +213,34 @@ function guardarCita(e) {
     });
 }
 
-
-// EDITAR CITA
-
 function editarCita(id) {
     fetch(`${API_CITA}/${id}`)
         .then(res => res.json())
         .then(response => {
             const c = response.success ? response.data : response;
-            
+            if (!c) {
+                Swal.fire("Error", "No se encontró la cita", "error");
+                return;
+            }
             editandoCitaId = id;
             clienteIdCita = c.id_cliente;
             empleadoIdCita = c.id_empleado;
-
-            const nombreCliente = c.cliente 
-                ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.trim() 
-                : '';
+            const nombreCliente = c.cliente ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.trim() : '';
             document.getElementById("busCliCita").value = nombreCliente;
-            
             const nombreEmpleado = c.empleado ? c.empleado.emp_nombre : '';
             document.getElementById("busEmpCita").value = nombreEmpleado;
-
             if (c.cita_fecha_programada) {
                 document.getElementById("cita_fecha").value = c.cita_fecha_programada.replace(" ", "T").substring(0, 16);
             }
             document.getElementById("cita_estado").value = c.cita_estado || 'Pendiente';
             document.getElementById("cita_motivo").value = c.cita_motivo || '';
-
             abrirModalCita();
+        })
+        .catch(err => {
+            console.error("Error al editar:", err);
+            Swal.fire("Error", "No se pudieron cargar los datos de la cita", "error");
         });
 }
-
-
-// ELIMINAR CITA
 
 function eliminarCita(id) {
     Swal.fire({
@@ -264,14 +254,20 @@ function eliminarCita(id) {
     }).then((result) => {
         if (result.isConfirmed) {
             fetch(`${API_CITA}/${id}`, { method: 'DELETE' })
-                .then(() => {
-                    Swal.fire('Eliminada', '', 'success');
+                .then(res => {
+                    if (!res.ok) throw new Error('Error al eliminar');
+                    Swal.fire('Eliminada', 'La cita ha sido eliminada', 'success');
                     listarCitas();
+                })
+                .catch(err => {
+                    console.error("Error al eliminar:", err);
+                    Swal.fire("Error", "No se pudo eliminar la cita", "error");
                 });
         }
     });
 }
 
+// Exponer funciones globalmente
 window.listarCitas = listarCitas;
 window.abrirModalCita = abrirModalCita;
 window.cerrarModalCita = cerrarModalCita;

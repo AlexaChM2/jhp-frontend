@@ -1,6 +1,5 @@
-
 window.cargarVista = function(vista) {
-    console.log(' cargarVista:', vista);
+    console.log('📂 cargarVista:', vista);
     
     fetch(vista)
         .then(response => {
@@ -14,7 +13,7 @@ window.cargarVista = function(vista) {
                 return;
             }
             
-           
+            // Limpiar scripts anteriores
             document.querySelectorAll('.script-dinamico').forEach(s => s.remove());
 
             // Insertar HTML
@@ -24,6 +23,12 @@ window.cargarVista = function(vista) {
             const scripts = container.querySelectorAll('script');
             let scriptsCargados = 0;
             const totalScripts = scripts.length;
+
+            // Si no hay scripts, cargar directamente
+            if (totalScripts === 0) {
+                inicializarVista(vista);
+                return;
+            }
 
             scripts.forEach(oldScript => {
                 if (oldScript.src || (oldScript.textContent && oldScript.textContent.trim())) {
@@ -47,7 +52,6 @@ window.cargarVista = function(vista) {
                                 inicializarVista(vista);
                             }
                         };
-                        console.log(' Cargando:', oldScript.src.split('/').pop());
                     } else {
                         newScript.textContent = oldScript.textContent;
                         scriptsCargados++;
@@ -58,14 +62,9 @@ window.cargarVista = function(vista) {
                 }
             });
 
-            // Si no hay scripts, inicializar directamente
-            if (totalScripts === 0 || scriptsCargados >= totalScripts) {
-                setTimeout(() => inicializarVista(vista), 300);
-            }
-
         })
         .catch(error => {
-            console.error(' Error al cargar vista:', error);
+            console.error('❌ Error al cargar vista:', error);
             const container = document.getElementById('contenido');
             if (container) {
                 container.innerHTML = `
@@ -84,28 +83,39 @@ window.cargarVista = function(vista) {
         });
 };
 
-
 function inicializarVista(vista) {
-    console.log('Inicializando vista:', vista);
+    console.log('🚀 Inicializando vista:', vista);
+    
+    // ⚠️ IMPORTANTE: Emitir evento para que los scripts lo capturen
+    const event = new CustomEvent('vista-cargada', { 
+        detail: { vista: vista },
+        bubbles: true 
+    });
+    document.dispatchEvent(event);
+    console.log('📢 Evento vista-cargada emitido');
 
-    // vistas y sus funciones
+    // Configuración de vistas
     const configVistas = {
         'panel.html': { fn: 'inicializarPanel', fallback: 'verificarEstadoCaja' },
-        'ventas.html':          { fn: 'listarVentas' },
-        'compras.html':         { fn: 'listarCompras' },
-        'cotizaciones.html':    { fn: 'initCotizaciones', fallback: 'listarCotizaciones' },
-        'cotizacion':           { fn: 'initCotizaciones', fallback: 'listarCotizaciones' },
-        'catalogos.html':       { fn: 'cargarSeccion', args: ['Clientes'] },
-        'productos.html':       { fn: 'inicializarModulo', fallback: 'listarProductos' },
-        'categorias.html':      { fn: 'listarCategorias' },
-        
-'cita.html': { fn: 'listarCitas', fnExtra: 'cargarClimaCitas' },
-        'servicios.html':       { fn: 'inicializarServicios', fallback: 'listarServicios' },
-        'proveedores.html':     { fn: 'listarProveedores' },
-        'reportes.html':        { fn: 'inicializarReportes', fallback: 'cargarReportes' }
+        'ventas.html': { fn: 'listarVentas' },
+        'compras.html': { fn: 'listarCompras' },
+        'catalogos.html': { fn: 'cargarSeccion', args: ['Clientes'] },
+        'productos.html': { fn: 'inicializarModulo', fallback: 'listarProductos' },
+        'categorias.html': { fn: 'listarCategorias' },
+        'servicios.html': { fn: 'inicializarServicios', fallback: 'listarServicios' },
+        'proveedores.html': { fn: 'listarProveedores' }
     };
 
-    // Buscar  vista
+    // Para reportes, citas y cotizaciones NO hacemos nada aquí
+    // porque sus propios scripts tienen auto-inicialización
+    if (vista.includes('reporte') || vista.includes('Reporte') ||
+        vista.includes('cita') || vista.includes('Cita') ||
+        vista.includes('cotizacion') || vista.includes('Cotizacion')) {
+        console.log('⏩ Vista con auto-inicialización, esperando script...');
+        return;
+    }
+
+    // Para otras vistas
     let configurada = false;
     for (const [key, config] of Object.entries(configVistas)) {
         if (vista.includes(key)) {
@@ -116,62 +126,52 @@ function inicializarVista(vista) {
     }
 
     if (!configurada) {
-        console.log('Vista sin inicialización automática:', vista);
+        console.log('📌 Vista sin inicialización automática:', vista);
     }
 }
 
-
 function ejecutarConReintentos(funcionPrincipal, funcionFallback, args = [], intentos = 0) {
-    const maxIntentos = 15; // 15 intentos 
-    const delay = 500; 
+    const maxIntentos = 15;
+    const delay = 500;
 
-    // Función principal 
     if (typeof window[funcionPrincipal] === 'function') {
-        console.log(`Ejecutando: ${funcionPrincipal}`);
+        console.log(`✅ Ejecutando: ${funcionPrincipal}`);
         window[funcionPrincipal](...args);
         return;
     }
 
-    // Función ncontrada
     if (funcionFallback && typeof window[funcionFallback] === 'function') {
-        console.log(`Ejecutando fallback: ${funcionFallback}`);
+        console.log(`✅ Ejecutando fallback: ${funcionFallback}`);
         window[funcionFallback](...args);
         return;
     }
 
-    // Reintentar
     if (intentos < maxIntentos) {
         if (intentos === 0 || intentos % 3 === 0) {
-            console.log(`Esperando ${funcionPrincipal}... (intento ${intentos + 1}/${maxIntentos})`);
+            console.log(`⏳ Esperando ${funcionPrincipal}... (intento ${intentos + 1}/${maxIntentos})`);
         }
         setTimeout(() => {
             ejecutarConReintentos(funcionPrincipal, funcionFallback, args, intentos + 1);
         }, delay);
     } else {
-        console.warn(`No se encontró: ${funcionPrincipal} después de ${maxIntentos} intentos`);
+        console.warn(`⚠️ No se encontró: ${funcionPrincipal} después de ${maxIntentos} intentos`);
     }
 }
 
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('app.js cargado correctamente');
-    console.log('Funciones: cargarVista, ejecutarConReintentos');
-
-    // Cerrar listas desplegables al hacer clic fuera
-    document.addEventListener('click', function(e) {
-        const idsBuscadores = [
-            'busCliCot', 'busProdCot', 'buscarCliente', 'buscarProducto',
-            'buscarProveedor', 'buscarProductoCompra', 'busCliCita', 'busEmpCita',
-            'busCliCotizacion'
-        ];
-        
-        const listas = document.querySelectorAll('.list-group[id^="res"]');
-        listas.forEach(lista => {
-            if (!lista.contains(e.target) && !idsBuscadores.includes(e.target.id)) {
-                lista.style.display = 'none';
-            }
-        });
+// Cerrar listas desplegables al hacer clic fuera
+document.addEventListener('click', function(e) {
+    const idsBuscadores = [
+        'busCliCot', 'busProdCot', 'buscarCliente', 'buscarProducto',
+        'buscarProveedor', 'buscarProductoCompra', 'busCliCita', 'busEmpCita',
+        'busCliCotizacion'
+    ];
+    
+    const listas = document.querySelectorAll('.list-group[id^="res"]');
+    listas.forEach(lista => {
+        if (!lista.contains(e.target) && !idsBuscadores.includes(e.target.id)) {
+            lista.style.display = 'none';
+        }
     });
 });
 
-console.log('app.js - Listo');
+console.log('✅ app.js - Listo');

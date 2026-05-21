@@ -1,4 +1,3 @@
-
 const API_REPORTES = "http://localhost:8000/api/reportes-detallados";
 const API_VENTAS = "http://localhost:8000/api/ventas";
 const API_COMPRAS = "http://localhost:8000/api/compras";
@@ -7,29 +6,53 @@ const API_PRODUCTOS = "http://localhost:8000/api/producto";
 let chartVentasCompras = null;
 let chartTopProductos = null;
 let chartInventario = null;
+let reportesIniciados = false;
 
-
+// ========== AUTO-INICIALIZACIÓN SIMPLIFICADA ==========
 (function() {
-    if (document.getElementById('chartVentasCompras')) {
-        console.log("📊 Inicializando reportes");
-        cargarTodo();
+    // Solo escuchar el evento de app.js
+    document.addEventListener('vista-cargada', function(e) {
+        if (e.detail && e.detail.vista && 
+            (e.detail.vista.includes('reporte') || e.detail.vista.includes('Reporte'))) {
+            console.log('📊 Reportes: Vista detectada, iniciando...');
+            reportesIniciados = false;
+            setTimeout(cargarTodo, 500); // Mayor delay para asegurar DOM listo
+        }
+    });
+    
+    // También verificar si ya estamos en reportes al cargar
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        const canvas = document.getElementById('chartVentasCompras');
+        const tarjetas = document.getElementById('txtIngresos');
+        if (canvas || tarjetas) {
+            console.log('📊 Reportes: Ya en vista, iniciando...');
+            setTimeout(cargarTodo, 300);
+        }
     }
 })();
 
-async function cargarTodo() {
-    await Promise.all([
-        cargarResumen(),
-        cargarInventario(),
-        cargarMovimientosDia()
-    ]);
-}
+// ========== FUNCIONES DE REPORTES ==========
 
+async function cargarTodo() {
+    console.log('📊 Cargando todos los reportes...');
+    
+    try {
+        await Promise.all([
+            cargarResumen(),
+            cargarInventario(),
+            cargarMovimientosDia()
+        ]);
+        reportesIniciados = true;
+        console.log('✅ Reportes cargados correctamente');
+    } catch (error) {
+        console.error('❌ Error al cargar reportes:', error);
+        reportesIniciados = false;
+    }
+}
 
 function extraerArray(response) {
     if (!response) return [];
-   
     if (Array.isArray(response)) return response;
-   
     if (response.data) {
         if (Array.isArray(response.data)) return response.data;
         if (response.data.data && Array.isArray(response.data.data)) return response.data.data;
@@ -37,10 +60,8 @@ function extraerArray(response) {
     return [];
 }
 
-
 async function cargarResumen() {
     try {
-        // Cargar ventas y compras
         const [resVentas, resCompras] = await Promise.all([
             fetch(API_VENTAS).then(r => r.json()),
             fetch(API_COMPRAS).then(r => r.json())
@@ -49,40 +70,40 @@ async function cargarResumen() {
         const ventas = extraerArray(resVentas);
         const compras = extraerArray(resCompras);
 
-        console.log(` Ventas: ${ventas.length}, Compras: ${compras.length}`);
+        console.log(`📊 Ventas: ${ventas.length}, Compras: ${compras.length}`);
 
-        // Calcular totales
         const totalVentas = ventas.reduce((s, v) => s + parseFloat(v.ven_total || 0), 0);
         const totalCompras = compras.reduce((s, c) => s + parseFloat(c.com_total || 0), 0);
 
-        // Actualizar tarjetas
-        document.getElementById("txtIngresos").textContent = `$${totalVentas.toFixed(2)}`;
-        document.getElementById("txtEgresos").textContent = `$${totalCompras.toFixed(2)}`;
-        document.getElementById("txtBalance").textContent = `$${(totalVentas - totalCompras).toFixed(2)}`;
-        document.getElementById("txtNumVentas").textContent = `${ventas.length} ventas`;
-        document.getElementById("txtNumCompras").textContent = `${compras.length} compras`;
+        const txtIngresos = document.getElementById("txtIngresos");
+        const txtEgresos = document.getElementById("txtEgresos");
+        const txtBalance = document.getElementById("txtBalance");
+        const txtNumVentas = document.getElementById("txtNumVentas");
+        const txtNumCompras = document.getElementById("txtNumCompras");
 
-       
+        if (txtIngresos) txtIngresos.textContent = `$${totalVentas.toFixed(2)}`;
+        if (txtEgresos) txtEgresos.textContent = `$${totalCompras.toFixed(2)}`;
+        if (txtBalance) txtBalance.textContent = `$${(totalVentas - totalCompras).toFixed(2)}`;
+        if (txtNumVentas) txtNumVentas.textContent = `${ventas.length} ventas`;
+        if (txtNumCompras) txtNumCompras.textContent = `${compras.length} compras`;
+
         renderVentasCompras(ventas, compras);
-
-        // Top productos vendidos (desde los detalles de ventas)
         await cargarTopProductos();
 
     } catch (error) {
-        console.error(" Error al cargar resumen:", error);
+        console.error("❌ Error al cargar resumen:", error);
     }
 }
-
-
-// GRAFICA VENTAS / COMPRAS
 
 function renderVentasCompras(ventas, compras) {
     const ctx = document.getElementById('chartVentasCompras')?.getContext('2d');
     if (!ctx) return;
 
-    if (chartVentasCompras) chartVentasCompras.destroy();
+    if (chartVentasCompras) {
+        chartVentasCompras.destroy();
+        chartVentasCompras = null;
+    }
 
-    //  por día
     const agruparPorDia = (lista, campoFecha, campoTotal) => {
         const mapa = {};
         lista.forEach(item => {
@@ -147,22 +168,12 @@ function renderVentasCompras(ventas, compras) {
     });
 }
 
-
-// TOP PRODUCTOS (desde detalles de ventas)
-
 async function cargarTopProductos() {
     try {
-        // Cargar ventas con detalles
-        const resVentas = await fetch(API_VENTAS);
-        const data = await resVentas.json();
-        const ventas = extraerArray(data);
-
-       
         const resProductos = await fetch(API_PRODUCTOS);
         const dataProd = await resProductos.json();
         const productos = extraerArray(dataProd);
 
-        // Ordenar por stock 
         const ordenados = productos
             .filter(p => p.pro_stock !== undefined)
             .sort((a, b) => (a.pro_stock || 0) - (b.pro_stock || 0))
@@ -171,7 +182,7 @@ async function cargarTopProductos() {
         renderTopProductos(ordenados);
 
     } catch (error) {
-        console.error("Error al cargar top productos:", error);
+        console.error("❌ Error al cargar top productos:", error);
     }
 }
 
@@ -179,7 +190,10 @@ function renderTopProductos(productos) {
     const ctx = document.getElementById('chartTopProductos')?.getContext('2d');
     if (!ctx) return;
 
-    if (chartTopProductos) chartTopProductos.destroy();
+    if (chartTopProductos) {
+        chartTopProductos.destroy();
+        chartTopProductos = null;
+    }
 
     if (productos.length === 0) {
         ctx.canvas.parentElement.innerHTML = '<p class="text-center text-muted py-5">Sin datos</p>';
@@ -213,31 +227,29 @@ function renderTopProductos(productos) {
     });
 }
 
-
-// INVENTARIO
-
 async function cargarInventario() {
     try {
         const response = await fetch(API_PRODUCTOS);
         const data = await response.json();
         const productos = extraerArray(data);
 
-        console.log(` Productos: ${productos.length}`);
+        console.log(`📦 Productos: ${productos.length}`);
 
-        // Actualizar 
-        document.getElementById("txtTotalProductos").textContent = productos.length;
+        const txtTotalProductos = document.getElementById("txtTotalProductos");
+        const txtStockBajo = document.getElementById("txtStockBajo");
+        
+        if (txtTotalProductos) txtTotalProductos.textContent = productos.length;
+        
         const stockBajo = productos.filter(p => p.pro_stock <= 5 && p.pro_stock > 0).length;
         const agotados = productos.filter(p => p.pro_stock <= 0).length;
-        document.getElementById("txtStockBajo").textContent = `${stockBajo} bajos, ${agotados} agotados`;
+        
+        if (txtStockBajo) txtStockBajo.textContent = `${stockBajo} bajos, ${agotados} agotados`;
 
-        // Grafica de dona
         renderInventario(productos);
-
-        // Tabla de stock bajo
         renderStockBajo(productos);
 
     } catch (error) {
-        console.error("Error al cargar inventario:", error);
+        console.error("❌ Error al cargar inventario:", error);
     }
 }
 
@@ -245,7 +257,10 @@ function renderInventario(productos) {
     const ctx = document.getElementById('chartInventario')?.getContext('2d');
     if (!ctx) return;
 
-    if (chartInventario) chartInventario.destroy();
+    if (chartInventario) {
+        chartInventario.destroy();
+        chartInventario = null;
+    }
 
     const stockNormal = productos.filter(p => p.pro_stock > 5).length;
     const stockBajo = productos.filter(p => p.pro_stock > 0 && p.pro_stock <= 5).length;
@@ -299,9 +314,6 @@ function renderStockBajo(productos) {
     `).join('');
 }
 
-
-// MOVIMIENTOS DEL DÍA
-
 async function cargarMovimientosDia() {
     try {
         const [resVentas, resCompras] = await Promise.all([
@@ -312,7 +324,6 @@ async function cargarMovimientosDia() {
         const ventas = extraerArray(resVentas);
         const compras = extraerArray(resCompras);
 
-        // ultimas 5 ventas
         const tbodyVentas = document.querySelector("#tablaUltimasVentas tbody");
         if (tbodyVentas) {
             const ultimas = ventas.slice(-5).reverse();
@@ -327,7 +338,6 @@ async function cargarMovimientosDia() {
                 : '<tr><td colspan="4" class="text-center text-muted">Sin ventas registradas</td></tr>';
         }
 
-        // ultimas 5 compras
         const tbodyCompras = document.querySelector("#tablaUltimasCompras tbody");
         if (tbodyCompras) {
             const ultimas = compras.slice(-5).reverse();
@@ -343,9 +353,10 @@ async function cargarMovimientosDia() {
         }
 
     } catch (error) {
-        console.error("Error al cargar movimientos:", error);
+        console.error("❌ Error al cargar movimientos:", error);
     }
 }
 
-
+// Exponer funciones globalmente
+window.cargarTodo = cargarTodo;
 window.inicializarReportes = cargarTodo;
