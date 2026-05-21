@@ -3,9 +3,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "python -m http.server 8080",
-    "healthcheckPath": "/",
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "startCommand": "npx --yes serve -l 8080",
+    "healthcheckPath": "/"
   }
 }
