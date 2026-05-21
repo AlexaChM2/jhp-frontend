@@ -1,6 +1,6 @@
 
 window.cargarVista = function(vista) {
-    console.log('🔄 cargarVista:', vista);
+    console.log(' cargarVista:', vista);
     
     fetch(vista)
         .then(response => {
@@ -47,7 +47,7 @@ window.cargarVista = function(vista) {
                                 inicializarVista(vista);
                             }
                         };
-                        console.log('📜 Cargando:', oldScript.src.split('/').pop());
+                        console.log(' Cargando:', oldScript.src.split('/').pop());
                     } else {
                         newScript.textContent = oldScript.textContent;
                         scriptsCargados++;
@@ -65,7 +65,7 @@ window.cargarVista = function(vista) {
 
         })
         .catch(error => {
-            console.error('❌ Error al cargar vista:', error);
+            console.error(' Error al cargar vista:', error);
             const container = document.getElementById('contenido');
             if (container) {
                 container.innerHTML = `
@@ -86,7 +86,7 @@ window.cargarVista = function(vista) {
 
 
 function inicializarVista(vista) {
-    console.log('⚡ Inicializando vista:', vista);
+    console.log('Inicializando vista:', vista);
 
     // vistas y sus funciones
     const configVistas = {

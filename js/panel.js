@@ -6,7 +6,7 @@ let calendario = null;
 
 
 function inicializarPanel() {
-    console.log("📊 Inicializando panel...");
+    console.log("Inicializando panel...");
     
     if (!document.getElementById('estado-badge')) {
         console.log("No es la vista de panel");
@@ -37,7 +37,7 @@ function cargarCitasHoy() {
     
     if (!citasHoyEl) return;
 
-    console.log("📅 Cargando citas...");
+    console.log(" Cargando citas...");
 
     fetch(window.API_CITAS)
         .then(res => res.json())
@@ -147,7 +147,7 @@ function cargarCitasHoy() {
 function inicializarCalendario() {
     const calendarEl = document.getElementById('calendario');
     if (!calendarEl) {
-        console.warn('⚠️ #calendario no encontrado');
+        console.warn(' #calendario no encontrado');
         return;
     }
 

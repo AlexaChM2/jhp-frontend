@@ -1,6 +1,3 @@
-// ==========================================
-// CITAS - js/citas.js
-// ==========================================
 
 const API_CITA = "http://localhost:8000/api/citas";
 const API_CLI = "http://localhost:8000/api/clientes";
