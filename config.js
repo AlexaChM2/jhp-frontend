@@ -4,37 +4,41 @@ const API_BASE_URL = "https://jhpapi-production.up.railway.app/";
 
 // URLs de endpoints
 const API_URLS = {
+   // Auth
+    LOGIN: `${API_BASE_URL}/auth/login`,
+    LOGOUT: `${API_BASE_URL}/auth/logout`,
+    
     // Citas
     CITAS: `${API_BASE_URL}/citas`,
     
     // Clientes
     CLIENTES: `${API_BASE_URL}/clientes`,
     
-    // Empleados
-    EMPLEADOS: `${API_BASE_URL}/empleados`,
-    
     // Productos
-    PRODUCTOS: `${API_BASE_URL}/producto`,
+    PRODUCTOS: `${API_BASE_URL}/productos`,
+    
+    // Marcas
+    MARCAS: `${API_BASE_URL}/marcas`,
+    MARCAS_ACTIVAS: `${API_BASE_URL}/marcas/activas`,
+    
+    // Ventas
+    VENTAS: `${API_BASE_URL}/ventas`,
+    DETALLE_VENTAS: `${API_BASE_URL}/detalle_ventas`,
+    
+    // Inventario
+    INVENTARIOS: `${API_BASE_URL}/inventarios`,
+    
+    // Mantenimiento
+    MANTENIMIENTO: `${API_BASE_URL}/mantenimiento`,
+    DETALLE_MANT_INSUMOS: `${API_BASE_URL}/detalle_mantenimiento_insumos`,
+    DETALLE_MANT_SERVICIOS: `${API_BASE_URL}/detalle_mantenimiento_servicios`,
     
     // Categorías
     CATEGORIAS: `${API_BASE_URL}/categorias`,
     
-    // Ventas
-    VENTAS: `${API_BASE_URL}/ventas`,
+    // Proveedores
+    PROVEEDORES: `${API_BASE_URL}/proveedores`,
     
-    // Compras
-    COMPRAS: `${API_BASE_URL}/compras`,
-    
-    // Cotizaciones
-    COTIZACIONES: `${API_BASE_URL}/cotizaciones`,
-    
-    // Reportes
-    //REPORTES: `${API_BASE_URL}/reportes-detallados`,
-    
-    // Caja
-    CAJA: `${API_BASE_URL}/control_caja`
+    // Empleados
+    EMPLEADOS: `${API_BASE_URL}/empleados`,
 };
-
-// Exportar para uso global
-window.API_URLS = API_URLS;
-window.API_BASE_URL = API_BASE_URL;

@@ -1,5 +1,5 @@
 // login.js
-window.API_AUTH = window.API_AUTH || "http://localhost:8000/api/auth";
+window.API_AUTH = window.API_AUTH || "https://jhpapi-production.up.railway.app/api/auth";
 
 function ejecutarLogin(event) {
     event.preventDefault();
