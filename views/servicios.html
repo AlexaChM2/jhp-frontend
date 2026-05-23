@@ -97,18 +97,23 @@
                     <input type="hidden" id="id_cita_input" name="id_cita">
                     
                     <div class="row">
+                        <!-- CLIENTE -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Cliente *</label>
                             <select id="id_cliente" name="id_cliente" class="form-select" required>
                                 <option value="">Seleccione cliente...</option>
                             </select>
                         </div>
+
+                        <!-- MECÁNICO -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Mecánico Asignado *</label>
                             <select id="id_mecanico" name="id_mecanico" class="form-select" required>
                                 <option value="">Seleccione mecánico...</option>
                             </select>
                         </div>
+
+                        <!-- MODELO MOTO -->
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold">Modelo de Motocicleta *</label>
                             <div class="input-group">
@@ -116,68 +121,15 @@
                                 <input type="text" id="moto_modelo" name="moto_modelo" class="form-control" placeholder="Ej. Yamaha R6 2023" required>
                             </div>
                         </div>
+
+                        <!-- DESCRIPCIÓN -->
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold">Descripción de Llegada / Motivo</label>
                             <textarea id="moto_llegada_descripcion" name="moto_llegada_descripcion" class="form-control" rows="3" placeholder="Detalles reportados por el cliente..."></textarea>
                         </div>
-                        
-                        <!-- SECCIÓN SERVICIOS (Mano de obra) -->
-                        <div class="col-md-12 mb-3">
-                            <hr>
-                            <h6 class="fw-bold"><i class="fas fa-tools"></i> Servicios Realizados (Mano de Obra)</h6>
-                            <div class="row mb-2">
-                                <div class="col-md-7">
-                                    <select id="servicio_id" class="form-select">
-                                        <option value="">Seleccione servicio...</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="number" id="servicio_precio" class="form-control" placeholder="$" min="0" step="0.01" value="0">
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="button" class="btn btn-outline-primary w-100" onclick="window.agregarServicio()">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="listaServiciosAgregados" class="mb-2" style="max-height:150px;overflow-y:auto;"></div>
-                            <div class="text-end">
-                                <small class="text-muted">Total Mano de Obra:</small>
-                                <strong class="ms-2">$<span id="total_mano_obra">0.00</span></strong>
-                            </div>
-                        </div>
-
-                        <!-- SECCIÓN INSUMOS -->
-                        <div class="col-md-12 mb-3">
-                            <hr>
-                            <h6 class="fw-bold"><i class="fas fa-box"></i> Insumos Utilizados</h6>
-                            <div class="row mb-2">
-                                <div class="col-md-6">
-                                    <input type="text" id="buscarInsumo" class="form-control" placeholder="Buscar producto..." oninput="window.buscarInsumo(this.value)">
-                                    <div id="listaResultadosInsumos" class="list-group position-absolute" style="z-index:10;display:none;"></div>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" id="insumo_cantidad" class="form-control" placeholder="Cant" min="1" value="1">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="text" id="insumo_precio" class="form-control" placeholder="$" value="0" readonly>
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="button" class="btn btn-outline-success w-100" onclick="window.agregarInsumo()">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="listaInsumosAgregados" class="mb-2" style="max-height:150px;overflow-y:auto;"></div>
-                            <div class="text-end">
-                                <small class="text-muted">Total Insumos:</small>
-                                <strong class="ms-2">$<span id="total_insumos">0.00</span></strong>
-                            </div>
-                        </div>
 
                         <!-- ESTADO -->
-                        <div class="col-md-12 mb-3">
-                            <hr>
+                        <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold">Estado</label>
                             <select id="estado_servicio" name="estado_servicio" class="form-select">
                                 <option value="En Proceso">En Proceso</option>
@@ -185,15 +137,66 @@
                                 <option value="Entregado">Entregado</option>
                             </select>
                         </div>
+                    </div>
 
-                        <!-- TOTAL GENERAL -->
-                        <div class="col-md-12 mb-3">
-                            <div class="alert alert-info text-center">
-                                <h4 class="mb-0">TOTAL: $<span id="total_general">0.00</span></h4>
-                            </div>
+                    <!-- SECCIÓN SERVICIOS (MANO DE OBRA) -->
+                    <hr>
+                    <h6 class="fw-bold"><i class="fas fa-tools text-success"></i> Servicios Realizados (Mano de Obra)</h6>
+                    <div class="row mb-2">
+                        <div class="col-md-7">
+                            <select id="servicio_id" class="form-select form-select-sm">
+                                <option value="">Seleccione servicio...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" id="servicio_precio" class="form-control form-control-sm" placeholder="$" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-outline-success btn-sm w-100" onclick="window.agregarServicio()">
+                                <i class="fas fa-plus"></i>
+                            </button>
                         </div>
                     </div>
-                    
+                    <div id="listaServiciosAgregados" class="mb-2" style="max-height:150px;overflow-y:auto;"></div>
+                    <div class="text-end mb-2">
+                        <small class="text-muted">Total Mano de Obra:</small>
+                        <strong class="ms-2 text-success">$<span id="total_mano_obra">0.00</span></strong>
+                    </div>
+
+                    <!-- SECCIÓN INSUMOS -->
+                    <hr>
+                    <h6 class="fw-bold"><i class="fas fa-box text-primary"></i> Insumos Utilizados</h6>
+                    <div class="row mb-2">
+                        <div class="col-md-6 position-relative">
+                            <input type="text" id="buscarInsumo" class="form-control form-control-sm" placeholder="Buscar producto..." oninput="window.buscarInsumo(this.value)" autocomplete="off">
+                            <div id="listaResultadosInsumos" class="list-group position-absolute w-100" style="z-index:1000;top:100%;display:none;max-height:200px;overflow-y:auto;"></div>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" id="insumo_cantidad" class="form-control form-control-sm" placeholder="Cant" min="1" value="1">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" id="insumo_precio" class="form-control form-control-sm" placeholder="$" value="0" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="window.agregarInsumo()">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="listaInsumosAgregados" class="mb-2" style="max-height:150px;overflow-y:auto;"></div>
+                    <div class="text-end mb-2">
+                        <small class="text-muted">Total Insumos:</small>
+                        <strong class="ms-2 text-primary">$<span id="total_insumos">0.00</span></strong>
+                    </div>
+
+                    <!-- TOTAL GENERAL -->
+                    <div class="col-md-12 mb-3">
+                        <div class="alert alert-info text-center py-2">
+                            <h5 class="mb-0">TOTAL: $<span id="total_general">0.00</span></h5>
+                        </div>
+                    </div>
+
+                    <!-- BOTONES -->
                     <div class="d-flex justify-content-end">
                         <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
                             <i class="fas fa-times"></i> Cancelar
