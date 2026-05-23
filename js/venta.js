@@ -1,8 +1,8 @@
-
-window.API_VENTAS = window.API_VENTAS || "https://jhpapi-production.up.railway.app/api/ventas";
-window.API_PRODUCTOS = window.API_PRODUCTOS || "https://jhpapi-production.up.railway.app/api/producto";
-window.API_CLIENTES = window.API_CLIENTES || "https://jhpapi-production.up.railway.app/api/clientes";
-window.API_CAJA = window.API_CAJA || "https://jhpapi-production.up.railway.app/api/control_caja";
+// URLs corregidas
+window.API_VENTAS = "https://jhpapi-production.up.railway.app/api/ventas";
+window.API_PRODUCTOS = "https://jhpapi-production.up.railway.app/api/producto";  // ← sin S
+window.API_CLIENTES = "https://jhpapi-production.up.railway.app/api/clientes";
+window.API_CAJA = "https://jhpapi-production.up.railway.app/api/control_caja";
 
 var carrito = [];
 var productoSeleccionado = null;
@@ -16,7 +16,7 @@ function verificarCajaParaVenta() {
         .then(data => {
             if (data.status === 'success' && data.caja_abierta === true) {
                 cajaActual = data;
-                console.log(" Caja abierta, ID:", data.id_caja);
+                console.log("Caja abierta, ID:", data.id_caja);
                 return true;
             } else {
                 Swal.fire({
@@ -30,6 +30,7 @@ function verificarCajaParaVenta() {
         })
         .catch(err => {
             console.error("Error al verificar caja:", err);
+            Swal.fire("Error", "No se pudo verificar la caja", "error");
             return false;
         });
 }
@@ -37,12 +38,9 @@ function verificarCajaParaVenta() {
 
 (function() {
     if (!document.getElementById('tablaVentas') && !document.querySelector('.ventas-container')) {
-        console.log("No es la vista de ventas");
         return;
     }
-
-    console.log(" Inicializando venta.js");
-
+    console.log("Inicializando venta.js");
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', configurarEventListeners);
     } else {
@@ -51,19 +49,12 @@ function verificarCajaParaVenta() {
 })();
 
 function configurarEventListeners() {
-   
     document.addEventListener("click", (e) => {
         const listaCliente = document.getElementById("listaResultadosCliente");
         const listaProd = document.getElementById("listaResultadosProd");
-
-        if (e.target.id !== "buscarCliente" && listaCliente) {
-            listaCliente.style.display = "none";
-        }
-        if (e.target.id !== "buscarProducto" && listaProd) {
-            listaProd.style.display = "none";
-        }
+        if (e.target.id !== "buscarCliente" && listaCliente) listaCliente.style.display = "none";
+        if (e.target.id !== "buscarProducto" && listaProd) listaProd.style.display = "none";
     });
-
     listarVentas();
 }
 
@@ -75,7 +66,6 @@ function listarVentas() {
     fetch(window.API_VENTAS)
         .then(res => res.json())
         .then(response => {
-           
             const ventas = response.success ? (response.data?.data || response.data) : response;
             const datos = Array.isArray(ventas) ? ventas : [];
 
@@ -122,10 +112,8 @@ function seleccionarCliente(valor) {
     fetch(window.API_CLIENTES)
         .then(res => res.json())
         .then(response => {
-           
             const clientes = response.success ? (response.data?.data || response.data) : response;
             const datos = Array.isArray(clientes) ? clientes : [];
-
             listaResultados.innerHTML = "";
 
             const filtrados = datos.filter(c => {
@@ -138,19 +126,15 @@ function seleccionarCliente(valor) {
                 listaResultados.style.display = "block";
                 filtrados.forEach(c => {
                     const nombreCompleto = `${c.cli_nombre || ''} ${c.cli_apaterno || ''} ${c.cli_amaterno || ''}`.trim() || 'Sin nombre';
-
                     const item = document.createElement("button");
                     item.type = "button";
                     item.className = "list-group-item list-group-item-action";
                     item.innerText = nombreCompleto;
-
                     item.onclick = () => {
-                        const input = document.getElementById("buscarCliente");
-                        if (input) input.value = nombreCompleto;
+                        document.getElementById("buscarCliente").value = nombreCompleto;
                         clienteSeleccionadoID = c.id_cliente;
                         listaResultados.style.display = "none";
                     };
-
                     listaResultados.appendChild(item);
                 });
             } else {
@@ -173,10 +157,8 @@ function seleccionarProducto(valor) {
     fetch(window.API_PRODUCTOS)
         .then(res => res.json())
         .then(response => {
-            
             const productos = response.success ? (response.data?.data || response.data) : response;
             const datos = Array.isArray(productos) ? productos : [];
-
             listaProd.innerHTML = "";
 
             const filtrados = datos.filter(p =>
@@ -190,21 +172,15 @@ function seleccionarProducto(valor) {
                     const item = document.createElement("button");
                     item.type = "button";
                     item.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center";
-
                     item.innerHTML = `
                         <span>${p.pro_nombre || 'Sin nombre'}</span>
                         <span class="badge bg-primary rounded-pill">$${parseFloat(p.pro_precio_venta || 0).toFixed(2)}</span>
                     `;
-
                     item.onclick = () => {
-                        const input = document.getElementById("buscarProducto");
-                        const precioSpan = document.getElementById("precio_unitario");
-                        if (input) input.value = p.pro_nombre || '';
-                        if (precioSpan) precioSpan.innerText = parseFloat(p.pro_precio_venta || 0).toFixed(2);
-
+                        document.getElementById("buscarProducto").value = p.pro_nombre || '';
+                        document.getElementById("precio_unitario").innerText = parseFloat(p.pro_precio_venta || 0).toFixed(2);
                         productoSeleccionado = p;
                         recalcularSubtotal();
-
                         listaProd.style.display = "none";
                     };
                     listaProd.appendChild(item);
@@ -221,7 +197,6 @@ function recalcularSubtotal() {
     const cant = document.getElementById("cant_venta");
     const subtotalSpan = document.getElementById("subtotal_item");
     if (!cant || !subtotalSpan) return;
-
     const cantidad = parseInt(cant.value) || 0;
     const precio = productoSeleccionado ? (parseFloat(productoSeleccionado.pro_precio_venta) || 0) : 0;
     subtotalSpan.innerText = (cantidad * precio).toFixed(2);
@@ -233,15 +208,12 @@ function agregarArticulo() {
         Swal.fire("Aviso", "Selecciona un producto", "warning");
         return;
     }
-
     const cantInput = document.getElementById("cant_venta");
     const cantidad = parseInt(cantInput?.value) || 0;
-
     if (cantidad <= 0) {
         Swal.fire("Aviso", "Ingresa una cantidad válida", "warning");
         return;
     }
-
     carrito.push({
         id_producto: productoSeleccionado.id_producto,
         nombre: productoSeleccionado.pro_nombre || 'Producto',
@@ -249,18 +221,11 @@ function agregarArticulo() {
         precio: parseFloat(productoSeleccionado.pro_precio_venta) || 0,
         subtotal: cantidad * (parseFloat(productoSeleccionado.pro_precio_venta) || 0)
     });
-
     actualizarTablaDetalle();
-
- 
-    const buscarProd = document.getElementById("buscarProducto");
-    if (buscarProd) buscarProd.value = "";
-    if (cantInput) cantInput.value = 1;
-    const precioUnitario = document.getElementById("precio_unitario");
-    if (precioUnitario) precioUnitario.innerText = "0.00";
-    const subtotalItem = document.getElementById("subtotal_item");
-    if (subtotalItem) subtotalItem.innerText = "0.00";
-
+    document.getElementById("buscarProducto").value = "";
+    cantInput.value = 1;
+    document.getElementById("precio_unitario").innerText = "0.00";
+    document.getElementById("subtotal_item").innerText = "0.00";
     productoSeleccionado = null;
 }
 
@@ -268,10 +233,8 @@ function agregarArticulo() {
 function actualizarTablaDetalle() {
     const tbody = document.querySelector("#detalleTemporal tbody");
     if (!tbody) return;
-
     tbody.innerHTML = "";
     let total = 0;
-
     carrito.forEach((p, index) => {
         total += p.subtotal || 0;
         tbody.innerHTML += `
@@ -281,15 +244,11 @@ function actualizarTablaDetalle() {
                 <td>$${(p.subtotal || 0).toFixed(2)}</td>
                 <td>
                     <button onclick="quitarArticulo(${index})"
-                        style="background:none;border:none;color:red;cursor:pointer;font-size:18px;">
-                        ✕
-                    </button>
+                        style="background:none;border:none;color:red;cursor:pointer;font-size:18px;">✕</button>
                 </td>
             </tr>`;
     });
-
-    const totalFinal = document.getElementById("total_final");
-    if (totalFinal) totalFinal.innerText = total.toFixed(2);
+    document.getElementById("total_final").innerText = total.toFixed(2);
 }
 
 function quitarArticulo(index) {
@@ -311,7 +270,6 @@ function finalizarVenta() {
 
         const totalFinal = document.getElementById("total_final");
         const tipoPago = document.getElementById("tipo_pago");
-
         if (!totalFinal || !tipoPago) return;
 
         const venta = {
@@ -327,21 +285,29 @@ function finalizarVenta() {
             }))
         };
 
+        console.log("Enviando venta:", venta);
+
         fetch(window.API_VENTAS, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
             body: JSON.stringify(venta)
         })
-        .then(res => res.json())
+        .then(res => {
+            console.log("Status:", res.status);
+            return res.json();
+        })
         .then(data => {
-            Swal.fire({
-                icon: 'success',
-                title: '¡Venta registrada!',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            cerrarModal();
-            listarVentas();
+            console.log("Respuesta:", data);
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: '¡Venta registrada!', timer: 1500, showConfirmButton: false });
+                cerrarModal();
+                listarVentas();
+            } else {
+                Swal.fire("Error", data.message || "Error al registrar", "error");
+            }
         })
         .catch(err => {
             console.error("Error:", err);
@@ -354,44 +320,36 @@ function finalizarVenta() {
 function abrirNuevaVenta() {
     verificarCajaParaVenta().then(cajaValida => {
         if (cajaValida) {
-            const modal = document.getElementById("modalVenta");
-            if (modal) modal.style.display = "flex";
+            document.getElementById("modalVenta").style.display = "flex";
         }
     });
 }
 
 function cerrarModal() {
-    const modal = document.getElementById("modalVenta");
-    if (modal) modal.style.display = "none";
-
+    document.getElementById("modalVenta").style.display = "none";
     carrito = [];
     clienteSeleccionadoID = null;
     productoSeleccionado = null;
-
     ["buscarCliente", "buscarProducto", "referencia"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = "";
     });
-
-    const cantVenta = document.getElementById("cant_venta");
-    if (cantVenta) cantVenta.value = 1;
-
+    document.getElementById("cant_venta").value = 1;
     ["precio_unitario", "subtotal_item", "total_final"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = "0.00";
+        document.getElementById(id).innerText = "0.00";
     });
-
     actualizarTablaDetalle();
 }
 
-
 function buscarHistorial() {
     const query = document.getElementById("inputBuscarVenta")?.value?.toLowerCase() || '';
-    const filas = document.querySelectorAll("#tablaVentas tr");
-    filas.forEach(f => {
+    document.querySelectorAll("#tablaVentas tr").forEach(f => {
         f.style.display = f.innerText.toLowerCase().includes(query) ? "" : "none";
     });
 }
+
+// ... (verVenta, imprimirTicket, confirmarEliminar, eliminarVenta se mantienen igual)
+
 
 
 // VER VENTA
