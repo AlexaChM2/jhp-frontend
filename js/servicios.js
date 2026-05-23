@@ -285,37 +285,80 @@ async function autoLlenarDesdeCita(id) {
   
     window.inicializarServicios = inicializarServicios;
     window.listarServicios = listarServicios;
-    // VER DETALLE DE SERVICIO
+    // VER DETALLE DE SERVICIO con tabla :D
 window.verDetalleServicio = async function(id) {
     try {
         const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
         const response = await res.json();
         const m = response.success ? response.data : response;
 
-        let html = `
-            <div style="text-align:left;font-size:14px;">
-                <p><strong>Folio:</strong> #${m.id_mantenimiento}</p>
-                <p><strong>Cliente:</strong> ${m.cliente ? m.cliente.cli_nombre + ' ' + m.cliente.cli_apaterno : 'S/D'}</p>
-                <p><strong>Mecánico:</strong> ${m.mecanico ? m.mecanico.emp_nombre : 'S/D'}</p>
-                <p><strong>Modelo:</strong> ${m.moto_modelo || 'N/A'}</p>
-                <p><strong>Descripción:</strong> ${m.moto_llegada_descripcion || 'Sin descripción'}</p>
-                <p><strong>Trabajo realizado:</strong> ${m.trabajo_realizado || 'Pendiente'}</p>
-                <p><strong>Mano de obra:</strong> $${parseFloat(m.mantenimiento_mano_obra || 0).toFixed(2)}</p>
-                <p><strong>Total:</strong> $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}</p>
-                <p><strong>Estado:</strong> ${m.estado_servicio || 'Pendiente'}</p>`;
+        const estadoColor = m.estado_servicio === 'Completado' ? '#28a745' :
+                           m.estado_servicio === 'En Proceso' ? '#17a2b8' :
+                           m.estado_servicio === 'Cancelado' ? '#dc3545' : '#ffc107';
 
+        let html = `
+        <div style="font-size:14px;">
+            <table style="width:100%;border-collapse:collapse;margin-bottom:15px;">
+                <tr><td style="padding:5px;font-weight:bold;width:35%;">Folio:</td><td style="padding:5px;">#${m.id_mantenimiento}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Cliente:</td><td style="padding:5px;">${m.cliente ? m.cliente.cli_nombre + ' ' + m.cliente.cli_apaterno : 'S/D'}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Mecánico:</td><td style="padding:5px;">${m.mecanico ? m.mecanico.emp_nombre : 'S/D'}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Modelo Moto:</td><td style="padding:5px;">${m.moto_modelo || 'N/A'}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Descripción:</td><td style="padding:5px;">${m.moto_llegada_descripcion || 'Sin descripción'}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Trabajo Realizado:</td><td style="padding:5px;">${m.trabajo_realizado || 'Pendiente'}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Mano de Obra:</td><td style="padding:5px;">$${parseFloat(m.mantenimiento_mano_obra || 0).toFixed(2)}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Total:</td><td style="padding:5px;font-size:16px;"><strong>$${parseFloat(m.mantenimiento_total || 0).toFixed(2)}</strong></td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Estado:</td><td style="padding:5px;"><span style="background:${estadoColor};color:white;padding:3px 10px;border-radius:12px;font-size:12px;">${m.estado_servicio || 'Pendiente'}</span></td></tr>
+            </table>`;
+
+        // Insumos utilizados
         if (m.insumos && m.insumos.length > 0) {
-            html += `<hr><strong>Insumos utilizados:</strong>
-                <table style="width:100%;font-size:12px;">
-                    <tr><th>Producto</th><th>Cant</th><th>P. Unit</th></tr>`;
+            html += `<hr style="margin:10px 0;"><strong style="font-size:13px;">📦 Insumos Utilizados:</strong>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;">
+                <thead><tr style="background:#7a85dd;color:white;">
+                    <th style="padding:6px;text-align:left;">Producto</th>
+                    <th style="padding:6px;text-align:center;">Cant.</th>
+                    <th style="padding:6px;text-align:right;">P. Unit.</th>
+                    <th style="padding:6px;text-align:right;">Subtotal</th>
+                </tr></thead><tbody>`;
+            
+            let totalInsumos = 0;
             m.insumos.forEach(i => {
-                html += `<tr>
-                    <td>${i.producto?.pro_nombre || 'Producto'}</td>
-                    <td>${i.insumo_cantidad}</td>
-                    <td>$${parseFloat(i.insumo_precio_unitario || 0).toFixed(2)}</td>
+                const sub = (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0);
+                totalInsumos += sub;
+                html += `<tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:5px;">${i.producto?.pro_nombre || 'Producto'}</td>
+                    <td style="padding:5px;text-align:center;">${i.insumo_cantidad}</td>
+                    <td style="padding:5px;text-align:right;">$${parseFloat(i.insumo_precio_unitario || 0).toFixed(2)}</td>
+                    <td style="padding:5px;text-align:right;">$${sub.toFixed(2)}</td>
                 </tr>`;
             });
-            html += `</table>`;
+            html += `<tr style="font-weight:bold;background:#f8f9fa;">
+                <td colspan="3" style="padding:5px;text-align:right;">Total Insumos:</td>
+                <td style="padding:5px;text-align:right;">$${totalInsumos.toFixed(2)}</td>
+            </tr></tbody></table>`;
+        }
+
+        // Servicios realizados
+        if (m.servicios && m.servicios.length > 0) {
+            html += `<br><strong style="font-size:13px;">🔧 Servicios Realizados:</strong>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;">
+                <thead><tr style="background:#28a745;color:white;">
+                    <th style="padding:6px;text-align:left;">Servicio</th>
+                    <th style="padding:6px;text-align:right;">Precio</th>
+                </tr></thead><tbody>`;
+            
+            let totalServicios = 0;
+            m.servicios.forEach(s => {
+                totalServicios += parseFloat(s.precio_aplicado || 0);
+                html += `<tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:5px;">${s.servicio?.ser_nombre || 'Servicio #' + s.id_servicio}</td>
+                    <td style="padding:5px;text-align:right;">$${parseFloat(s.precio_aplicado || 0).toFixed(2)}</td>
+                </tr>`;
+            });
+            html += `<tr style="font-weight:bold;background:#f8f9fa;">
+                <td style="padding:5px;text-align:right;">Total Servicios:</td>
+                <td style="padding:5px;text-align:right;">$${totalServicios.toFixed(2)}</td>
+            </tr></tbody></table>`;
         }
 
         html += `</div>`;
@@ -323,11 +366,12 @@ window.verDetalleServicio = async function(id) {
         Swal.fire({
             title: `Servicio #${m.id_mantenimiento}`,
             html: html,
-            width: '600px',
+            width: '650px',
             confirmButtonText: 'Cerrar',
             confirmButtonColor: '#080522'
         });
     } catch (e) {
+        console.error("Error verDetalleServicio:", e);
         Swal.fire("Error", "No se pudo cargar el detalle", "error");
     }
 };
