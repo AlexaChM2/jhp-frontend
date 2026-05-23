@@ -217,59 +217,143 @@ async function autoLlenarDesdeCita(id) {
     // GUARDAR SERVICIO
 
     window.guardarServicio = async function() {
-        const idCita = document.getElementById("id_cita_input")?.value;
-        const idCliente = document.getElementById("id_cliente")?.value;
-        const idMecanico = document.getElementById("id_mecanico")?.value;
-        const modelo = document.getElementById("moto_modelo")?.value;
-        const descripcion = document.getElementById("moto_llegada_descripcion")?.value;
-        const manoObra = parseFloat(document.getElementById("mano_obra")?.value) || 0;
-        const estado = document.getElementById("estado_servicio")?.value || "Pendiente";
+    const idEditar = document.getElementById("formMantenimiento").dataset.editarId;
+    const idCita = document.getElementById("id_cita_input")?.value;
+    const idCliente = document.getElementById("id_cliente")?.value;
+    const idMecanico = document.getElementById("id_mecanico")?.value;
+    const modelo = document.getElementById("moto_modelo")?.value;
+    const descripcion = document.getElementById("moto_llegada_descripcion")?.value;
+    const manoObra = parseFloat(document.getElementById("mano_obra")?.value) || 0;
+    const estado = document.getElementById("estado_servicio")?.value || "Pendiente";
 
-        if (!idCliente || !idMecanico || !modelo) {
-            return Swal.fire("Aviso", "Cliente, Mecánico y Modelo son obligatorios", "warning");
-        }
+    if (!idCliente || !idMecanico || !modelo) {
+        return Swal.fire("Aviso", "Cliente, Mecánico y Modelo son obligatorios", "warning");
+    }
 
-        try {
-            const res = await fetch(API_MANTENIMIENTO, {
-                method: 'POST',
-                headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                body: JSON.stringify({
-                    id_cliente: parseInt(idCliente),
-                    id_empleado: parseInt(idMecanico),
-                    id_cita: idCita || null,
-                    moto_modelo: modelo,
-                    moto_llegada_descripcion: descripcion,
-                    mantenimiento_mano_obra: manoObra,
-                    mantenimiento_total: manoObra,
-                    estado_servicio: estado
-                })
+    const url = idEditar ? `${API_MANTENIMIENTO}/${idEditar}` : API_MANTENIMIENTO;
+    const method = idEditar ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({
+                id_cliente: parseInt(idCliente),
+                id_mecanico: parseInt(idMecanico),
+                id_cita: idCita || null,
+                moto_modelo: modelo,
+                moto_llegada_descripcion: descripcion,
+                mantenimiento_mano_obra: manoObra,
+                mantenimiento_total: manoObra,
+                estado_servicio: estado
+            })
+        });
+        const result = await res.json();
+
+        if (result.success || result.message || result.id_mantenimiento) {
+            Swal.fire({ 
+                icon: 'success', 
+                title: idEditar ? '¡Servicio actualizado!' : '¡Servicio registrado!', 
+                timer: 1500, 
+                showConfirmButton: false 
             });
-            const result = await res.json();
 
-            if (result.success || result.message || result.id_mantenimiento) {
-                Swal.fire({ icon: 'success', title: '¡Servicio registrado!', timer: 1500, showConfirmButton: false });
-
-                if (idCita) {
-                    fetch(`${API_CITAS_SERV}/${idCita}`, {
-                        method: 'PUT',
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ cita_estado: estado === 'Completado' ? 'Realizada' : 'Pendiente' })
-                    }).catch(() => {});
-                }
-
-                const modalEl = document.getElementById('modalMantenimiento');
-                if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
-                listarServicios();
-            } else {
-                throw new Error(result.message || 'Error');
+            if (idCita) {
+                fetch(`${API_CITAS_SERV}/${idCita}`, {
+                    method: 'PUT',
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ cita_estado: estado === 'Completado' ? 'Realizada' : 'Pendiente' })
+                }).catch(() => {});
             }
-        } catch (err) {
-            Swal.fire("Error", err.message, "error");
+
+            // Limpiar
+            document.getElementById("formMantenimiento").reset();
+            delete document.getElementById("formMantenimiento").dataset.editarId;
+            document.getElementById("id_cita_input").value = "";
+
+            const modalEl = document.getElementById('modalMantenimiento');
+            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+            listarServicios();
+        } else {
+            throw new Error(result.message || 'Error');
         }
-    };
+    } catch (err) {
+        Swal.fire("Error", err.message, "error");
+    }
+};
 
   
     window.inicializarServicios = inicializarServicios;
     window.listarServicios = listarServicios;
+    // VER DETALLE DE SERVICIO
+window.verDetalleServicio = async function(id) {
+    try {
+        const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
+        const response = await res.json();
+        const m = response.success ? response.data : response;
+
+        let html = `
+            <div style="text-align:left;font-size:14px;">
+                <p><strong>Folio:</strong> #${m.id_mantenimiento}</p>
+                <p><strong>Cliente:</strong> ${m.cliente ? m.cliente.cli_nombre + ' ' + m.cliente.cli_apaterno : 'S/D'}</p>
+                <p><strong>Mecánico:</strong> ${m.mecanico ? m.mecanico.emp_nombre : 'S/D'}</p>
+                <p><strong>Modelo:</strong> ${m.moto_modelo || 'N/A'}</p>
+                <p><strong>Descripción:</strong> ${m.moto_llegada_descripcion || 'Sin descripción'}</p>
+                <p><strong>Trabajo realizado:</strong> ${m.trabajo_realizado || 'Pendiente'}</p>
+                <p><strong>Mano de obra:</strong> $${parseFloat(m.mantenimiento_mano_obra || 0).toFixed(2)}</p>
+                <p><strong>Total:</strong> $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}</p>
+                <p><strong>Estado:</strong> ${m.estado_servicio || 'Pendiente'}</p>`;
+
+        if (m.insumos && m.insumos.length > 0) {
+            html += `<hr><strong>Insumos utilizados:</strong>
+                <table style="width:100%;font-size:12px;">
+                    <tr><th>Producto</th><th>Cant</th><th>P. Unit</th></tr>`;
+            m.insumos.forEach(i => {
+                html += `<tr>
+                    <td>${i.producto?.pro_nombre || 'Producto'}</td>
+                    <td>${i.insumo_cantidad}</td>
+                    <td>$${parseFloat(i.insumo_precio_unitario || 0).toFixed(2)}</td>
+                </tr>`;
+            });
+            html += `</table>`;
+        }
+
+        html += `</div>`;
+
+        Swal.fire({
+            title: `Servicio #${m.id_mantenimiento}`,
+            html: html,
+            width: '600px',
+            confirmButtonText: 'Cerrar',
+            confirmButtonColor: '#080522'
+        });
+    } catch (e) {
+        Swal.fire("Error", "No se pudo cargar el detalle", "error");
+    }
+};
+
+// EDITAR SERVICIO
+window.editarServicio = async function(id) {
+    try {
+        const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
+        const response = await res.json();
+        const m = response.success ? response.data : response;
+
+        document.getElementById("id_cita_input").value = m.id_cita || "";
+        document.getElementById("id_cliente").value = m.id_cliente || "";
+        document.getElementById("id_mecanico").value = m.id_mecanico || "";
+        document.getElementById("moto_modelo").value = m.moto_modelo || "";
+        document.getElementById("moto_llegada_descripcion").value = m.moto_llegada_descripcion || "";
+        document.getElementById("mano_obra").value = m.mantenimiento_mano_obra || 0;
+        document.getElementById("estado_servicio").value = m.estado_servicio || "Pendiente";
+
+        // Guardar el ID para actualizar en lugar de crear
+        document.getElementById("formMantenimiento").dataset.editarId = id;
+
+        new bootstrap.Modal(document.getElementById('modalMantenimiento')).show();
+    } catch (e) {
+        Swal.fire("Error", "No se pudo cargar el servicio", "error");
+    }
+};
 
 })(); // FIN DE LA IIFE
