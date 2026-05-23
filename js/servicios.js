@@ -72,6 +72,7 @@
                     <td>
                         <button class="btn btn-sm btn-info" onclick="window.verDetalleServicio(${m.id_mantenimiento})"><i class="fas fa-eye"></i></button>
                         <button class="btn btn-sm btn-warning" onclick="window.editarServicio(${m.id_mantenimiento})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="window.descargarPDFServicio(${m.id_mantenimiento})"><i class="fas fa-file-pdf"></i></button>
                     </td>
                 </tr>`;
             }).join('');
@@ -502,4 +503,125 @@
             inicializarServicios();
         }
     }
+
+    // DESCARGAR DETALLE COMO PDF
+window.descargarPDFServicio = async function(id) {
+    try {
+        const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
+        const response = await res.json();
+        const m = response.success ? response.data : response;
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+        // Encabezado
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("Orden de Servicio", 105, 22, { align: "center" });
+        doc.line(10, 25, 200, 25);
+
+        // Datos generales
+        doc.setFontSize(11);
+        let y = 32;
+        const datos = [
+            ["Folio:", `#${m.id_mantenimiento}`],
+            ["Fecha:", m.fecha_inicio ? new Date(m.fecha_inicio).toLocaleString() : '-'],
+            ["Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D'],
+            ["Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D'],
+            ["Modelo:", m.moto_modelo || 'N/A'],
+            ["Estado:", m.estado_servicio || 'Pendiente'],
+            ["Descripción:", m.moto_llegada_descripcion || '-'],
+            ["Trabajo Realizado:", m.trabajo_realizado || 'Pendiente'],
+        ];
+
+        datos.forEach(([label, value]) => {
+            doc.setFont("helvetica", "bold");
+            doc.text(label, 15, y);
+            doc.setFont("helvetica", "normal");
+            doc.text(String(value), 55, y);
+            y += 7;
+        });
+
+        // Tabla de servicios (Mano de obra)
+        if (m.servicios && m.servicios.length > 0) {
+            y += 5;
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("Servicios (Mano de Obra)", 15, y);
+            y += 6;
+
+            const filasServicios = m.servicios.map(s => [
+                s.servicio?.ser_nombre || 'Servicio #' + s.id_servicio,
+                `$${parseFloat(s.precio_aplicado || 0).toFixed(2)}`
+            ]);
+            
+            let totalServicios = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado || 0), 0);
+            filasServicios.push(["TOTAL MANO DE OBRA", `$${totalServicios.toFixed(2)}`]);
+
+            doc.autoTable({
+                startY: y,
+                head: [['Servicio', 'Precio']],
+                body: filasServicios,
+                theme: 'striped',
+                headStyles: { fillColor: [40, 167, 69] },
+                margin: { left: 15, right: 15 },
+                styles: { fontSize: 9 }
+            });
+            y = doc.lastAutoTable.finalY + 5;
+        }
+
+        // Tabla de insumos
+        if (m.insumos && m.insumos.length > 0) {
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("Insumos Utilizados", 15, y);
+            y += 6;
+
+            const filasInsumos = m.insumos.map(i => {
+                const sub = (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0);
+                return [
+                    i.producto?.pro_nombre || 'Producto',
+                    String(i.insumo_cantidad || 0),
+                    `$${parseFloat(i.insumo_precio_unitario || 0).toFixed(2)}`,
+                    `$${sub.toFixed(2)}`
+                ];
+            });
+
+            let totalInsumos = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0), 0);
+            filasInsumos.push(["TOTAL INSUMOS", "", "", `$${totalInsumos.toFixed(2)}`]);
+
+            doc.autoTable({
+                startY: y,
+                head: [['Producto', 'Cant', 'P. Unit.', 'Subtotal']],
+                body: filasInsumos,
+                theme: 'striped',
+                headStyles: { fillColor: [122, 133, 221] },
+                margin: { left: 15, right: 15 },
+                styles: { fontSize: 9 }
+            });
+            y = doc.lastAutoTable.finalY + 8;
+        }
+
+        // Total general
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 200, y, { align: "right" });
+
+        // Pie de página
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.text("JHP Taller Mecánico - Orden de Servicio", 105, 285, { align: "center" });
+
+        // Abrir PDF
+        window.open(doc.output('bloburl'), '_blank');
+
+    } catch (e) {
+        console.error("Error PDF:", e);
+        Swal.fire("Error", "No se pudo generar el PDF", "error");
+    }
+};
+
 })();
