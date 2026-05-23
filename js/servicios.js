@@ -267,17 +267,36 @@
     // ABRIR MODAL
     // ==========================================
     window.abrirModalServicio = function() {
-        document.getElementById("formMantenimiento").reset();
-        document.getElementById("id_cita_input").value = "";
-        delete document.getElementById("formMantenimiento").dataset.editarId;
-        document.getElementById("tituloModal").textContent = "Nueva Orden de Servicio";
-        document.getElementById("btnGuardarServicio").innerHTML = '<i class="fas fa-save me-2"></i>Guardar Orden';
-        serviciosAgregados = [];
-        insumosAgregados = [];
+    const form = document.getElementById("formMantenimiento");
+    if (form) form.reset();
+    
+    const idCita = document.getElementById("id_cita_input");
+    if (idCita) idCita.value = "";
+    
+    if (form) delete form.dataset.editarId;
+    
+    // Limpiar listas
+    serviciosAgregados = [];
+    insumosAgregados = [];
+    
+    // Abrir modal primero
+    const modalEl = document.getElementById('modalMantenimiento');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+    
+    // Esperar a que el modal esté visible para modificar el DOM
+    modalEl.addEventListener('shown.bs.modal', function() {
+        const titulo = document.getElementById("tituloModal");
+        if (titulo) titulo.textContent = "Nueva Orden de Servicio";
+        
+        const btnGuardar = document.getElementById("btnGuardarServicio");
+        if (btnGuardar) btnGuardar.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Orden';
+        
         actualizarTotales();
-        cargarCatalogoServicios();
-        new bootstrap.Modal(document.getElementById('modalMantenimiento')).show();
-    };
+    }, { once: true });
+    
+    cargarCatalogoServicios();
+};
 
     // ==========================================
     // GUARDAR SERVICIO
