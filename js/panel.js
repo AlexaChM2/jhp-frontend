@@ -1,6 +1,6 @@
 
-window.API_CAJA = window.API_CAJA || "http://localhost:8000/api/control_caja";
-window.API_CITAS = window.API_CITAS || "http://localhost:8000/api/citas";
+window.API_CAJA = window.API_CAJA || "https://jhpapi-production.up.railway.app/api/control_caja";
+window.API_CITAS = window.API_CITAS || "https://jhpapi-production.up.railway.app/api/citas";
 
 let calendario = null;
 

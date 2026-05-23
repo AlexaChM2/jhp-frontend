@@ -1,8 +1,8 @@
 
-window.API_VENTAS = window.API_VENTAS || "http://localhost:8000/api/ventas";
-window.API_PRODUCTOS = window.API_PRODUCTOS || "http://localhost:8000/api/producto";
-window.API_CLIENTES = window.API_CLIENTES || "http://localhost:8000/api/clientes";
-window.API_CAJA = window.API_CAJA || "http://localhost:8000/api/control_caja";
+window.API_VENTAS = window.API_VENTAS || "https://jhpapi-production.up.railway.app/api/ventas";
+window.API_PRODUCTOS = window.API_PRODUCTOS || "https://jhpapi-production.up.railway.app/api/producto";
+window.API_CLIENTES = window.API_CLIENTES || "https://jhpapi-production.up.railway.app/api/clientes";
+window.API_CAJA = window.API_CAJA || "https://jhpapi-production.up.railway.app/api/control_caja";
 
 var carrito = [];
 var productoSeleccionado = null;

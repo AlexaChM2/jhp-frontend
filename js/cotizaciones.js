@@ -1,8 +1,8 @@
-const API_COT = "http://localhost:8000/api/cotizaciones";
-const API_CLI_COT = "http://localhost:8000/api/clientes";
-const API_PROD_COT = "http://localhost:8000/api/producto";
-const API_VENTAS_COT = "http://localhost:8000/api/ventas";
-const API_CAJA = "http://localhost:8000/api/control_caja";
+const API_COT = "https://jhpapi-production.up.railway.app/api/cotizaciones";
+const API_CLI_COT = "https://jhpapi-production.up.railway.app/api/clientes";
+const API_PROD_COT = "https://jhpapi-production.up.railway.app/api/producto";
+const API_VENTAS_COT = "https://jhpapi-production.up.railway.app/api/ventas";
+const API_CAJA = "https://jhpapi-production.up.railway.app/api/control_caja";
 
 let carritoCot = [];
 let clienteIdCot = null;

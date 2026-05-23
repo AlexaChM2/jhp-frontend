@@ -1,7 +1,7 @@
 
-window.API_PRODUCTOS = window.API_PRODUCTOS || "http://localhost:8000/api/producto";
-window.API_CATEGORIAS = window.API_CATEGORIAS || "http://localhost:8000/api/categorias";
-window.API_PROVEEDORES = window.API_PROVEEDORES || "http://localhost:8000/api/proveedores";
+window.API_PRODUCTOS = window.API_PRODUCTOS || "https://jhpapi-production.up.railway.app/api/api/producto";
+window.API_CATEGORIAS = window.API_CATEGORIAS || "https://jhpapi-production.up.railway.app/api/categorias";
+window.API_PROVEEDORES = window.API_PROVEEDORES || "https://jhpapi-production.up.railway.app/api/proveedores";
 
 let productoEnEdicion = null;
 let todosLosProductos = [];

@@ -1,7 +1,7 @@
-const API_REPORTES = "http://localhost:8000/api/reportes-detallados";
-const API_VENTAS = "http://localhost:8000/api/ventas";
-const API_COMPRAS = "http://localhost:8000/api/compras";
-const API_PRODUCTOS = "http://localhost:8000/api/producto";
+const API_REPORTES = "https://jhpapi-production.up.railway.app/api/reportes-detallados";
+const API_VENTAS = "https://jhpapi-production.up.railway.app/api/ventas";
+const API_COMPRAS = "https://jhpapi-production.up.railway.app/api/compras";
+const API_PRODUCTOS = "https://jhpapi-production.up.railway.app/api/producto";
 
 let chartVentasCompras = null;
 let chartTopProductos = null;

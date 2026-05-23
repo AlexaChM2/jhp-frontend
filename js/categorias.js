@@ -1,4 +1,4 @@
-const API_CATEGORIAS = "http://localhost:8000/api/categorias";
+const API_CATEGORIAS = "https://jhpapi-production.up.railway.app/api/categorias";
 
 
 listarCategorias();

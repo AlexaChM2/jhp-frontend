@@ -3,10 +3,10 @@
     'use strict';
 
    
-    const API_MANTENIMIENTO = "http://localhost:8000/api/mantenimiento";
-    const API_CITAS_SERV = "http://localhost:8000/api/citas";
-    const API_CLIENTES_SERV = "http://localhost:8000/api/clientes";
-    const API_EMPLEADOS_SERV = "http://localhost:8000/api/empleados";
+    const API_MANTENIMIENTO = "https://jhpapi-production.up.railway.app/api/mantenimiento";
+    const API_CITAS_SERV = "https://jhpapi-production.up.railway.app/api/citas";
+    const API_CLIENTES_SERV = "https://jhpapi-production.up.railway.app/api/clientes";
+    const API_EMPLEADOS_SERV = "https://jhpapi-production.up.railway.app/api/empleados";
 
     let carritoServicios = [];
     let carritoInsumos = [];

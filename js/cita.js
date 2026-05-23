@@ -1,6 +1,6 @@
-const API_CITA = "http://localhost:8000/api/citas";
-const API_CLI_CITAS = "http://localhost:8000/api/clientes"; // Renombrada para evitar conflictos
-const API_EMP_CITAS = "http://localhost:8000/api/empleados"; // Renombrada para evitar conflictos
+const API_CITA = "https://jhpapi-production.up.railway.app/api/citas";
+const API_CLI_CITAS = "https://jhpapi-production.up.railway.app/api/clientes"; // Renombrada para evitar conflictos
+const API_EMP_CITAS = "https://jhpapi-production.up.railway.app/api/empleados"; // Renombrada para evitar conflictos
 
 let clienteIdCita = null;
 let empleadoIdCita = null;

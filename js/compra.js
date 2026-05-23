@@ -1,7 +1,7 @@
 
-window.API_COMPRAS = window.API_COMPRAS || "http://localhost:8000/api/compras";
-window.API_PROVEEDORES = window.API_PROVEEDORES || "http://localhost:8000/api/proveedores";
-window.API_PRODUCTOS = window.API_PRODUCTOS || "http://localhost:8000/api/producto";
+window.API_COMPRAS = window.API_COMPRAS || "https://jhpapi-production.up.railway.app/api/compras";
+window.API_PROVEEDORES = window.API_PROVEEDORES || "https://jhpapi-production.up.railway.app/api/proveedores";
+window.API_PRODUCTOS = window.API_PRODUCTOS || "https://jhpapi-production.up.railway.app/api/producto";
 
 var carritoCompra = [];
 var productoSeleccionado = null;
