@@ -1,17 +1,40 @@
-// config.js - Este archivo SÍ va a Git
-const API_CONFIG = {
-    // Usar variable de entorno o fallback local
-    baseURL: process.env.API_URL || 'https://jhpapi-production.up.railway.app/',
+// ========== CONFIGURACIÓN DE API ==========
+// Cambia esta URL por la de tu API en Railway
+const API_BASE_URL = "https://jhpapi-production.up.railway.app/";
+
+// URLs de endpoints
+const API_URLS = {
+    // Citas
+    CITAS: `${API_BASE_URL}/citas`,
     
-    // Configuración general
-    timeout: 30000,
-    headers: {
-        'Content-Type': 'application/json'
-    }
+    // Clientes
+    CLIENTES: `${API_BASE_URL}/clientes`,
+    
+    // Empleados
+    EMPLEADOS: `${API_BASE_URL}/empleados`,
+    
+    // Productos
+    PRODUCTOS: `${API_BASE_URL}/producto`,
+    
+    // Categorías
+    CATEGORIAS: `${API_BASE_URL}/categorias`,
+    
+    // Ventas
+    VENTAS: `${API_BASE_URL}/ventas`,
+    
+    // Compras
+    COMPRAS: `${API_BASE_URL}/compras`,
+    
+    // Cotizaciones
+    COTIZACIONES: `${API_BASE_URL}/cotizaciones`,
+    
+    // Reportes
+    //REPORTES: `${API_BASE_URL}/reportes-detallados`,
+    
+    // Caja
+    CAJA: `${API_BASE_URL}/control_caja`
 };
 
-// Detectar entorno automáticamente
-if (window.location.hostname !== 'localhost') {
-    // En producción, usar el dominio actual
-    API_CONFIG.baseURL = `https://${window.location.hostname}/api`;
-}
+// Exportar para uso global
+window.API_URLS = API_URLS;
+window.API_BASE_URL = API_BASE_URL;
