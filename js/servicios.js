@@ -292,6 +292,9 @@
         
         const btnGuardar = document.getElementById("btnGuardarServicio");
         if (btnGuardar) btnGuardar.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Orden';
+
+            const trabajo = document.getElementById("trabajo_realizado");
+    if (trabajo) trabajo.value = "";
         
         actualizarTotales();
     }, { once: true });
@@ -309,6 +312,7 @@
         const idMecanico = document.getElementById("id_mecanico")?.value;
         const modelo = document.getElementById("moto_modelo")?.value;
         const descripcion = document.getElementById("moto_llegada_descripcion")?.value;
+        const trabajoRealizado = document.getElementById("trabajo_realizado")?.value; // ← NUEVO
         const estado = document.getElementById("estado_servicio")?.value || "En Proceso";
 
         if (!idCliente || !idMecanico || !modelo) {
@@ -324,6 +328,7 @@
             id_cita: idCita,
             moto_modelo: modelo,
             moto_llegada_descripcion: descripcion,
+            trabajo_realizado: trabajoRealizado,
             estado_servicio: estado,
             servicios: serviciosAgregados,
             insumos: insumosAgregados
@@ -436,6 +441,7 @@
             document.getElementById("id_mecanico").value = m.id_mecanico || "";
             document.getElementById("moto_modelo").value = m.moto_modelo || "";
             document.getElementById("moto_llegada_descripcion").value = m.moto_llegada_descripcion || "";
+            document.getElementById("trabajo_realizado").value = m.trabajo_realizado || "";
             document.getElementById("estado_servicio").value = m.estado_servicio || "En Proceso";
 
             serviciosAgregados = m.servicios?.map(s => ({
