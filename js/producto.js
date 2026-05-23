@@ -1,5 +1,5 @@
 
-window.API_PRODUCTOS = window.API_PRODUCTOS || "https://jhpapi-production.up.railway.app/api/api/producto";
+window.API_PRODUCTOS = window.API_PRODUCTOS || "https://jhpapi-production.up.railway.app/api/producto";
 window.API_CATEGORIAS = window.API_CATEGORIAS || "https://jhpapi-production.up.railway.app/api/categorias";
 window.API_PROVEEDORES = window.API_PROVEEDORES || "https://jhpapi-production.up.railway.app/api/proveedores";
 
