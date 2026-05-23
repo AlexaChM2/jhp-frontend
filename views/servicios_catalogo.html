@@ -1,0 +1,68 @@
+<div class="container-fluid mt-4">
+    <h2 class="mb-4"><i class="fas fa-tools me-2"></i>Catálogo de Servicios</h2>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <input type="text" class="form-control form-control-lg" id="buscarServicioCat" placeholder="Buscar servicio..." oninput="filtrarServicios()">
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-dark btn-lg w-100" onclick="abrirModalServicioCat()">
+                <i class="fas fa-plus-circle"></i> Nuevo Servicio
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr><th>ID</th><th>Nombre</th><th>Descripción</th><th>Precio</th><th>Categoría</th><th>Acciones</th></tr>
+                </thead>
+                <tbody id="tablaServiciosCat"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal fade" id="modalServicioCat" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><span id="tituloModalServicio">Nuevo Servicio</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formServicioCat" onsubmit="return false;">
+                    <input type="hidden" id="servicio_edit_id">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre *</label>
+                        <input type="text" id="ser_nombre" class="form-control" placeholder="Ej. Afinación Completa" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descripción</label>
+                        <textarea id="ser_descripcion" class="form-control" rows="3" placeholder="Describe el servicio..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Precio Mano de Obra *</label>
+                        <input type="number" id="ser_precio" class="form-control" placeholder="$" min="0" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Categoría</label>
+                        <select id="ser_categoria" class="form-select">
+                            <option value="">Seleccione...</option>
+                        </select>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" onclick="guardarServicioCat()">
+                            <i class="fas fa-save me-2"></i>Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/servicios_catalogo.js"></script>
