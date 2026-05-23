@@ -1,44 +1,162 @@
-// ========== CONFIGURACIÓN DE API ==========
-// Cambia esta URL por la de tu API en Railway
-const API_BASE_URL = "https://jhpapi-production.up.railway.app/";
+// =============================================
+// CONFIGURACIÓN DE API - TALLER MECÁNICO JHP
+// =============================================
 
-// URLs de endpoints
-const API_URLS = {
-   // Auth
-    LOGIN: `${API_BASE_URL}/auth/login`,
-    LOGOUT: `${API_BASE_URL}/auth/logout`,
+const API_BASE = "https://jhpapi-production.up.railway.app/api";
+
+const API = {
+    // -------------------------------------------
+    // AUTH
+    // -------------------------------------------
+    AUTH: {
+        LOGIN: `${API_BASE}/auth/login`,
+        LOGOUT: `${API_BASE}/auth/logout`,
+        REGISTER: `${API_BASE}/auth/register`,
+        ME: `${API_BASE}/auth/me`,
+        RECOVERY: `${API_BASE}/auth/recovery`,
+    },
+
+    // -------------------------------------------
+    // CATEGORÍAS
+    // -------------------------------------------
+    CATEGORIAS: `${API_BASE}/categorias`,
+
+    // -------------------------------------------
+    // MARCAS
+    // -------------------------------------------
+    MARCAS: `${API_BASE}/marcas`,
+    MARCAS_ACTIVAS: `${API_BASE}/marcas/activas`,
+
+    // -------------------------------------------
+    // PRODUCTOS
+    // -------------------------------------------
+    PRODUCTOS: `${API_BASE}/productos`,
+    PRODUCTOS_SEARCH: `${API_BASE}/productos/search`,
+
+    // -------------------------------------------
+    // INVENTARIO
+    // -------------------------------------------
+    INVENTARIOS: `${API_BASE}/inventarios`,
+
+    // -------------------------------------------
+    // CLIENTES
+    // -------------------------------------------
+    CLIENTES: `${API_BASE}/clientes`,
+
+    // -------------------------------------------
+    // EMPLEADOS
+    // -------------------------------------------
+    EMPLEADOS: `${API_BASE}/empleados`,
+
+    // -------------------------------------------
+    // PROVEEDORES
+    // -------------------------------------------
+    PROVEEDORES: `${API_BASE}/proveedores`,
+
+    // -------------------------------------------
+    // SERVICIOS
+    // -------------------------------------------
+    SERVICIOS: `${API_BASE}/servicios`,
+
+    // -------------------------------------------
+    // CITAS
+    // -------------------------------------------
+    CITAS: `${API_BASE}/citas`,
+    DETALLE_CITA_SERVICIOS: `${API_BASE}/detalle_cita_servicios`,
+
+    // -------------------------------------------
+    // VENTAS
+    // -------------------------------------------
+    VENTAS: `${API_BASE}/ventas`,
+    DETALLE_VENTAS: `${API_BASE}/detalle_ventas`,
+
+    // -------------------------------------------
+    // COMPRAS
+    // -------------------------------------------
+    COMPRAS: `${API_BASE}/compras`,
+    DETALLE_COMPRAS: `${API_BASE}/detalle_compras`,
+
+    // -------------------------------------------
+    // COTIZACIONES
+    // -------------------------------------------
+    COTIZACIONES: `${API_BASE}/cotizaciones`,
+    DETALLE_COTIZACIONES: `${API_BASE}/detalle_cotizaciones`,
+
+    // -------------------------------------------
+    // MANTENIMIENTO
+    // -------------------------------------------
+    MANTENIMIENTO: `${API_BASE}/mantenimiento`,
+    DETALLE_MANT_INSUMOS: `${API_BASE}/detalle_mantenimiento_insumos`,
+    DETALLE_MANT_SERVICIOS: `${API_BASE}/detalle_mantenimiento_servicios`,
+
+    // -------------------------------------------
+    // CONTROL CAJA
+    // -------------------------------------------
+    CAJA: `${API_BASE}/control_caja`,
+
+    // -------------------------------------------
+    // FUNCIONES ÚTILES
+    // -------------------------------------------
     
-    // Citas
-    CITAS: `${API_BASE_URL}/citas`,
-    
-    // Clientes
-    CLIENTES: `${API_BASE_URL}/clientes`,
-    
-    // Productos
-    PRODUCTOS: `${API_BASE_URL}/productos`,
-    
-    // Marcas
-    MARCAS: `${API_BASE_URL}/marcas`,
-    MARCAS_ACTIVAS: `${API_BASE_URL}/marcas/activas`,
-    
-    // Ventas
-    VENTAS: `${API_BASE_URL}/ventas`,
-    DETALLE_VENTAS: `${API_BASE_URL}/detalle_ventas`,
-    
-    // Inventario
-    INVENTARIOS: `${API_BASE_URL}/inventarios`,
-    
-    // Mantenimiento
-    MANTENIMIENTO: `${API_BASE_URL}/mantenimiento`,
-    DETALLE_MANT_INSUMOS: `${API_BASE_URL}/detalle_mantenimiento_insumos`,
-    DETALLE_MANT_SERVICIOS: `${API_BASE_URL}/detalle_mantenimiento_servicios`,
-    
-    // Categorías
-    CATEGORIAS: `${API_BASE_URL}/categorias`,
-    
-    // Proveedores
-    PROVEEDORES: `${API_BASE_URL}/proveedores`,
-    
-    // Empleados
-    EMPLEADOS: `${API_BASE_URL}/empleados`,
+    /**
+     * Obtener headers con token
+     */
+    headers() {
+        const token = localStorage.getItem('token');
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` }),
+        };
+    },
+
+    /**
+     * GET request genérico
+     */
+    async get(url, params = {}) {
+        const query = new URLSearchParams(params).toString();
+        const fullUrl = query ? `${url}?${query}` : url;
+        const res = await fetch(fullUrl, {
+            headers: this.headers(),
+        });
+        return res.json();
+    },
+
+    /**
+     * POST request genérico
+     */
+    async post(url, data = {}) {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: this.headers(),
+            body: JSON.stringify(data),
+        });
+        return res.json();
+    },
+
+    /**
+     * PUT request genérico
+     */
+    async put(url, data = {}) {
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers: this.headers(),
+            body: JSON.stringify(data),
+        });
+        return res.json();
+    },
+
+    /**
+     * DELETE request genérico
+     */
+    async delete(url) {
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: this.headers(),
+        });
+        return res.json();
+    },
 };
+
+// Exponer globalmente
+window.API = API;
