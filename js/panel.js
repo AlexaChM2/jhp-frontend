@@ -1,410 +1,289 @@
+var API_VENTAS_PANEL = "https://jhpapi-production.up.railway.app/api/ventas";
+var API_CAJA_PANEL = "https://jhpapi-production.up.railway.app/api/control_caja";
+var API_CITAS_PANEL = "https://jhpapi-production.up.railway.app/api/citas";
+var API_PRODUCTOS_PANEL = "https://jhpapi-production.up.railway.app/api/producto";
 
-window.API_CAJA = window.API_CAJA || "https://jhpapi-production.up.railway.app/api/control_caja";
-window.API_CITAS = window.API_CITAS || "https://jhpapi-production.up.railway.app/api/citas";
+let calendarioPanel = null;
 
-let calendario = null;
+// ========== ALERTA STOCK BAJO (SUTIL) ==========
+function verificarStockBajoPanel() {
+    fetch(API_PRODUCTOS_PANEL)
+        .then(res => res.json())
+        .then(response => {
+            const data = response.success ? response.data : response;
+            const productos = Array.isArray(data) ? data : [];
+            const bajos = productos.filter(p => p.pro_stock <= 5 && p.pro_stock > 0);
+            const agotados = productos.filter(p => p.pro_stock <= 0);
+            const total = bajos.length + agotados.length;
 
+            const alertaEl = document.getElementById("alertaStockPanel");
+            if (!alertaEl) return;
 
+            if (total === 0) {
+                alertaEl.style.display = "none";
+                return;
+            }
+
+            let mensaje = '';
+            if (agotados.length > 0) {
+                mensaje += agotados.length + ' producto(s) agotado(s)';
+            }
+            if (bajos.length > 0) {
+                if (mensaje) mensaje += ' | ';
+                mensaje += bajos.length + ' con stock bajo';
+            }
+
+            alertaEl.style.display = "block";
+            document.getElementById("stockAlertaTexto").textContent = mensaje;
+        })
+        .catch(function() {});
+}
+
+// ========== INICIALIZAR ==========
 function inicializarPanel() {
-    console.log("Inicializando panel...");
-    
-    if (!document.getElementById('estado-badge')) {
-        console.log("No es la vista de panel");
-        return;
-    }
-    
     verificarEstadoCaja();
-    cargarCitasHoy();
-    mostrarFechaHoy();
+    cargarVentasHoy();
+    cargarCitasPanel();
+    verificarStockBajoPanel();
     inicializarCalendario();
 }
 
+// ========== ESTADO DE CAJA ==========
+function verificarEstadoCaja() {
+    fetch(API_CAJA_PANEL + '/estado')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            var badge = document.getElementById("estado-badge");
+            var btn = document.getElementById("btn-caja");
+            var montoTexto = document.getElementById("monto-apertura-texto");
+            var montoVal = document.getElementById("monto-inicial-val");
 
-function mostrarFechaHoy() {
-    const fechaSpan = document.getElementById('fecha-hoy');
-    if (fechaSpan) {
-        const fecha = new Date();
-        const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        fechaSpan.textContent = fecha.toLocaleDateString('es-MX', opciones);
-    }
-}
-
-
-// CARGAR CITAS 
-function cargarCitasHoy() {
-    const citasHoyEl = document.getElementById('citas-hoy');
-    const contenedorCitas = document.getElementById('citas-lista');
-    
-    if (!citasHoyEl) return;
-
-    console.log(" Cargando citas...");
-
-    fetch(window.API_CITAS)
-        .then(res => res.json())
-        .then(response => {
-            const citas = response.success ? (response.data?.data || response.data) : response;
-            const lista = Array.isArray(citas) ? citas : [];
-
-            const hoy = new Date();
-            hoy.setHours(0, 0, 0, 0);
-            const manana = new Date(hoy);
-            manana.setDate(manana.getDate() + 1);
-            const finSemana = new Date(hoy);
-            finSemana.setDate(finSemana.getDate() + 7);
-
-            const citasHoy = lista.filter(c => {
-                const fechaCita = new Date(c.cita_fecha_programada);
-                return fechaCita >= hoy && fechaCita < manana;
-            });
-
-            const citasProximas = lista.filter(c => {
-                const fechaCita = new Date(c.cita_fecha_programada);
-                return fechaCita >= manana && fechaCita <= finSemana;
-            });
-
-            citasHoyEl.textContent = citasHoy.length;
-
-            if (contenedorCitas) {
-                if (citasHoy.length === 0 && citasProximas.length === 0) {
-                    contenedorCitas.innerHTML = `
-                        <div class="text-center py-3">
-                            <i class="fas fa-calendar-check fa-2x text-muted mb-2"></i>
-                            <p class="text-muted">No hay citas próximas</p>
-                        </div>`;
-                    return;
-                }
-
-                let html = '';
-
-                if (citasHoy.length > 0) {
-                    html += `<div class="citas-seccion mb-3">
-                        <h6 class="text-success fw-bold"><i class="fas fa-circle"></i> Hoy (${citasHoy.length})</h6>`;
-                    
-                    citasHoy.forEach(c => {
-                        const hora = c.cita_fecha_programada 
-                            ? new Date(c.cita_fecha_programada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) 
-                            : '--:--';
-                        const cliente = c.cliente 
-                            ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.trim() 
-                            : 'Sin cliente';
-                        const estadoClass = c.cita_estado === 'Realizada' ? 'success' : 
-                                           (c.cita_estado === 'Cancelada' ? 'danger' : 'warning');
-                        
-                        html += `
-                            <div class="cita-item d-flex justify-content-between align-items-center py-1 border-bottom">
-                                <div>
-                                    <span class="badge bg-light text-dark me-2">${hora}</span>
-                                    <span>${cliente}</span>
-                                </div>
-                                <div>
-                                    <span class="badge bg-${estadoClass}">${c.cita_estado || 'Pendiente'}</span>
-                                    <small class="text-muted ms-2">${c.cita_motivo || ''}</small>
-                                </div>
-                            </div>`;
-                    });
-                    html += `</div>`;
-                }
-
-                if (citasProximas.length > 0) {
-                    html += `<div class="citas-seccion">
-                        <h6 class="text-primary fw-bold"><i class="fas fa-calendar-alt"></i> Próximos 7 días (${citasProximas.length})</h6>`;
-                    
-                    citasProximas.slice(0, 5).forEach(c => {
-                        const fecha = c.cita_fecha_programada 
-                            ? new Date(c.cita_fecha_programada).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
-                            : '--';
-                        const hora = c.cita_fecha_programada 
-                            ? new Date(c.cita_fecha_programada).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) 
-                            : '--:--';
-                        const cliente = c.cliente 
-                            ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.trim() 
-                            : 'Sin cliente';
-                        
-                        html += `
-                            <div class="cita-item d-flex justify-content-between align-items-center py-1 border-bottom">
-                                <div>
-                                    <span class="badge bg-primary me-2">${fecha}</span>
-                                    <span class="text-muted">${hora}</span>
-                                    <span class="ms-2">${cliente}</span>
-                                </div>
-                            </div>`;
-                    });
-                    html += `</div>`;
-                }
-
-                contenedorCitas.innerHTML = html;
+            if (data.caja_abierta) {
+                if (badge) { badge.textContent = "Abierta"; badge.className = "badge verde mb-3"; }
+                if (btn) { btn.innerHTML = '<i class="fas fa-door-closed"></i> Cerrar Caja'; btn.onclick = confirmarCerrarCaja; }
+                if (montoTexto) montoTexto.style.display = "block";
+                if (montoVal) montoVal.textContent = '$' + parseFloat(data.monto_inicial || 0).toFixed(2);
+            } else {
+                if (badge) { badge.textContent = "Cerrada"; badge.className = "badge rojo mb-3"; }
+                if (btn) { btn.innerHTML = '<i class="fas fa-door-open"></i> Abrir Caja'; btn.onclick = abrirModalCaja; }
+                if (montoTexto) montoTexto.style.display = "none";
             }
-        })
-        .catch(err => {
-            console.error("Error al cargar citas:", err);
-            if (citasHoyEl) citasHoyEl.textContent = '--';
         });
 }
 
-
-// CALENDARIO
-
-function inicializarCalendario() {
-    const calendarEl = document.getElementById('calendario');
-    if (!calendarEl) {
-        console.warn(' #calendario no encontrado');
-        return;
-    }
-
-    if (typeof FullCalendar === 'undefined') {
-        console.warn('FullCalendar no cargado, reintentando...');
-        calendarEl.innerHTML = '<p class="text-center text-muted py-5">Cargando calendario...</p>';
-        setTimeout(inicializarCalendario, 1000);
-        return;
-    }
-
-    console.log('Inicializando calendario...');
-
-    if (calendario) {
-        calendario.destroy();
-        calendario = null;
-    }
-
-    calendario = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        locale: 'es',
-        height: 'auto',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-        },
-        buttonText: {
-            today: 'Hoy',
-            month: 'Mes',
-            week: 'Semana',
-            day: 'Día'
-        },
-        events: async function(info, successCallback, failureCallback) {
-            try {
-                const res = await fetch(window.API_CITAS);
-                const response = await res.json();
-                const citas = response.success ? (response.data?.data || response.data) : response;
-                const lista = Array.isArray(citas) ? citas : [];
-
-                const eventos = lista
-                    .filter(c => c.cita_fecha_programada)
-                    .map(c => ({
-                        id: c.id_cita,
-                        title: `${c.cliente?.cli_nombre || 'Cliente'} - ${c.cita_motivo || 'Cita'}`,
-                        start: c.cita_fecha_programada,
-                        backgroundColor: c.cita_estado === 'Realizada' ? '#28a745' : 
-                                       c.cita_estado === 'Cancelada' ? '#dc3545' : '#ffc107',
-                        borderColor: c.cita_estado === 'Realizada' ? '#28a745' : 
-                                    c.cita_estado === 'Cancelada' ? '#dc3545' : '#ffc107',
-                        textColor: '#000',
-                        extendedProps: {
-                            cliente: c.cliente?.cli_nombre || '',
-                            mecanico: c.empleado?.emp_nombre || '',
-                            estado: c.cita_estado,
-                            motivo: c.cita_motivo
-                        }
-                    }));
-
-                successCallback(eventos);
-            } catch (e) {
-                console.error('Error cargando eventos:', e);
-                failureCallback(e);
-            }
-        },
-        eventClick: function(info) {
-            const props = info.event.extendedProps;
-            Swal.fire({
-                title: info.event.title,
-                html: `
-                    <div style="text-align:left;">
-                        <p><strong>Fecha:</strong> ${new Date(info.event.start).toLocaleString('es-MX')}</p>
-                        <p><strong> Cliente:</strong> ${props.cliente || 'No asignado'}</p>
-                        <p><strong> Mecánico:</strong> ${props.mecanico || 'No asignado'}</p>
-                        <p><strong> Motivo:</strong> ${props.motivo || 'N/A'}</p>
-                        <p><strong>Estado:</strong> 
-                            <span class="badge bg-${props.estado === 'Realizada' ? 'success' : props.estado === 'Cancelada' ? 'danger' : 'warning'}">
-                                ${props.estado || 'Pendiente'}
-                            </span>
-                        </p>
-                    </div>`,
-                icon: 'info',
-                confirmButtonColor: '#0d6efd'
-            });
-        },
-        dateClick: function(info) {
-            Swal.fire({
-                title: 'Nueva Cita',
-                text: `¿Crear cita para ${info.dateStr}?`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, crear',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    localStorage.setItem('fecha_cita_preseleccionada', info.dateStr);
-                    window.cargarVista('views/cita.html');
-                }
-            });
-        },
-        loading: function(isLoading) {
-            if (isLoading) console.log(' Cargando eventos...');
-        }
-    });
-
-    calendario.render();
-    console.log(' Calendario renderizado');
+function abrirModalCaja() {
+    document.getElementById("modal-caja").style.display = "flex";
 }
 
-
-// VERIFICAR ESTADO DE CAJA
-
-window.verificarEstadoCaja = function() {
-    if (!document.getElementById('estado-badge')) return;
-    
-    console.log("Consultando API de estado...");
-    
-    fetch(`${window.API_CAJA}/estado`)
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === 'success' && data.caja_abierta === true) {
-            actualizarInterfazAbierta(data.monto_inicial, data.ventas_hoy);
-        } else {
-            actualizarInterfazCerrada();
-            window.actualizarVentasHoy(0);
-        }
-    })
-    .catch(err => {
-        console.error("Error al sincronizar estado:", err);
-        actualizarInterfazCerrada();
-    });
-};
-
-
-function actualizarInterfazAbierta(monto, ventas = 0) {
-    const badge = document.getElementById('estado-badge');
-    const btn = document.getElementById('btn-caja');
-    const montoTexto = document.getElementById('monto-apertura-texto');
-    const montoVal = document.getElementById('monto-inicial-val');
-    const cardCaja = document.querySelector('.card-caja');
-    
-    if (badge) { badge.innerText = "Abierta"; badge.className = "badge bg-success mb-3"; }
-    if (montoVal) montoVal.innerText = `$${parseFloat(monto || 0).toFixed(2)}`;
-    if (montoTexto) montoTexto.style.display = 'block';
-    
-    window.actualizarVentasHoy(ventas);
-    
-    if (btn) {
-        btn.innerHTML = '<i class="fas fa-door-closed"></i> Cerrar Caja';
-        btn.className = "btn btn-danger w-100 mt-2 py-2";
-        btn.onclick = ejecutarCerrarCaja;
-    }
-    if (cardCaja) cardCaja.style.borderLeft = '4px solid #28a745';
+function cerrarModal() {
+    document.getElementById("modal-caja").style.display = "none";
 }
 
-function actualizarInterfazCerrada() {
-    const badge = document.getElementById('estado-badge');
-    const btn = document.getElementById('btn-caja');
-    const montoTexto = document.getElementById('monto-apertura-texto');
-    const cardCaja = document.querySelector('.card-caja');
+function confirmarAbrirCaja() {
+    var monto = parseFloat(document.getElementById("monto_inicial").value) || 0;
+    if (monto <= 0) return Swal.fire("Error", "Ingresa un monto inicial valido", "warning");
 
-    if (badge) { badge.innerText = "Cerrada"; badge.className = "badge bg-danger mb-3"; }
-    if (montoTexto) montoTexto.style.display = 'none';
-    window.actualizarVentasHoy(0);
-    
-    if (btn) {
-        btn.innerHTML = '<i class="fas fa-door-open"></i> Abrir Caja';
-        btn.className = "btn btn-primary w-100 mt-2 py-2";
-        btn.onclick = window.mostrarModalAbrirCaja;
-    }
-    if (cardCaja) cardCaja.style.borderLeft = '4px solid #dc3545';
-}
-
-window.actualizarVentasHoy = function(montoVentas) {
-    const elementoVenta = document.querySelector('.card-ventas .monto');
-    if (elementoVenta) elementoVenta.innerText = `$${parseFloat(montoVentas || 0).toFixed(2)}`;
-    const actualizadoText = document.querySelector('.card-ventas small');
-    if (actualizadoText) {
-        actualizadoText.innerText = `Actualizado ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
-    }
-};
-
-
-window.mostrarModalAbrirCaja = function() {
-    const modal = document.getElementById('modal-caja');
-    if (modal) { modal.style.display = 'flex'; document.getElementById('monto_inicial')?.focus(); }
-};
-
-window.cerrarModal = function() {
-    const modal = document.getElementById('modal-caja');
-    if (modal) modal.style.display = 'none';
-};
-
-window.confirmarAbrirCaja = function() {
-    const monto = parseFloat(document.getElementById('monto_inicial')?.value);
-    if (isNaN(monto) || monto < 0) return Swal.fire('Atención', 'Ingresa un monto válido', 'warning');
-
-    fetch(window.API_CAJA, {
+    var token = localStorage.getItem('token');
+    fetch(API_CAJA_PANEL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accion: 'abrir', monto_inicial: monto, id_empleado: 1 })
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ id_empleado: 1, monto_inicial: monto })
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === 'success') {
-            Swal.fire('¡Éxito!', 'Caja iniciada', 'success');
-            window.cerrarModal();
-            verificarEstadoCaja();
-        }
-    });
-};
-
-function ejecutarCerrarCaja() {
-    Swal.fire({
-        title: '¿Cerrar caja?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Sí, cerrar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            fetch(window.API_CAJA, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ accion: 'cerrar', monto_real_cierre: 0 })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    Swal.fire('¡Cerrada!', '', 'success');
-                    verificarEstadoCaja();
-                }
-            });
-        }
+    .then(function(res) { return res.json(); })
+    .then(function() {
+        Swal.fire({ icon: 'success', title: 'Caja Abierta', timer: 1500, showConfirmButton: false });
+        cerrarModal();
+        verificarEstadoCaja();
     });
 }
 
+function confirmarCerrarCaja() {
+    var token = localStorage.getItem('token');
+    fetch(API_CAJA_PANEL + '/estado')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            var idCaja = data.id_caja;
+            fetch(API_CAJA_PANEL + '/' + idCaja, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer " + token },
+                body: JSON.stringify({ estado: 'Cerrada', fecha_cierre: new Date().toISOString() })
+            })
+            .then(function() {
+                Swal.fire({ icon: 'success', title: 'Caja Cerrada', timer: 1500, showConfirmButton: false });
+                verificarEstadoCaja();
+            });
+        });
+}
 
-document.addEventListener("DOMContentLoaded", function() {
-    setTimeout(() => {
-        if (document.getElementById('estado-badge')) inicializarPanel();
-    }, 300);
-});
+// ========== VENTAS HOY ==========
+function cargarVentasHoy() {
+    fetch(API_VENTAS_PANEL)
+        .then(function(res) { return res.json(); })
+        .then(function(response) {
+            var ventas = response.success ? (response.data?.data || response.data) : response;
+            var datos = Array.isArray(ventas) ? ventas : [];
+            var hoy = new Date().toLocaleDateString('es-MX');
+            var ventasHoy = datos.filter(function(v) {
+                return v.ven_fecha && new Date(v.ven_fecha).toLocaleDateString('es-MX') === hoy;
+            });
+            var total = ventasHoy.reduce(function(s, v) { return s + parseFloat(v.ven_total || 0); }, 0);
+            document.getElementById("ventas-monto").textContent = '$' + total.toFixed(2);
+            document.getElementById("ventas-actualizado").textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-MX');
+        });
+}
 
-window.addEventListener('focus', function() {
-    setTimeout(() => {
-        if (document.getElementById('estado-badge')) {
-            window.verificarEstadoCaja();
-            cargarCitasHoy();
+// ========== CITAS PANEL ==========
+function cargarCitasPanel() {
+    var filtro = document.getElementById("filtroCitasPanel")?.value || "hoy";
+    fetch(API_CITAS_PANEL)
+        .then(function(res) { return res.json(); })
+        .then(function(response) {
+            var data = response.success ? (response.data?.data || response.data) : response;
+            var citas = Array.isArray(data) ? data : [];
+            var ahora = new Date();
+            var citasFiltradas = [];
+
+            if (filtro === "hoy") {
+                var hoy = ahora.toLocaleDateString('es-MX');
+                citasFiltradas = citas.filter(function(c) {
+                    return c.cita_fecha_programada && new Date(c.cita_fecha_programada).toLocaleDateString('es-MX') === hoy;
+                });
+                document.getElementById("filtro-citas-texto").textContent = "Citas para hoy";
+            } else if (filtro === "semana") {
+                var finSemana = new Date(ahora);
+                finSemana.setDate(ahora.getDate() + 7);
+                citasFiltradas = citas.filter(function(c) {
+                    var f = new Date(c.cita_fecha_programada);
+                    return f >= ahora && f <= finSemana;
+                });
+                document.getElementById("filtro-citas-texto").textContent = "Proximos 7 dias";
+            } else if (filtro === "mes") {
+                var finMes = new Date(ahora);
+                finMes.setDate(ahora.getDate() + 30);
+                citasFiltradas = citas.filter(function(c) {
+                    var f = new Date(c.cita_fecha_programada);
+                    return f >= ahora && f <= finMes;
+                });
+                document.getElementById("filtro-citas-texto").textContent = "Proximos 30 dias";
+            }
+
+            document.getElementById("citas-hoy").textContent = citasFiltradas.length;
+            var lista = document.getElementById("citas-lista");
+            if (lista) {
+                lista.innerHTML = citasFiltradas.length > 0
+                    ? citasFiltradas.map(function(c) {
+                        return '<div class="d-flex justify-content-between py-1 border-bottom"><span>' +
+                            (c.cliente?.cli_nombre || 'Cliente') + '</span><small>' +
+                            (c.cita_fecha_programada ? new Date(c.cita_fecha_programada).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '') +
+                            '</small></div>';
+                    }).join('')
+                    : '<div class="text-muted py-2">Sin citas en este periodo</div>';
+            }
+        });
+}
+
+// ========== CALENDARIO ==========
+function inicializarCalendario() {
+    var calendarEl = document.getElementById('calendario');
+    if (!calendarEl) return;
+
+    if (calendarioPanel) { calendarioPanel.destroy(); calendarioPanel = null; }
+
+    fetch(API_CITAS_PANEL)
+        .then(function(res) { return res.json(); })
+        .then(function(response) {
+            var data = response.success ? (response.data?.data || response.data) : response;
+            var citas = Array.isArray(data) ? data : [];
+            var eventos = citas.map(function(c) {
+                return {
+                    id: c.id_cita,
+                    title: (c.cliente?.cli_nombre || 'Cliente') + ' - ' + (c.cita_motivo || 'Cita'),
+                    start: c.cita_fecha_programada,
+                    backgroundColor: c.cita_estado === 'Realizada' ? '#28a745' : c.cita_estado === 'Cancelada' ? '#dc3545' : '#ffc107',
+                    borderColor: c.cita_estado === 'Realizada' ? '#28a745' : c.cita_estado === 'Cancelada' ? '#dc3545' : '#ffc107',
+                    textColor: '#000'
+                };
+            });
+
+            calendarioPanel = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                events: eventos,
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                height: 'auto',
+                eventClick: function(info) {
+                    Swal.fire({
+                        title: 'Cita #' + info.event.id,
+                        text: info.event.title,
+                        icon: 'info',
+                        confirmButtonText: 'Ver Citas',
+                        confirmButtonColor: '#080522'
+                    }).then(function() {
+                        if (typeof window.cargarVista === 'function') window.cargarVista('views/cita.html');
+                    });
+                }
+            });
+            calendarioPanel.render();
+        });
+}
+
+// ========== REFACCIONARIAS CERCANAS (OpenStreetMap - GRATIS) ==========
+function buscarRefaccionarias() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            cargarRefaccionarias(position.coords.latitude, position.coords.longitude);
+        }, function() {
+            cargarRefaccionarias(19.4326, -99.1332);
+        });
+    } else {
+        cargarRefaccionarias(19.4326, -99.1332);
+    }
+}
+
+function cargarRefaccionarias(lat, lng) {
+    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=5&q=refacciones+motos+cerca&lat=" + lat + "&lon=" + lng + "&bounded=1&viewbox=" + (lng-0.15) + "," + (lat-0.15) + "," + (lng+0.15) + "," + (lat+0.15);
+
+    fetch(url, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'JHP-Taller/1.0' }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        var lista = document.getElementById("listaRefaccionarias");
+        if (!lista) return;
+
+        if (data && data.length > 0) {
+            lista.innerHTML = data.slice(0, 5).map(function(p) {
+                var nombre = p.display_name.split(',')[0] || 'Refaccionaria';
+                var direccion = p.display_name.split(',').slice(1, 3).join(',') || '';
+                var tipo = p.type || '';
+                return '<div class="d-flex justify-content-between align-items-center py-2 border-bottom">' +
+                    '<div><strong><i class="fas fa-store text-primary me-1"></i>' + nombre + '</strong>' +
+                    '<br><small class="text-muted">' + direccion + '</small></div>' +
+                    '<a href="https://www.openstreetmap.org/directions?from=' + lat + ',' + lng + '&to=' + p.lat + ',' + p.lon + '" target="_blank" class="btn btn-sm btn-outline-primary" title="Como llegar">' +
+                    '<i class="fas fa-map-marker-alt"></i></a>' +
+                '</div>';
+            }).join('');
+        } else {
+            lista.innerHTML = '<div class="text-muted py-2"><i class="fas fa-info-circle me-1"></i>No se encontraron refaccionarias cercanas. Intenta con otra ubicacion.</div>';
         }
-    }, 200);
-});
+    })
+    .catch(function() {
+        var lista = document.getElementById("listaRefaccionarias");
+        if (lista) lista.innerHTML = '<div class="text-muted py-2"><i class="fas fa-exclamation-triangle me-1"></i>Error al cargar refaccionarias</div>';
+    });
+}
 
-window.onclick = function(event) {
-    if (event.target === document.getElementById('modal-caja')) window.cerrarModal();
-};
-
-
+// ========== EXPONER ==========
 window.inicializarPanel = inicializarPanel;
-window.inicializarCalendario = inicializarCalendario;
-window.cargarCitasHoy = cargarCitasHoy;
+window.verificarEstadoCaja = verificarEstadoCaja;
+window.abrirModalCaja = abrirModalCaja;
+window.cerrarModal = cerrarModal;
+window.confirmarAbrirCaja = confirmarAbrirCaja;
+window.cargarCitasPanel = cargarCitasPanel;
+window.buscarRefaccionarias = buscarRefaccionarias;
+
+// Inicializar
+if (document.getElementById("calendario") || document.getElementById("estado-badge")) {
+    inicializarPanel();
+    setTimeout(buscarRefaccionarias, 2000);
+}
