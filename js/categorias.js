@@ -1,15 +1,18 @@
 const API_CATEGORIAS = "https://jhpapi-production.up.railway.app/api/categorias";
 
-
-listarCategorias();
+function extraerArray(response) {
+    if (Array.isArray(response)) return response;
+    if (response.success && Array.isArray(response.data)) return response.data;
+    if (response.success && response.data && Array.isArray(response.data.data)) return response.data.data;
+    if (response.data && Array.isArray(response.data)) return response.data;
+    return [];
+}
 
 function listarCategorias() {
     fetch(API_CATEGORIAS)
         .then(res => res.json())
         .then(response => {
-            const data = response.success ? response.data : response;
-            const categorias = Array.isArray(data) ? data : [];
-            
+            const categorias = extraerArray(response);
             let tabla = "";
             categorias.forEach(c => {
                 tabla += `
@@ -28,48 +31,38 @@ function listarCategorias() {
         })
         .catch(err => console.error("Error al listar categorias:", err));
 }
-//CI
+
 function guardarCategorias() {
     const categorias = {
-        // IDs
         cat_nombre: document.getElementById("categoria_nombre").value,
         cat_descripcion: document.getElementById("categoria_descripcion").value
     };
-
     fetch(API_CATEGORIAS, { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(categorias)
     })
- .then(res => res.json())
+    .then(res => res.json())
     .then(() => {
-       Swal.fire({        
-            icon: "success",
-            title: "categoria guardada",
-            showConfirmButton: false,
-            timer: 1500
-        }); 
-  document.getElementById("categoria_nombre").value="";
-       document.getElementById("categoria_descripcion").value="";
-       listarCategorias();
-})
- .catch(err => {
-        Swal.fire({
-            icon: "error",
-            title: "Error al guardar",
-            text: "No se pudo conectar con el servidor"
-        });
+        Swal.fire({ icon: "success", title: "Categoría guardada", showConfirmButton: false, timer: 1500 });
+        document.getElementById("categoria_nombre").value = "";
+        document.getElementById("categoria_descripcion").value = "";
+        listarCategorias();
+    })
+    .catch(err => {
+        Swal.fire({ icon: "error", title: "Error al guardar", text: "No se pudo conectar con el servidor" });
     });
 }
+
 function eliminarCategoria(id_categoria) {
     Swal.fire({
-        title: "¿seguro?",
-        text: "¡no se podra recuperar!",
+        title: "¿Seguro?",
+        text: "¡No se podrá recuperar!",
         icon: "warning",
         showCancelButton: true,
-        confirmButtonColor: " #080522",
+        confirmButtonColor: "#080522",
         cancelButtonColor: "#b30505",
-        confirmButtonText: "Si eliminar",
+        confirmButtonText: "Sí, eliminar",
         cancelButtonText: "Cancelar"
     }).then((result) => {
         if (result.isConfirmed) {
@@ -82,24 +75,17 @@ function eliminarCategoria(id_categoria) {
     });
 }
 
-// Exponer
 window.listarCategorias = listarCategorias;
 window.guardarCategorias = guardarCategorias;
 window.eliminarCategoria = eliminarCategoria;
 
-// Inicialización
 function intentarInicializar() {
-    if (document.getElementById("tablaCategorias")) {
-        listarCategorias();
-    }
+    if (document.getElementById("tablaCategorias")) listarCategorias();
 }
-
 intentarInicializar();
-
 document.addEventListener('vista-cargada', function(e) {
     if (e.detail && e.detail.vista && e.detail.vista.includes('categoria')) {
         setTimeout(listarCategorias, 300);
     }
 });
-
 setTimeout(intentarInicializar, 500);

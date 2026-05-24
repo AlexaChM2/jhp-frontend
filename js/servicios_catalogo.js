@@ -1,14 +1,21 @@
 const API_SERVICIOS = "https://jhpapi-production.up.railway.app/api/servicios";
 const API_CATEGORIAS = "https://jhpapi-production.up.railway.app/api/categorias";
 
+function extraerArray(response) {
+    if (Array.isArray(response)) return response;
+    if (response.success && Array.isArray(response.data)) return response.data;
+    if (response.success && response.data && Array.isArray(response.data.data)) return response.data.data;
+    if (response.data && Array.isArray(response.data)) return response.data;
+    return [];
+}
+
 async function listarServiciosCat() {
     const tbody = document.getElementById("tablaServiciosCat");
     if (!tbody) return;
     try {
         const res = await fetch(API_SERVICIOS);
         const data = await res.json();
-        const servicios = data.success ? (data.data?.data || data.data) : data;
-        const lista = Array.isArray(servicios) ? servicios : [];
+        const lista = extraerArray(data);
         tbody.innerHTML = lista.map(s => `
             <tr>
                 <td>${s.id_servicio}</td>
@@ -31,8 +38,7 @@ async function cargarCategorias() {
     try {
         const res = await fetch(API_CATEGORIAS);
         const data = await res.json();
-        const cats = data.success ? (data.data?.data || data.data) : data;
-        const lista = Array.isArray(cats) ? cats : [];
+        const lista = extraerArray(data);
         const sel = document.getElementById("ser_categoria");
         if (sel) sel.innerHTML = '<option value="">Seleccione...</option>' + 
             lista.map(c => `<option value="${c.id_categoria}">${c.cat_nombre}</option>`).join('');
@@ -56,9 +62,7 @@ async function guardarServicioCat() {
     const precio = parseFloat(document.getElementById("ser_precio").value) || 0;
     const categoria = document.getElementById("ser_categoria").value || null;
 
-    if (!nombre || precio <= 0) {
-        return Swal.fire("Aviso", "Nombre y precio son obligatorios", "warning");
-    }
+    if (!nombre || precio <= 0) return Swal.fire("Aviso", "Nombre y precio son obligatorios", "warning");
 
     const url = id ? `${API_SERVICIOS}/${id}` : API_SERVICIOS;
     const method = id ? 'PUT' : 'POST';
@@ -120,7 +124,6 @@ function filtrarServicios() {
     });
 }
 
-// Exponer
 window.abrirModalServicioCat = abrirModalServicioCat;
 window.guardarServicioCat = guardarServicioCat;
 window.editarServicioCat = editarServicioCat;
@@ -128,7 +131,6 @@ window.eliminarServicioCat = eliminarServicioCat;
 window.filtrarServicios = filtrarServicios;
 window.listarServiciosCat = listarServiciosCat;
 
-// Inicialización
 function intentarInicializar() {
     if (document.getElementById("tablaServiciosCat")) listarServiciosCat();
 }
