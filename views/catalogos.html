@@ -1,47 +1,41 @@
 <div class="container-fluid py-4">
     <h2 class="mb-4"><i class="fa-solid fa-address-book"></i> Administración de Catálogos</h2>
 
-  
     <ul class="nav nav-tabs mb-4" id="tabCatalogos" role="tablist">
         <li class="nav-item">
-            <button class="nav-link active" onclick="cargarSeccion('Clientes')">Clientes</button>
+            <button class="nav-link active" onclick="window.cargarSeccion('Clientes')">Clientes</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" onclick="cargarSeccion('Proveedores')">Proveedores</button>
+            <button class="nav-link" onclick="window.cargarSeccion('Proveedores')">Proveedores</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" onclick="cargarSeccion('Empleados')">Empleados</button>
+            <button class="nav-link" onclick="window.cargarSeccion('Empleados')">Empleados</button>
         </li>
     </ul>
 
-   
     <div class="d-flex justify-content-between mb-3">
-        <input type="text" id="inputBuscarGral" class="form-control w-50" placeholder="Buscar..." onkeyup="filtrarTabla()">
-        <button class="btn btn-dark" onclick="abrirModalRegistro()">
+        <input type="text" id="inputBuscarGral" class="form-control w-50" placeholder="Buscar..." onkeyup="window.filtrarTabla()">
+        <button class="btn btn-dark" onclick="window.abrirModalRegistro()">
             Nuevo <span id="btnLabelRegistro">Registro</span> <i class="fa-solid fa-plus ms-1"></i>
         </button>
     </div>
 
-  
     <table class="main-table">
         <thead id="theadDinamico"></thead>
         <tbody id="tbodyDinamico"></tbody>
     </table>
 </div>
 
-
 <div id="modalCatalogo" class="modal-overlay" style="display:none;">
     <div class="modal-card">
         <div class="modal-header">
             <h3 id="modalTitulo">Nuevo Registro</h3>
-            <button type="button" class="btn-close" onclick="cerrarModalCatalogo()"></button>
+            <button type="button" class="btn-close" onclick="window.cerrarModalCatalogo()"></button>
         </div>
-        <form id="formCatalogo" onsubmit="guardarRegistro(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
-            <div class="modal-body-scroll" id="inputsDinamicos">
-               
-            </div>
+        <form id="formCatalogo" onsubmit="window.guardarRegistro(event)" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+            <div class="modal-body-scroll" id="inputsDinamico"></div>
             <div class="modal-footer-btns">
-                <button type="button" class="btn btn-danger" onclick="cerrarModalCatalogo()">
+                <button type="button" class="btn btn-danger" onclick="window.cerrarModalCatalogo()">
                     <i class="fas fa-times"></i> Cancelar
                 </button>
                 <button type="submit" class="btn btn-success">
@@ -51,4 +45,5 @@
         </form>
     </div>
 </div>
-<script src="js/catalogos.js"></script>
+
+<script src="js/catalogos.js?v=2"></script>
