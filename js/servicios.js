@@ -72,7 +72,7 @@
                     <td>
                         <button class="btn btn-sm btn-info" onclick="window.verDetalleServicio(${m.id_mantenimiento})"><i class="fas fa-eye"></i></button>
                         <button class="btn btn-sm btn-warning" onclick="window.editarServicio(${m.id_mantenimiento})"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-danger" onclick="window.descargarPDFServicio(${m.id_mantenimiento})"><i class="fas fa-file-pdf"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="window.descargarPDFServicio(${m.id_mantenimiento})"> <i class="fas fa-print"></i>
                     </td>
                 </tr>`;
             }).join('');
@@ -395,7 +395,7 @@
             if (m.servicios?.length > 0) {
                 html += `<hr><strong>🔧 Mano de Obra:</strong>
                 <table style="width:100%;font-size:12px;margin-top:5px;">
-                    <tr style="background:#28a745;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
+                    <tr style="background: #d3a934 ;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
                 let totalServ = 0;
                 m.servicios.forEach(s => {
                     totalServ += parseFloat(s.precio_aplicado||0);
@@ -404,11 +404,11 @@
                 html += `<tr style="font-weight:bold;background:#f8f9fa;"><td style="padding:5px;text-align:right;">Total Mano Obra:</td><td style="text-align:right;">$${totalServ.toFixed(2)}</td></tr></table>`;
             }
 
-            // Insumos
+            // Insumos tabla de pdf
             if (m.insumos?.length > 0) {
                 html += `<br><strong>📦 Insumos:</strong>
                 <table style="width:100%;font-size:12px;margin-top:5px;">
-                    <tr style="background:#7a85dd;color:white;"><th style="padding:5px;">Producto</th><th style="padding:5px;text-align:center;">Cant</th><th style="padding:5px;text-align:right;">P.Unit</th><th style="padding:5px;text-align:right;">Sub</th></tr>`;
+                    <tr style="background: #1b297a ;color:white;"><th style="padding:5px;">Producto</th><th style="padding:5px;text-align:center;">Cant</th><th style="padding:5px;text-align:right;">P.Unit</th><th style="padding:5px;text-align:right;">Sub</th></tr>`;
                 let totalIns = 0;
                 m.insumos.forEach(i => {
                     const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0);
