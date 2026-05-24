@@ -23,7 +23,7 @@ const CONFIG = {
     },
     COLORES: {
         DISPONIBLE: '#28a745',
-        NO_DISPONIBLE: '#dc3545',
+        NO_DISPONIBLE: '#880f1b',
         PARCIAL: '#ffc107'
     }
 };
@@ -90,6 +90,7 @@ async function inicializarCalendarioVisual() {
         let color = '#17a2b8';
         if (cita.cita_estado === 'Realizada') color = '#28a745';
         if (cita.cita_estado === 'Cancelada') color = '#dc3545';
+        if (cita.cita_estado === 'Confirmada') color = '#17a2b8';  // Celeste
         
         return {
             id: cita.id_cita,
@@ -314,7 +315,9 @@ async function listarCitas() {
     tbody.innerHTML = citas.map(c => {
         const cliente = c.cliente ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.trim() : 'Sin cliente';
         const empleado = c.empleado ? c.empleado.emp_nombre : 'Sin asignar';
-        const estadoClass = c.cita_estado === 'Realizada' ? 'success' : (c.cita_estado === 'Cancelada' ? 'danger' : 'warning');
+        const estadoClass = c.cita_estado === 'Realizada' ? 'success' : 
+                   (c.cita_estado === 'Cancelada' ? 'danger' : 
+                   (c.cita_estado === 'Confirmada' ? 'primary' : 'warning'));
         
         return `
         <tr>
