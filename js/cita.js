@@ -6,6 +6,7 @@ let clienteIdCita = null;
 let empleadoIdCita = null;
 let editandoCitaId = null;
 let citasExistentes = [];
+let calendarVisual = null;
 let calendarSelector = null;
 let fechaSeleccionadaGlobal = null;
 
@@ -23,7 +24,66 @@ const CONFIG = {
     }
 };
 
-// ========== INICIALIZAR CALENDARIO SELECCIONABLE ==========
+// ========== INICIALIZAR CALENDARIO VISUAL (CITAS REGISTRADAS) ==========
+async function inicializarCalendarioVisual() {
+    const calendarEl = document.getElementById('calendarioVisual');
+    if (!calendarEl) return;
+    
+    if (calendarVisual) {
+        calendarVisual.destroy();
+    }
+    
+    await cargarCitasExistentes();
+    
+    const eventos = citasExistentes.map(cita => {
+        const cliente = cita.cliente ? `${cita.cliente.cli_nombre} ${cita.cliente.cli_apaterno || ''}`.trim() : 'Cliente';
+        let color = '#17a2b8';
+        if (cita.cita_estado === 'Realizada') color = '#28a745';
+        if (cita.cita_estado === 'Cancelada') color = '#dc3545';
+        
+        return {
+            id: cita.id_cita,
+            title: `${cliente} - ${cita.cita_motivo || 'Cita'}`,
+            start: cita.cita_fecha_programada,
+            backgroundColor: color,
+            borderColor: color,
+            textColor: 'white',
+            extendedProps: {
+                estado: cita.cita_estado,
+                empleado: cita.empleado?.emp_nombre || 'Sin asignar'
+            }
+        };
+    });
+    
+    calendarVisual = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek'
+        },
+        height: 'auto',
+        events: eventos,
+        eventClick: function(info) {
+            Swal.fire({
+                title: `Cita #${info.event.id}`,
+                html: `
+                    <strong>Cliente:</strong> ${info.event.title.split(' - ')[0]}<br>
+                    <strong>Fecha:</strong> ${info.event.start.toLocaleString('es-MX')}<br>
+                    <strong>Estado:</strong> ${info.event.extendedProps.estado || 'Pendiente'}<br>
+                    <strong>Empleado:</strong> ${info.event.extendedProps.empleado}
+                `,
+                icon: 'info',
+                confirmButtonText: 'Cerrar'
+            });
+        }
+    });
+    
+    calendarVisual.render();
+}
+
+// ========== INICIALIZAR CALENDARIO SELECCIONABLE (EN MODAL) ==========
 async function inicializarCalendarioSelector() {
     const calendarEl = document.getElementById('calendarioSelector');
     if (!calendarEl) return;
@@ -47,14 +107,14 @@ async function inicializarCalendarioSelector() {
             seleccionarFecha(info.date);
         },
         dayCellDidMount: function(info) {
-            aplicarColorDia(info);
+            aplicarColorDiaSelector(info);
         }
     });
     
     calendarSelector.render();
 }
 
-function aplicarColorDia(info) {
+function aplicarColorDiaSelector(info) {
     const fecha = info.date;
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -161,7 +221,6 @@ async function seleccionarFecha(fecha) {
     }
     
     mostrarHorariosDisponiblesModal(horariosDisponibles, fecha);
-    consultarClimaFecha(fecha.toISOString().split('T')[0]);
 }
 
 function mostrarHorariosDisponiblesModal(horarios, fecha) {
@@ -194,7 +253,6 @@ function mostrarHorariosDisponiblesModal(horarios, fecha) {
             const fechaFormateada = `${año}-${mes}-${dia}T${hora}:00`;
             document.getElementById("cita_fecha").value = fechaFormateada;
             
-            // Cambiar estilo del botón seleccionado
             document.querySelectorAll('.seleccionar-horario-btn').forEach(b => {
                 b.classList.remove('btn-success');
                 b.classList.add('btn-outline-success');
@@ -213,18 +271,6 @@ function mostrarHorariosDisponiblesModal(horarios, fecha) {
     });
 }
 
-function consultarClimaFecha(fecha) {
-    // Función de clima - mantener la existente
-    const infoDiv = document.getElementById('clima-cita-info');
-    const infoTexto = document.getElementById('clima-fecha-texto');
-    
-    if (infoDiv && infoTexto) {
-        infoDiv.style.display = 'block';
-        infoDiv.className = 'alert alert-info py-2 mb-0 mt-2';
-        infoTexto.innerHTML = `<i class="fas fa-cloud-sun me-1"></i> Fecha seleccionada: ${new Date(fecha).toLocaleDateString('es-MX')}`;
-    }
-}
-
 // ========== CARGAR CITAS EXISTENTES ==========
 async function cargarCitasExistentes() {
     try {
@@ -238,7 +284,7 @@ async function cargarCitasExistentes() {
     }
 }
 
-// ========== LISTAR CITAS ==========
+// ========== LISTAR CITAS EN TABLA ==========
 function listarCitas() {
     const tbody = document.getElementById("tablaCitas");
     if (!tbody) return;
@@ -371,7 +417,6 @@ async function abrirModalCita() {
         document.getElementById("cita_estado").value = "Pendiente";
         document.getElementById("cita_tipo").value = "Servicio";
         document.getElementById("horariosContainer").style.display = "none";
-        document.getElementById("clima-cita-info").style.display = "none";
         document.getElementById("cita_fecha").value = "";
     }
 }
@@ -432,6 +477,7 @@ async function guardarCita(e) {
             Swal.fire({ icon: 'success', title: editandoCitaId ? 'Cita actualizada' : 'Cita registrada', timer: 1500, showConfirmButton: false });
             cerrarModalCita();
             listarCitas();
+            inicializarCalendarioVisual();
         } else {
             throw new Error(result.message || 'Error al guardar');
         }
@@ -463,7 +509,7 @@ async function editarCita(id) {
         
         if (c.cita_fecha_programada) {
             const fecha = new Date(c.cita_fecha_programada);
-            seleccionarFecha(fecha);
+            await seleccionarFecha(fecha);
             document.getElementById("cita_fecha").value = c.cita_fecha_programada.replace(" ", "T").substring(0, 16);
         }
         
@@ -493,6 +539,7 @@ function eliminarCita(id) {
                 .then(() => {
                     Swal.fire('Eliminada', 'La cita ha sido eliminada', 'success');
                     listarCitas();
+                    inicializarCalendarioVisual();
                 })
                 .catch(() => Swal.fire("Error", "No se pudo eliminar la cita", "error"));
         }
@@ -511,15 +558,19 @@ window.editarCita = editarCita;
 window.eliminarCita = eliminarCita;
 window.prepararServicio = prepararServicio;
 
-// Inicializar cuando el DOM esté listo
+// ========== INICIALIZACIÓN PRINCIPAL ==========
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
     setTimeout(() => {
         listarCitas();
         cargarSelectEmpleados();
+        inicializarCalendarioVisual();
+        cargarCitasExistentes();
     }, 300);
 } else {
     document.addEventListener('DOMContentLoaded', function() {
         listarCitas();
         cargarSelectEmpleados();
+        inicializarCalendarioVisual();
+        cargarCitasExistentes();
     });
 }
