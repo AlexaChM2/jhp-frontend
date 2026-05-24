@@ -1,5 +1,5 @@
 var API_VENTAS_PANEL = "https://jhpapi-production.up.railway.app/api/ventas";
-var API_CAJA_PANEL = "https://jhpapi-production.up.railway.app/api/control_cajas";
+var API_CAJA_PANEL = "https://jhpapi-production.up.railway.app/api/control_caja";
 var API_CITAS_PANEL = "https://jhpapi-production.up.railway.app/api/citas";
 var API_PRODUCTOS_PANEL = "https://jhpapi-production.up.railway.app/api/producto";
 
