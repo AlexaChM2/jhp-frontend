@@ -207,9 +207,12 @@ function abrirModalRegistro() {
 
 function generarInputs(datos = null) {
     const contenedor = document.getElementById("inputsDinamicos");
+    console.log("Contenedor:", contenedor);  // ← Agrega esto
     if (!contenedor) return;
     contenedor.innerHTML = "";
     const config = CONFIG[seccionActual];
+    console.log("Config:", config);  // ← Agrega esto
+    console.log("Campos:", config.campos); 
 
     config.campos.forEach((campo, index) => {
         const valor = datos ? (datos[campo] || '') : '';
