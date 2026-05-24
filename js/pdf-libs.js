@@ -2,21 +2,19 @@
 // LIBRERÍAS PDF COMPARTIDAS
 // ==========================================
 
-// Función para verificar/forzar carga de librerías
+let libreriasCargadas = false;
+
 async function asegurarLibreriasPDF() {
-    // Verificar jsPDF
-    let jsPDFLib = null;
-    
-    if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
-        jsPDFLib = window.jspdf.jsPDF;
-        console.log('✅ jsPDF ya disponible');
-    } else if (typeof jspdf !== 'undefined') {
-        jsPDFLib = jspdf;
-        console.log('✅ jsPDF ya disponible (global)');
-    } else if (typeof window.jsPDF !== 'undefined') {
-        jsPDFLib = window.jsPDF;
-        console.log('✅ jsPDF ya disponible (window)');
+    // Si ya están cargadas, devolver inmediatamente
+    if (libreriasCargadas) {
+        console.log('📚 Librerías ya cargadas');
+        return window.jspdf?.jsPDF || jspdf || window.jsPDF;
     }
+    
+    console.log('🔄 Cargando librerías PDF...');
+    
+    // Verificar si jsPDF ya está disponible (cargado por otro medio)
+    let jsPDFLib = window.jspdf?.jsPDF || window.jspdf || window.jsPDF || (typeof jspdf !== 'undefined' ? jspdf : null);
     
     if (!jsPDFLib) {
         console.log('⏳ Cargando jsPDF...');
@@ -29,6 +27,19 @@ async function asegurarLibreriasPDF() {
         });
         console.log('✅ jsPDF cargado');
         
+        // Pequeña pausa para que se inicialice
+        await new Promise(r => setTimeout(r, 50));
+    }
+    
+    // Verificar si autoTable ya está disponible
+    let tieneAutoTable = false;
+    try {
+        const testDoc = new (window.jspdf?.jsPDF || jspdf || window.jsPDF)({ unit: 'mm', format: 'a4' });
+        tieneAutoTable = typeof testDoc.autoTable === 'function';
+    } catch(e) {}
+    
+    if (!tieneAutoTable) {
+        console.log('⏳ Cargando autoTable...');
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js';
@@ -37,22 +48,23 @@ async function asegurarLibreriasPDF() {
             document.head.appendChild(script);
         });
         console.log('✅ autoTable cargado');
+        
+        // Pausa para que se integre
+        await new Promise(r => setTimeout(r, 100));
     }
     
-    // Pequeña pausa para asegurar inicialización
-    await new Promise(r => setTimeout(r, 100));
+    libreriasCargadas = true;
+    console.log('✅ Todas las librerías PDF listas');
     
-    return jsPDFLib || window.jspdf?.jsPDF || jspdf || window.jsPDF;
+    return window.jspdf?.jsPDF || jspdf || window.jsPDF;
 }
 
-// Función para formatear fecha
 function formatearFecha(fecha) {
     if (!fecha) return '-';
     const f = new Date(fecha);
     return `${f.getDate()}/${f.getMonth()+1}/${f.getFullYear()}, ${f.getHours().toString().padStart(2,'0')}:${f.getMinutes().toString().padStart(2,'0')}:${f.getSeconds().toString().padStart(2,'0')}`;
 }
 
-// Función para agregar línea al PDF
 function addPDFLine(doc, label, value, y) {
     doc.setFont("helvetica", "bold");
     doc.text(label, 15, y);
