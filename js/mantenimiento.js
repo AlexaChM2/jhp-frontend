@@ -23,7 +23,6 @@ async function listarMantenimiento() {
 
         if (lista.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3">No hay mantenimientos</td></tr>';
-            // Resetear contadores
             document.getElementById("totalMantPendientes").textContent = 0;
             document.getElementById("totalMantCompletados").textContent = 0;
             document.getElementById("totalMantProximos").textContent = '-';
@@ -50,7 +49,7 @@ async function listarMantenimiento() {
                         style="background:#ffc107;color:#000;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="window.descargarPDFMantenimiento(${m.id_mantenimiento})" title="Descargar PDF"
+                    <button onclick="window.descargarPDFMantenimiento(${m.id_mantenimiento})" title="Ver PDF"
                         style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
                         <i class="fas fa-file-pdf"></i>
                     </button>
@@ -58,7 +57,6 @@ async function listarMantenimiento() {
             </tr>`;
         }).join('');
 
-        // Actualizar contadores
         const pendientes = lista.filter(s => s.estado_servicio !== 'Terminado' && s.estado_servicio !== 'Entregado').length;
         const completados = lista.filter(s => s.estado_servicio === 'Terminado' || s.estado_servicio === 'Entregado').length;
 
@@ -269,7 +267,7 @@ window.verMantenimiento = async function(id) {
             </table>`;
 
         if (m.servicios?.length > 0) {
-            html += `<hr><strong> Mano de Obra:</strong>
+            html += `<hr><strong>🔧 Mano de Obra:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#d3a934;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
             let totalServ = 0;
@@ -281,7 +279,7 @@ window.verMantenimiento = async function(id) {
         }
 
         if (m.insumos?.length > 0) {
-            html += `<br><strong> Insumos:</strong>
+            html += `<br><strong>📦 Insumos:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#1b297a;color:white;"><th style="padding:5px;">Producto</th><th style="text-align:center;">Cant</th><th style="text-align:right;">P.Unit</th><th style="text-align:right;">Sub</th></tr>`;
             let totalIns = 0;
@@ -295,7 +293,7 @@ window.verMantenimiento = async function(id) {
 
         html += `<div style="text-align:right;margin-top:15px;font-size:18px;"><strong>TOTAL: $${parseFloat(m.mantenimiento_total||0).toFixed(2)}</strong></div></div>`;
 
-        Swal.fire({ title: `Mantenimiento #${m.id_mantenimiento}`, html, width: '650px', confirmButtonColor: '#080522' });
+        Swal.fire({ title: `Mantenimiento #${m.id_mantenimiento}`, html: html, width: '650px', confirmButtonColor: '#080522' });
     } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
 };
 
@@ -329,13 +327,13 @@ window.editarMantenimiento = async function(id) {
 };
 
 // ==========================================
-// DESCARGAR PDF
+// DESCARGAR PDF - ABRE EN NUEVA PESTAÑA
 // ==========================================
 window.descargarPDFMantenimiento = async function(id) {
     try {
         console.log('Generando PDF para mantenimiento:', id);
         
-        // Verificar que jsPDF está cargado (diferentes formas)
+        // Verificar que jsPDF está cargado
         let jsPDFLib = null;
         
         if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
@@ -347,8 +345,7 @@ window.descargarPDFMantenimiento = async function(id) {
         }
         
         if (!jsPDFLib) {
-            console.error('jsPDF no encontrado');
-            Swal.fire("Error", "La librería jsPDF no está cargada. Contacte al administrador.", "error");
+            Swal.fire("Error", "La librería jsPDF no está cargada.", "error");
             return;
         }
         
@@ -356,9 +353,6 @@ window.descargarPDFMantenimiento = async function(id) {
         const response = await res.json();
         const m = response.success ? response.data : response;
         
-        console.log('Datos del mantenimiento:', m);
-        
-        // Crear documento
         const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
         
         // Encabezado
@@ -370,11 +364,8 @@ window.descargarPDFMantenimiento = async function(id) {
         doc.text("Mantenimiento Preventivo", 105, 22, { align: "center" });
         doc.line(10, 25, 200, 25);
         
-        // Datos generales
         let y = 32;
-        doc.setFontSize(11);
         
-        // Función para agregar línea
         function addLine(label, value, y) {
             doc.setFont("helvetica", "bold");
             doc.text(label, 15, y);
@@ -407,7 +398,6 @@ window.descargarPDFMantenimiento = async function(id) {
             let totalServicios = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado || 0), 0);
             filasServicios.push(["TOTAL MANO DE OBRA", `$${totalServicios.toFixed(2)}`]);
             
-            // Verificar que autoTable existe
             if (typeof doc.autoTable === 'function') {
                 doc.autoTable({
                     startY: y,
@@ -419,15 +409,6 @@ window.descargarPDFMantenimiento = async function(id) {
                     styles: { fontSize: 9 }
                 });
                 y = doc.lastAutoTable.finalY + 5;
-            } else {
-                // Fallback si autoTable no está
-                filasServicios.forEach(fila => {
-                    doc.setFont("helvetica", "normal");
-                    doc.text(fila[0], 15, y);
-                    doc.text(fila[1], 190, y, { align: "right" });
-                    y += 6;
-                });
-                y += 5;
             }
         }
         
@@ -462,16 +443,6 @@ window.descargarPDFMantenimiento = async function(id) {
                     styles: { fontSize: 9 }
                 });
                 y = doc.lastAutoTable.finalY + 8;
-            } else {
-                filasInsumos.forEach(fila => {
-                    doc.setFont("helvetica", "normal");
-                    doc.text(fila[0], 15, y);
-                    doc.text(fila[1], 80, y);
-                    doc.text(fila[2], 120, y);
-                    doc.text(fila[3], 190, y, { align: "right" });
-                    y += 6;
-                });
-                y += 5;
             }
         }
         
@@ -485,10 +456,14 @@ window.descargarPDFMantenimiento = async function(id) {
         doc.setFont("helvetica", "normal");
         doc.text("JHP Taller Mecánico - Mantenimiento Preventivo", 105, 285, { align: "center" });
         
-        // Descargar PDF
-        doc.save(`mantenimiento_${id}.pdf`);
+        // 🔥 ABRIR EN NUEVA PESTAÑA (como funciona en servicios)
+        const pdfBlob = doc.output('blob');
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        window.open(pdfUrl, '_blank');
         
-        console.log('PDF generado exitosamente');
+        setTimeout(() => URL.revokeObjectURL(pdfUrl), 100);
+        
+        console.log('PDF abierto en nueva pestaña');
         
     } catch (e) {
         console.error('Error PDF:', e);
@@ -501,7 +476,6 @@ window.descargarPDFMantenimiento = async function(id) {
 // ==========================================
 window.listarMantenimiento = listarMantenimiento;
 
-// Escuchar evento de vista cargada
 document.addEventListener('vista-cargada', function(e) {
     if (e.detail && e.detail.vista && 
         (e.detail.vista.includes('mantenimiento') || e.detail.vista.includes('Mantenimiento'))) {
@@ -510,7 +484,6 @@ document.addEventListener('vista-cargada', function(e) {
     }
 });
 
-// Cargar al iniciar
 if (document.getElementById("tablaMantenimiento")) {
     listarMantenimiento();
 }
