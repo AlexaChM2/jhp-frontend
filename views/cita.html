@@ -80,15 +80,12 @@
                     </div>
 
                    
-                    <div class="col-md-12 position-relative">
-                        <label class="form-label fw-bold">Empleado que registra / Atiende</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
-                            <input type="text" id="busEmpCita" class="form-control" placeholder="Escribe nombre del empleado..." oninput="window.buscarEmpleadoCita(this.value)" autocomplete="off">
-                        </div>
-                        <input type="hidden" name="id_empleado" id="id_empleado_hidden">
-                        <div id="resEmpCita" class="list-group position-absolute w-100 shadow-lg" style="z-index:2000; display:none; max-height:200px; overflow-y:auto;"></div>
-                    </div>
+            <div class="col-md-6">
+    <label class="form-label fw-bold">Empleado que registra</label>
+    <select id="id_empleado_select" class="form-select" onchange="window.seleccionarEmpleadoCita(this.value, this.options[this.selectedIndex].text)">
+        <option value="">Seleccione empleado...</option>
+    </select>
+</div>
 
                     <div class="col-md-6">
                         <label class="form-label fw-bold">Fecha Programada</label>
