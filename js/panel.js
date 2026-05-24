@@ -1,5 +1,5 @@
 var API_VENTAS_PANEL = "https://jhpapi-production.up.railway.app/api/ventas";
-var API_CAJA_PANEL = "https://jhpapi-production.up.railway.app/api/control_caja";
+var API_CAJA_PANEL = "https://jhpapi-production.up.railway.app/api/control_cajas";
 var API_CITAS_PANEL = "https://jhpapi-production.up.railway.app/api/citas";
 var API_PRODUCTOS_PANEL = "https://jhpapi-production.up.railway.app/api/producto";
 
@@ -34,7 +34,8 @@ function verificarStockBajoPanel() {
             }
 
             alertaEl.style.display = "block";
-            document.getElementById("stockAlertaTexto").textContent = mensaje;
+            var textoEl = document.getElementById("stockAlertaTexto");
+            if (textoEl) textoEl.textContent = mensaje;
         })
         .catch(function() {});
 }
@@ -59,15 +60,40 @@ function verificarEstadoCaja() {
             var montoTexto = document.getElementById("monto-apertura-texto");
             var montoVal = document.getElementById("monto-inicial-val");
 
-            if (data.caja_abierta) {
-                if (badge) { badge.textContent = "Abierta"; badge.className = "badge verde mb-3"; }
-                if (btn) { btn.innerHTML = '<i class="fas fa-door-closed"></i> Cerrar Caja'; btn.onclick = confirmarCerrarCaja; }
+            // Tu controller usa 'caja_abierta'
+            var cajaAbierta = data.caja_abierta || (data.status === 'success' && data.caja_abierta);
+            
+            if (cajaAbierta) {
+                if (badge) { 
+                    badge.textContent = "Abierta"; 
+                    badge.className = "badge bg-success mb-3"; 
+                }
+                if (btn) { 
+                    btn.innerHTML = '<i class="fas fa-door-closed"></i> Cerrar Caja'; 
+                    btn.onclick = confirmarCerrarCaja; 
+                }
                 if (montoTexto) montoTexto.style.display = "block";
-                if (montoVal) montoVal.textContent = '$' + parseFloat(data.monto_inicial || 0).toFixed(2);
+                if (montoVal && data.monto_inicial) {
+                    montoVal.textContent = '$' + parseFloat(data.monto_inicial).toFixed(2);
+                }
             } else {
-                if (badge) { badge.textContent = "Cerrada"; badge.className = "badge rojo mb-3"; }
-                if (btn) { btn.innerHTML = '<i class="fas fa-door-open"></i> Abrir Caja'; btn.onclick = abrirModalCaja; }
+                if (badge) { 
+                    badge.textContent = "Cerrada"; 
+                    badge.className = "badge bg-danger mb-3"; 
+                }
+                if (btn) { 
+                    btn.innerHTML = '<i class="fas fa-door-open"></i> Abrir Caja'; 
+                    btn.onclick = abrirModalCaja; 
+                }
                 if (montoTexto) montoTexto.style.display = "none";
+            }
+        })
+        .catch(function(error) {
+            console.error('Error al verificar caja:', error);
+            var badge = document.getElementById("estado-badge");
+            if (badge) {
+                badge.textContent = "Error";
+                badge.className = "badge bg-secondary mb-3";
             }
         });
 }
@@ -78,40 +104,150 @@ function abrirModalCaja() {
 
 function cerrarModal() {
     document.getElementById("modal-caja").style.display = "none";
+    var inputMonto = document.getElementById("monto_inicial");
+    if (inputMonto) inputMonto.value = "";
 }
 
 function confirmarAbrirCaja() {
     var monto = parseFloat(document.getElementById("monto_inicial").value) || 0;
-    if (monto <= 0) return Swal.fire("Error", "Ingresa un monto inicial valido", "warning");
+    
+    if (monto <= 0) {
+        Swal.fire("Error", "Ingresa un monto inicial válido", "warning");
+        return;
+    }
+    
     var token = localStorage.getItem('token');
+    
+    Swal.fire({
+        title: 'Abriendo caja...',
+        text: 'Monto inicial: $' + monto.toFixed(2),
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
     fetch(API_CAJA_PANEL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer " + token },
-        body: JSON.stringify({ id_empleado: 1, monto_inicial: monto })
+        headers: { 
+            "Content-Type": "application/json", 
+            "Accept": "application/json",
+            "Authorization": "Bearer " + (token || '')
+        },
+        body: JSON.stringify({ 
+            accion: "abrir",
+            monto_inicial: monto,
+            id_empleado: 1
+        })
     })
     .then(function(res) { return res.json(); })
-    .then(function() {
-        Swal.fire({ icon: 'success', title: 'Caja Abierta', timer: 1500, showConfirmButton: false });
-        cerrarModal();
-        verificarEstadoCaja();
+    .then(function(data) {
+        if (data.status === 'success') {
+            Swal.fire({ 
+                icon: 'success', 
+                title: 'Caja Abierta', 
+                text: 'Monto inicial: $' + monto.toFixed(2),
+                timer: 2000, 
+                showConfirmButton: false 
+            });
+            cerrarModal();
+            verificarEstadoCaja();
+            cargarVentasHoy();
+        } else {
+            Swal.fire("Error", data.message || "No se pudo abrir la caja", "error");
+        }
+    })
+    .catch(function(error) {
+        Swal.fire("Error", "Error al conectar: " + error.message, "error");
     });
 }
 
 function confirmarCerrarCaja() {
-    var token = localStorage.getItem('token');
+    // Primero obtener información de la caja actual
     fetch(API_CAJA_PANEL + '/estado')
         .then(function(res) { return res.json(); })
         .then(function(data) {
-            fetch(API_CAJA_PANEL + '/' + data.id_caja, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer " + token },
-                body: JSON.stringify({ estado: 'Cerrada', fecha_cierre: new Date().toISOString() })
-            })
-            .then(function() {
-                Swal.fire({ icon: 'success', title: 'Caja Cerrada', timer: 1500, showConfirmButton: false });
-                verificarEstadoCaja();
+            if (!data.caja_abierta) {
+                Swal.fire("Info", "No hay caja abierta", "info");
+                return;
+            }
+            
+            var montoInicial = parseFloat(data.monto_inicial || 0);
+            var ventasHoy = parseFloat(data.ventas_hoy || 0);
+            var totalEsperado = montoInicial + ventasHoy;
+            
+            Swal.fire({
+                title: '¿Cerrar caja?',
+                html: `<div style="text-align: left;">
+                    <p><strong>Monto inicial:</strong> $${montoInicial.toFixed(2)}</p>
+                    <p><strong>Ventas del día:</strong> $${ventasHoy.toFixed(2)}</p>
+                    <p><strong>Total esperado:</strong> $${totalEsperado.toFixed(2)}</p>
+                    <hr>
+                    <p>¿Estás seguro de cerrar la caja?</p>
+                </div>`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#17791f',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, cerrar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    cerrarCajaOperacion();
+                }
             });
+        })
+        .catch(function(error) {
+            Swal.fire("Error", "No se pudo obtener información de la caja: " + error.message, "error");
         });
+}
+
+function cerrarCajaOperacion() {
+    var token = localStorage.getItem('token');
+    
+    Swal.fire({
+        title: 'Cerrando caja...',
+        text: 'Calculando ventas del día',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    fetch(API_CAJA_PANEL, {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json", 
+            "Accept": "application/json",
+            "Authorization": "Bearer " + (token || '')
+        },
+        body: JSON.stringify({ 
+            accion: "cerrar"
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.status === 'success') {
+            var ventasHoy = parseFloat(data.ventas_hoy || 0);
+            var montoFinal = parseFloat(data.monto_final_esperado || 0);
+            
+            Swal.fire({ 
+                icon: 'success', 
+                title: 'Caja Cerrada', 
+                html: `<strong>Ventas del día:</strong> $${ventasHoy.toFixed(2)}<br>
+                       <strong>Monto final:</strong> $${montoFinal.toFixed(2)}`,
+                timer: 3000,
+                showConfirmButton: false 
+            });
+            verificarEstadoCaja();
+            cargarVentasHoy();
+        } else {
+            Swal.fire("Error", data.message || "No se pudo cerrar la caja", "error");
+        }
+    })
+    .catch(function(error) {
+        Swal.fire("Error", "Error al conectar: " + error.message, "error");
+    });
 }
 
 // ========== VENTAS HOY ==========
@@ -126,14 +262,23 @@ function cargarVentasHoy() {
                 return v.ven_fecha && new Date(v.ven_fecha).toLocaleDateString('es-MX') === hoy;
             });
             var total = ventasHoy.reduce(function(s, v) { return s + parseFloat(v.ven_total || 0); }, 0);
-            document.getElementById("ventas-monto").textContent = '$' + total.toFixed(2);
-            document.getElementById("ventas-actualizado").textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-MX');
+            
+            var montoEl = document.getElementById("ventas-monto");
+            var actualizadoEl = document.getElementById("ventas-actualizado");
+            
+            if (montoEl) montoEl.textContent = '$' + total.toFixed(2);
+            if (actualizadoEl) actualizadoEl.textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-MX');
+        })
+        .catch(function(error) {
+            console.error('Error cargando ventas:', error);
         });
 }
 
 // ========== CITAS ==========
 function cargarCitasPanel() {
-    var filtro = document.getElementById("filtroCitasPanel")?.value || "hoy";
+    var filtroSelect = document.getElementById("filtroCitasPanel");
+    var filtro = filtroSelect ? filtroSelect.value : "hoy";
+    
     fetch(API_CITAS_PANEL)
         .then(function(res) { return res.json(); })
         .then(function(response) {
@@ -147,7 +292,8 @@ function cargarCitasPanel() {
                 citasFiltradas = citas.filter(function(c) {
                     return c.cita_fecha_programada && new Date(c.cita_fecha_programada).toLocaleDateString('es-MX') === hoy;
                 });
-                document.getElementById("filtro-citas-texto").textContent = "Citas para hoy";
+                var textoFiltro = document.getElementById("filtro-citas-texto");
+                if (textoFiltro) textoFiltro.textContent = "Citas para hoy";
             } else if (filtro === "semana") {
                 var finSemana = new Date(ahora);
                 finSemana.setDate(ahora.getDate() + 7);
@@ -155,7 +301,8 @@ function cargarCitasPanel() {
                     var f = new Date(c.cita_fecha_programada);
                     return f >= ahora && f <= finSemana;
                 });
-                document.getElementById("filtro-citas-texto").textContent = "Proximos 7 dias";
+                var textoFiltro = document.getElementById("filtro-citas-texto");
+                if (textoFiltro) textoFiltro.textContent = "Próximos 7 días";
             } else if (filtro === "mes") {
                 var finMes = new Date(ahora);
                 finMes.setDate(ahora.getDate() + 30);
@@ -163,21 +310,33 @@ function cargarCitasPanel() {
                     var f = new Date(c.cita_fecha_programada);
                     return f >= ahora && f <= finMes;
                 });
-                document.getElementById("filtro-citas-texto").textContent = "Proximos 30 dias";
+                var textoFiltro = document.getElementById("filtro-citas-texto");
+                if (textoFiltro) textoFiltro.textContent = "Próximos 30 días";
             }
 
-            document.getElementById("citas-hoy").textContent = citasFiltradas.length;
+            var citasHoyEl = document.getElementById("citas-hoy");
+            if (citasHoyEl) citasHoyEl.textContent = citasFiltradas.length;
+            
             var lista = document.getElementById("citas-lista");
             if (lista) {
                 lista.innerHTML = citasFiltradas.length > 0
                     ? citasFiltradas.map(function(c) {
-                        return '<div class="d-flex justify-content-between py-1 border-bottom"><span>' +
-                            (c.cliente?.cli_nombre || 'Cliente') + '</span><small>' +
-                            (c.cita_fecha_programada ? new Date(c.cita_fecha_programada).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '') +
-                            '</small></div>';
+                        var hora = c.cita_fecha_programada ? new Date(c.cita_fecha_programada).toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit'}) : '';
+                        var nombreCliente = c.cliente ? (c.cliente.cli_nombre + ' ' + (c.cliente.cli_apaterno || '')) : 'Cliente';
+                        var estadoClass = c.cita_estado === 'Realizada' ? 'text-success' : 
+                                         c.cita_estado === 'Cancelada' ? 'text-danger' : 'text-warning';
+                        return '<div class="d-flex justify-content-between align-items-center py-1 border-bottom">' +
+                            '<div><i class="fas fa-user me-2"></i>' + nombreCliente + '<br><small class="text-muted">' + (c.cita_motivo || 'Sin motivo') + '</small></div>' +
+                            '<div class="text-end"><small class="' + estadoClass + '">' + (c.cita_estado || 'Pendiente') + '</small><br><small><i class="far fa-clock me-1"></i>' + hora + '</small></div>' +
+                        '</div>';
                     }).join('')
-                    : '<div class="text-muted py-2">Sin citas en este periodo</div>';
+                    : '<div class="text-muted py-2 text-center">Sin citas en este periodo</div>';
             }
+        })
+        .catch(function(error) {
+            console.error('Error cargando citas:', error);
+            var lista = document.getElementById("citas-lista");
+            if (lista) lista.innerHTML = '<div class="text-muted py-2 text-center">Error al cargar citas</div>';
         });
 }
 
@@ -185,7 +344,11 @@ function cargarCitasPanel() {
 function inicializarCalendario() {
     var calendarEl = document.getElementById('calendario');
     if (!calendarEl) return;
-    if (calendarioPanel) { calendarioPanel.destroy(); calendarioPanel = null; }
+    
+    if (calendarioPanel) { 
+        calendarioPanel.destroy(); 
+        calendarioPanel = null; 
+    }
 
     fetch(API_CITAS_PANEL)
         .then(function(res) { return res.json(); })
@@ -193,13 +356,20 @@ function inicializarCalendario() {
             var data = response.success ? (response.data?.data || response.data) : response;
             var citas = Array.isArray(data) ? data : [];
             var eventos = citas.map(function(c) {
+                var color = '#ffc107'; // Amarillo por defecto (Pendiente)
+                if (c.cita_estado === 'Realizada') color = '#28a745';
+                if (c.cita_estado === 'Cancelada') color = '#dc3545';
+                if (c.cita_estado === 'Confirmada') color = '#17a2b8';
+                
+                var nombreCliente = c.cliente ? (c.cliente.cli_nombre + ' ' + (c.cliente.cli_apaterno || '')) : 'Cliente';
+                
                 return {
                     id: c.id_cita,
-                    title: (c.cliente?.cli_nombre || 'Cliente') + ' - ' + (c.cita_motivo || 'Cita'),
+                    title: nombreCliente + ' - ' + (c.cita_motivo || 'Cita'),
                     start: c.cita_fecha_programada,
-                    backgroundColor: c.cita_estado === 'Realizada' ? '#28a745' : c.cita_estado === 'Cancelada' ? '#dc3545' : '#ffc107',
-                    borderColor: c.cita_estado === 'Realizada' ? '#28a745' : c.cita_estado === 'Cancelada' ? '#dc3545' : '#ffc107',
-                    textColor: '#000'
+                    backgroundColor: color,
+                    borderColor: color,
+                    textColor: '#fff'
                 };
             });
 
@@ -207,21 +377,31 @@ function inicializarCalendario() {
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 events: eventos,
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+                headerToolbar: { 
+                    left: 'prev,next today', 
+                    center: 'title', 
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay' 
+                },
                 height: 'auto',
                 eventClick: function(info) {
                     Swal.fire({
                         title: 'Cita #' + info.event.id,
-                        text: info.event.title,
+                        html: '<strong>' + info.event.title + '</strong>',
                         icon: 'info',
-                        confirmButtonText: 'Ver Citas',
+                        confirmButtonText: 'Ver Detalle',
                         confirmButtonColor: '#080522'
                     }).then(function() {
-                        if (typeof window.cargarVista === 'function') window.cargarVista('views/cita.html');
+                        if (typeof window.cargarVista === 'function') {
+                            window.cargarVista('views/cita.html');
+                        }
                     });
                 }
             });
             calendarioPanel.render();
+        })
+        .catch(function(error) {
+            console.error('Error cargando calendario:', error);
+            calendarEl.innerHTML = '<div class="alert alert-danger">Error al cargar el calendario</div>';
         });
 }
 
@@ -231,7 +411,7 @@ function buscarRefaccionarias() {
         navigator.geolocation.getCurrentPosition(function(position) {
             inicializarMapa(position.coords.latitude, position.coords.longitude);
         }, function() {
-            inicializarMapa(19.4326, -99.1332);
+            inicializarMapa(19.4326, -99.1332); // Centro de CDMX por defecto
         });
     } else {
         inicializarMapa(19.4326, -99.1332);
@@ -249,19 +429,22 @@ function inicializarMapa(lat, lng) {
 
     mapaRefacciones = L.map('mapaRefaccionarias').setView([lat, lng], 14);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19
     }).addTo(mapaRefacciones);
 
     var tallerIcon = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+        iconSize: [25, 41], 
+        iconAnchor: [12, 41], 
+        popupAnchor: [1, -34], 
+        shadowSize: [41, 41]
     });
 
     L.marker([lat, lng], {icon: tallerIcon})
         .addTo(mapaRefacciones)
-        .bindPopup('<b>JHP Taller Mecanico</b><br>Tu ubicacion')
+        .bindPopup('<b>🏍️ JHP Taller Mecánico</b><br>Tu ubicación actual')
         .openPopup();
 
     buscarRefaccionariasCercanas(lat, lng);
@@ -272,11 +455,17 @@ function buscarRefaccionariasCercanas(lat, lng) {
     var url = "https://nominatim.openstreetmap.org/search?format=json&limit=8&q=" + query + "&lat=" + lat + "&lon=" + lng + "&bounded=1&viewbox=" + (lng-0.2) + "," + (lat-0.2) + "," + (lng+0.2) + "," + (lat+0.2);
 
     fetch(url, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'JHP-Taller/1.0' }
+        headers: { 
+            'Accept': 'application/json', 
+            'User-Agent': 'JHP-Taller/1.0' 
+        }
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
-        marcadoresRefacciones.forEach(function(m) { mapaRefacciones.removeLayer(m); });
+        // Limpiar marcadores anteriores
+        marcadoresRefacciones.forEach(function(m) { 
+            mapaRefacciones.removeLayer(m); 
+        });
         marcadoresRefacciones = [];
 
         var listaTexto = document.getElementById("listaRefaccionariasTexto");
@@ -286,7 +475,10 @@ function buscarRefaccionariasCercanas(lat, lng) {
             var refaccIcon = L.icon({
                 iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+                iconSize: [25, 41], 
+                iconAnchor: [12, 41], 
+                popupAnchor: [1, -34], 
+                shadowSize: [41, 41]
             });
 
             var filas = '';
@@ -294,39 +486,64 @@ function buscarRefaccionariasCercanas(lat, lng) {
                 var pLat = parseFloat(p.lat);
                 var pLng = parseFloat(p.lon);
                 var nombre = p.display_name.split(',')[0] || 'Refaccionaria';
-                var direccion = p.display_name.split(',').slice(1, 3).join(',') || '';
+                var direccion = p.display_name.split(',').slice(1, 4).join(',') || '';
 
                 var marker = L.marker([pLat, pLng], {icon: refaccIcon})
                     .addTo(mapaRefacciones)
-                    .bindPopup('<b>' + nombre + '</b><br>' + direccion + '<br><a href="https://www.google.com/maps/dir/' + lat + ',' + lng + '/' + pLat + ',' + pLng + '" target="_blank">Como llegar</a>');
+                    .bindPopup('<b>' + nombre + '</b><br>' + direccion + '<br><a href="https://www.google.com/maps/dir/' + lat + ',' + lng + '/' + pLat + ',' + pLng + '" target="_blank" class="btn btn-sm btn-primary mt-2">📍 Cómo llegar</a>');
                 marcadoresRefacciones.push(marker);
 
-                filas += '<div class="d-flex justify-content-between align-items-center py-1 border-bottom">' +
+                filas += '<div class="d-flex justify-content-between align-items-center py-2 border-bottom">' +
                     '<div><strong>' + (i+1) + '. ' + nombre + '</strong><br><small class="text-muted">' + direccion + '</small></div>' +
-                    '<a href="https://www.google.com/maps/dir/' + lat + ',' + lng + '/' + pLat + ',' + pLng + '" target="_blank" class="btn btn-sm btn-outline-primary" title="Como llegar"><i class="fas fa-directions"></i></a>' +
+                    '<a href="https://www.google.com/maps/dir/' + lat + ',' + lng + '/' + pLat + ',' + pLng + '" target="_blank" class="btn btn-sm btn-outline-primary" title="Cómo llegar"><i class="fas fa-directions"></i></a>' +
                 '</div>';
             });
 
-            listaTexto.innerHTML = filas || '<div class="text-muted py-2">No se encontraron resultados</div>';
+            listaTexto.innerHTML = filas;
         } else {
-            listaTexto.innerHTML = '<div class="text-muted py-2"><i class="fas fa-info-circle me-1"></i>No se encontraron refaccionarias en tu zona.</div>';
+            listaTexto.innerHTML = '<div class="text-muted py-2 text-center"><i class="fas fa-info-circle me-1"></i>No se encontraron refaccionarias en tu zona</div>';
         }
     })
     .catch(function() {
         var listaTexto = document.getElementById("listaRefaccionariasTexto");
-        if (listaTexto) listaTexto.innerHTML = '<div class="text-muted py-2">Error al cargar refaccionarias</div>';
+        if (listaTexto) {
+            listaTexto.innerHTML = '<div class="text-muted py-2 text-center">Error al cargar refaccionarias cercanas</div>';
+        }
     });
 }
 
-// ========== EXPONER ==========
+// ========== FUNCIONES PARA ACTUALIZAR ==========
+function actualizarVentas() {
+    cargarVentasHoy();
+}
+
+function actualizarCitas() {
+    cargarCitasPanel();
+    inicializarCalendario();
+}
+
+// ========== EXPONER FUNCIONES GLOBALES ==========
 window.inicializarPanel = inicializarPanel;
 window.verificarEstadoCaja = verificarEstadoCaja;
 window.abrirModalCaja = abrirModalCaja;
 window.cerrarModal = cerrarModal;
 window.confirmarAbrirCaja = confirmarAbrirCaja;
+window.confirmarCerrarCaja = confirmarCerrarCaja;
 window.cargarCitasPanel = cargarCitasPanel;
+window.actualizarVentas = actualizarVentas;
+window.actualizarCitas = actualizarCitas;
+window.buscarRefaccionarias = buscarRefaccionarias;
 
-// Inicializar
-if (document.getElementById("calendario") || document.getElementById("estado-badge")) {
-    inicializarPanel();
+// ========== INICIALIZACIÓN AUTOMÁTICA ==========
+if (document.getElementById("calendario") || document.getElementById("estado-badge") || document.getElementById("mapaRefaccionarias")) {
+    document.addEventListener('DOMContentLoaded', function() {
+        inicializarPanel();
+    });
+    
+    // Si ya está cargado el DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', inicializarPanel);
+    } else {
+        inicializarPanel();
+    }
 }
