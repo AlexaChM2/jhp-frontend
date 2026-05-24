@@ -1,17 +1,14 @@
 const API_SERVICIOS = "https://jhpapi-production.up.railway.app/api/servicios";
 const API_CATEGORIAS = "https://jhpapi-production.up.railway.app/api/categorias";
 
-// Cargar lista
 async function listarServiciosCat() {
     const tbody = document.getElementById("tablaServiciosCat");
     if (!tbody) return;
-
     try {
         const res = await fetch(API_SERVICIOS);
         const data = await res.json();
         const servicios = data.success ? (data.data?.data || data.data) : data;
         const lista = Array.isArray(servicios) ? servicios : [];
-
         tbody.innerHTML = lista.map(s => `
             <tr>
                 <td>${s.id_servicio}</td>
@@ -20,8 +17,8 @@ async function listarServiciosCat() {
                 <td>$${parseFloat(s.ser_precio_mano_obra || 0).toFixed(2)}</td>
                 <td>${s.categoria?.cat_nombre || 'Sin categoría'}</td>
                 <td>
-                    <button class="btn btn-sm btn-warning" onclick="editarServicioCat(${s.id_servicio})"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-sm btn-danger" onclick="eliminarServicioCat(${s.id_servicio})"><i class="fas fa-trash"></i></button>
+                    <button class="btn btn-sm btn-warning" onclick="window.editarServicioCat(${s.id_servicio})"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="window.eliminarServicioCat(${s.id_servicio})"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
         `).join('') || '<tr><td colspan="6" class="text-center py-3">No hay servicios registrados</td></tr>';
@@ -30,14 +27,12 @@ async function listarServiciosCat() {
     }
 }
 
-// Cargar categorías
 async function cargarCategorias() {
     try {
         const res = await fetch(API_CATEGORIAS);
         const data = await res.json();
         const cats = data.success ? (data.data?.data || data.data) : data;
         const lista = Array.isArray(cats) ? cats : [];
-        
         const sel = document.getElementById("ser_categoria");
         if (sel) sel.innerHTML = '<option value="">Seleccione...</option>' + 
             lista.map(c => `<option value="${c.id_categoria}">${c.cat_nombre}</option>`).join('');
@@ -46,7 +41,6 @@ async function cargarCategorias() {
     }
 }
 
-// Abrir modal para nuevo
 function abrirModalServicioCat() {
     document.getElementById("formServicioCat").reset();
     document.getElementById("servicio_edit_id").value = "";
@@ -55,7 +49,6 @@ function abrirModalServicioCat() {
     new bootstrap.Modal(document.getElementById('modalServicioCat')).show();
 }
 
-// Guardar (crear o editar)
 async function guardarServicioCat() {
     const id = document.getElementById("servicio_edit_id").value;
     const nombre = document.getElementById("ser_nombre").value.trim();
@@ -74,12 +67,7 @@ async function guardarServicioCat() {
         const res = await fetch(url, {
             method,
             headers: { "Content-Type": "application/json", "Accept": "application/json" },
-            body: JSON.stringify({
-                ser_nombre: nombre,
-                ser_descripcion: descripcion,
-                ser_precio_mano_obra: precio,
-                id_categoria: categoria
-            })
+            body: JSON.stringify({ ser_nombre: nombre, ser_descripcion: descripcion, ser_precio_mano_obra: precio, id_categoria: categoria })
         });
         const result = await res.json();
         if (result.success || result.message) {
@@ -92,14 +80,12 @@ async function guardarServicioCat() {
     }
 }
 
-// Editar
 async function editarServicioCat(id) {
     try {
         await cargarCategorias();
         const res = await fetch(`${API_SERVICIOS}/${id}`);
         const response = await res.json();
         const s = response.success ? response.data : response;
-
         document.getElementById("servicio_edit_id").value = s.id_servicio;
         document.getElementById("ser_nombre").value = s.ser_nombre || "";
         document.getElementById("ser_descripcion").value = s.ser_descripcion || "";
@@ -112,18 +98,12 @@ async function editarServicioCat(id) {
     }
 }
 
-// Eliminar
 async function eliminarServicioCat(id) {
     const result = await Swal.fire({
-        title: '¿Eliminar?',
-        text: 'Este servicio se eliminará del catálogo',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Sí, eliminar'
+        title: '¿Eliminar?', text: 'Este servicio se eliminará del catálogo', icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Sí, eliminar'
     });
     if (!result.isConfirmed) return;
-
     try {
         await fetch(`${API_SERVICIOS}/${id}`, { method: 'DELETE' });
         Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500 });
@@ -133,7 +113,6 @@ async function eliminarServicioCat(id) {
     }
 }
 
-// Filtrar
 function filtrarServicios() {
     const q = document.getElementById("buscarServicioCat")?.value?.toLowerCase() || '';
     document.querySelectorAll("#tablaServiciosCat tr").forEach(row => {
@@ -147,34 +126,16 @@ window.guardarServicioCat = guardarServicioCat;
 window.editarServicioCat = editarServicioCat;
 window.eliminarServicioCat = eliminarServicioCat;
 window.filtrarServicios = filtrarServicios;
-
-// Init
-if (document.getElementById("tablaServiciosCat")) {
-    listarServiciosCat();
-}
-
-// Exponer
-window.abrirModalServicioCat = abrirModalServicioCat;
-window.guardarServicioCat = guardarServicioCat;
-window.editarServicioCat = editarServicioCat;
-window.eliminarServicioCat = eliminarServicioCat;
-window.filtrarServicios = filtrarServicios;
 window.listarServiciosCat = listarServiciosCat;
 
 // Inicialización
 function intentarInicializar() {
-    if (document.getElementById("tablaServiciosCat")) {
-        listarServiciosCat();
-    }
+    if (document.getElementById("tablaServiciosCat")) listarServiciosCat();
 }
-
 intentarInicializar();
-
 document.addEventListener('vista-cargada', function(e) {
-    if (e.detail && e.detail.vista && 
-        (e.detail.vista.includes('servicios_catalogo') || e.detail.vista.includes('Servicio'))) {
+    if (e.detail && e.detail.vista && e.detail.vista.includes('servicios_catalogo')) {
         setTimeout(listarServiciosCat, 300);
     }
 });
-
 setTimeout(intentarInicializar, 500);
