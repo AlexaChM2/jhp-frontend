@@ -152,3 +152,29 @@ window.filtrarServicios = filtrarServicios;
 if (document.getElementById("tablaServiciosCat")) {
     listarServiciosCat();
 }
+
+// Exponer
+window.abrirModalServicioCat = abrirModalServicioCat;
+window.guardarServicioCat = guardarServicioCat;
+window.editarServicioCat = editarServicioCat;
+window.eliminarServicioCat = eliminarServicioCat;
+window.filtrarServicios = filtrarServicios;
+window.listarServiciosCat = listarServiciosCat;
+
+// Inicialización
+function intentarInicializar() {
+    if (document.getElementById("tablaServiciosCat")) {
+        listarServiciosCat();
+    }
+}
+
+intentarInicializar();
+
+document.addEventListener('vista-cargada', function(e) {
+    if (e.detail && e.detail.vista && 
+        (e.detail.vista.includes('servicios_catalogo') || e.detail.vista.includes('Servicio'))) {
+        setTimeout(listarServiciosCat, 300);
+    }
+});
+
+setTimeout(intentarInicializar, 500);
