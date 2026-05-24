@@ -70,9 +70,17 @@
                     <td>$${parseFloat(m.mantenimiento_total||0).toFixed(2)}</td>
                     <td><span class="badge bg-${estadoClass}">${m.estado_servicio||'Pendiente'}</span></td>
                     <td>
-                        <button class="btn btn-sm btn-info" onclick="window.verDetalleServicio(${m.id_mantenimiento})"><i class="fas fa-eye"></i></button>
-                        <button class="btn btn-sm btn-warning" onclick="window.editarServicio(${m.id_mantenimiento})"><i class="fas fa-edit"></i></button>
-                       <button onclick="window.descargarPDFServicio(${m.id_mantenimiento})" title="Imprimir"
+                        <button onclick="window.verDetalleServicio(${m.id_mantenimiento})" title="Ver Detalle"
+    style="background:#0d6efd;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+    <i class="fas fa-eye"></i>
+</button>
+
+<button onclick="window.editarServicio(${m.id_mantenimiento})" title="Editar"
+    style="background:#ffc107;color:#000;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+    <i class="fas fa-edit"></i>
+</button>
+
+<button onclick="window.descargarPDFServicio(${m.id_mantenimiento})" title="Imprimir"
     style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
     <i class="fas fa-print"></i>
 </button>
