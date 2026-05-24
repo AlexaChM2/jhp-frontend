@@ -1,5 +1,3 @@
-
-
 let seccionActual = "Clientes";
 let editandoID = null;
 
@@ -17,12 +15,10 @@ const CONFIG = {
             "Contraseña *", "Confirmar Contraseña *", "Estado"
         ],
         columnas: ["ID", "Nombre Completo", "Teléfono", "Correo", "Estado", "Acciones"],
-     extraerDatos: (response) => {
-    if (response.success && Array.isArray(response.data)) {
-        return response.data;
-    }
-    return [];
-},
+        extraerDatos: (response) => {
+            if (response.success && Array.isArray(response.data)) return response.data;
+            return [];
+        },
         getId: (reg) => reg.id_cliente,
         formatearFila: (reg) => `
             <td>${reg.id_cliente || ''}</td>
@@ -32,25 +28,25 @@ const CONFIG = {
             <td><span class="badge bg-${reg.cli_estado === 'Activo' ? 'success' : 'secondary'}">${reg.cli_estado || 'N/A'}</span></td>
         `
     },
- Proveedores: {
-    api: "https://jhpapi-production.up.railway.app/api/proveedores",
-    campos: ["prov_nombre", "prov_contacto", "prov_telefono", "prov_email", "prov_direccion"],
-    labels: ["Empresa/Nombre *", "Contacto", "Teléfono", "Email", "Dirección"],
-    columnas: ["ID", "Proveedor", "Contacto", "Teléfono", "Email", "Acciones"],
-    extraerDatos: (response) => {
-        if (Array.isArray(response)) return response;
-        if (response.success && Array.isArray(response.data)) return response.data;
-        return [];
+    Proveedores: {
+        api: "https://jhpapi-production.up.railway.app/api/proveedores",
+        campos: ["prov_nombre", "prov_contacto", "prov_telefono", "prov_email", "prov_direccion"],
+        labels: ["Empresa/Nombre *", "Contacto", "Teléfono", "Email", "Dirección"],
+        columnas: ["ID", "Proveedor", "Contacto", "Teléfono", "Email", "Acciones"],
+        extraerDatos: (response) => {
+            if (Array.isArray(response)) return response;
+            if (response.success && Array.isArray(response.data)) return response.data;
+            return [];
+        },
+        getId: (reg) => reg.id_proveedor,
+        formatearFila: (reg) => `
+            <td>${reg.id_proveedor || ''}</td>
+            <td>${reg.prov_nombre || 'N/A'}</td>
+            <td>${reg.prov_contacto || 'N/A'}</td>
+            <td>${reg.prov_telefono || 'N/A'}</td>
+            <td>${reg.prov_email || 'N/A'}</td>
+        `
     },
-    getId: (reg) => reg.id_proveedor,
-    formatearFila: (reg) => `
-        <td>${reg.id_proveedor || ''}</td>
-        <td>${reg.prov_nombre || 'N/A'}</td>
-        <td>${reg.prov_contacto || 'N/A'}</td>
-        <td>${reg.prov_telefono || 'N/A'}</td>
-        <td>${reg.prov_email || 'N/A'}</td>
-    `
-},
     Empleados: {
         api: "https://jhpapi-production.up.railway.app/api/empleados",
         campos: [
@@ -64,12 +60,10 @@ const CONFIG = {
             "Dirección", "Contraseña *", "Confirmar Contraseña *", "Estado"
         ],
         columnas: ["ID", "Empleado", "Rol", "Correo", "Estado", "Acciones"],
-     extraerDatos: (response) => {
-    if (response.success && Array.isArray(response.data)) {
-        return response.data;
-    }
-    return [];
-},
+        extraerDatos: (response) => {
+            if (response.success && Array.isArray(response.data)) return response.data;
+            return [];
+        },
         getId: (reg) => reg.id_empleados,
         formatearFila: (reg) => `
             <td>${reg.id_empleados || ''}</td>
@@ -89,10 +83,9 @@ const CONFIG = {
     }
 };
 
-
-// INICIALIZACIÓN
-
-
+// ==========================================
+// FUNCIONES
+// ==========================================
 
 function cargarSeccion(nombre) {
     console.log(`Cambiando a sección: ${nombre}`);
@@ -123,7 +116,7 @@ function listarRegistros() {
     const token = localStorage.getItem('token');
     const config = CONFIG[seccionActual];
 
-    console.log(` Cargando ${seccionActual} desde: ${config.api}`);
+    console.log(`📥 Cargando ${seccionActual} desde: ${config.api}`);
 
     fetch(config.api, {
         headers: {
@@ -190,7 +183,7 @@ function listarRegistros() {
                 <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
                 <p class="text-danger mb-2">Error al cargar los datos</p>
                 <small class="text-muted">${error.message}</small>
-                <br><button class="btn btn-sm btn-outline-primary mt-2" onclick="listarRegistros()">
+                <br><button class="btn btn-sm btn-outline-primary mt-2" onclick="window.listarRegistros()">
                 <i class="fas fa-sync"></i> Reintentar</button></td></tr>`;
         }
     });
@@ -200,19 +193,19 @@ function abrirModalRegistro() {
     editandoID = null;
     const titulo = document.getElementById("modalTitulo");
     if (titulo) titulo.innerText = "Nuevo " + seccionActual.slice(0, -1);
-    generarInputs();
+    
     const modal = document.getElementById("modalCatalogo");
-    if (modal) modal.style.display = "flex";
+    if (modal) {
+        modal.style.display = "flex";
+        setTimeout(() => generarInputs(), 50);
+    }
 }
 
 function generarInputs(datos = null) {
     const contenedor = document.getElementById("inputsDinamicos");
-    console.log("Contenedor:", contenedor);  // ← Agrega esto
     if (!contenedor) return;
     contenedor.innerHTML = "";
     const config = CONFIG[seccionActual];
-    console.log("Config:", config);  // ← Agrega esto
-    console.log("Campos:", config.campos); 
 
     config.campos.forEach((campo, index) => {
         const valor = datos ? (datos[campo] || '') : '';
@@ -226,63 +219,43 @@ function generarInputs(datos = null) {
                     <option value="Administrador" ${valor === 'Administrador' ? 'selected' : ''}>Administrador</option>
                     <option value="Mecanico" ${valor === 'Mecanico' ? 'selected' : ''}>Mecánico</option>
                 </select>`;
-                
         } else if (campo === "cli_estado" || campo === "emp_estado") {
             inputHtml = `
                 <select class="form-select" name="${campo}">
                     <option value="Activo" ${valor === 'Activo' ? 'selected' : ''}>Activo</option>
                     <option value="Inactivo" ${valor === 'Inactivo' ? 'selected' : ''}>Inactivo</option>
                 </select>`;
-                
         } else if (campo.includes("direccion")) {
             inputHtml = `<textarea class="form-control" name="${campo}" rows="3" maxlength="255">${valor}</textarea>`;
-            
         } else if (campo.includes("password_confirmation")) {
             const esEdicion = editandoID !== null;
             const required = esEdicion ? '' : 'required';
             const placeholder = esEdicion ? 'Repetir nueva contraseña' : 'Repetir contraseña';
-            inputHtml = `
-                <input type="password" class="form-control" name="${campo}" 
-                    placeholder="${placeholder}" ${required} minlength="6" maxlength="50">`;
-                    
+            inputHtml = `<input type="password" class="form-control" name="${campo}" placeholder="${placeholder}" ${required} minlength="6" maxlength="50">`;
         } else if (campo.includes("password")) {
             const esEdicion = editandoID !== null;
             const required = esEdicion ? '' : 'required';
             const placeholder = esEdicion ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres';
             inputHtml = `
-                <input type="password" class="form-control" name="${campo}" 
-                    placeholder="${placeholder}" ${required} minlength="6" maxlength="50">
+                <input type="password" class="form-control" name="${campo}" placeholder="${placeholder}" ${required} minlength="6" maxlength="50">
                 <small class="text-muted">Debe tener: 1 mayúscula, 1 minúscula, 1 número, 6+ caracteres</small>`;
-                    
         } else if (campo.includes("telefono")) {
             inputHtml = `
-                <input type="tel" class="form-control" name="${campo}" 
-                    value="${valor}" maxlength="10" minlength="10"
-                    pattern="[0-9]{10}" 
-                    title="Debe ingresar exactamente 10 dígitos numéricos"
-                    oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)"
-                    placeholder="Ej: 5512345678">`;
-                    
+                <input type="tel" class="form-control" name="${campo}" value="${valor}" maxlength="10" minlength="10"
+                    pattern="[0-9]{10}" title="Debe ingresar exactamente 10 dígitos numéricos"
+                    oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)" placeholder="Ej: 5512345678">`;
         } else if (campo.includes("email") || campo.includes("correo")) {
-            inputHtml = `
-                <input type="email" class="form-control" name="${campo}" 
-                    value="${valor}" required
-                    placeholder="ej: usuario@dominio.com">`;
-                    
+            inputHtml = `<input type="email" class="form-control" name="${campo}" value="${valor}" required placeholder="ej: usuario@dominio.com">`;
         } else if (campo.includes("nombre") || campo.includes("apaterno") || campo.includes("amaterno")) {
             const required = (campo === 'emp_amaterno' || campo === 'cli_amaterno') ? '' : 'required';
             const maxlength = campo.includes('nombre') && !campo.includes('apaterno') && !campo.includes('amaterno') ? '100' : '50';
             inputHtml = `
-                <input type="text" class="form-control" name="${campo}" 
-                    value="${valor}" ${required} maxlength="${maxlength}"
+                <input type="text" class="form-control" name="${campo}" value="${valor}" ${required} maxlength="${maxlength}"
                     oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')"
                     placeholder="${campo.includes('amaterno') ? 'Opcional' : 'Requerido'}">`;
-                    
         } else {
-            let tipo = "text";
-            const required = (campo === 'emp_amaterno' || campo === 'cli_amaterno' || 
-                            campo === 'cli_direccion' || campo === 'emp_direccion') ? '' : 'required';
-            inputHtml = `<input type="${tipo}" class="form-control" name="${campo}" value="${valor}" ${required}>`;
+            const required = (campo === 'emp_amaterno' || campo === 'cli_amaterno' || campo === 'cli_direccion' || campo === 'emp_direccion') ? '' : 'required';
+            inputHtml = `<input type="text" class="form-control" name="${campo}" value="${valor}" ${required}>`;
         }
 
         contenedor.innerHTML += `
@@ -291,7 +264,7 @@ function generarInputs(datos = null) {
                 ${inputHtml}
             </div>`;
     });
-} 
+}
 
 function guardarRegistro(e) {
     e.preventDefault();
@@ -303,56 +276,42 @@ function guardarRegistro(e) {
     const emailField = seccionActual === 'Empleados' ? 'emp_correo' : 'cli_correo';
     const telefonoField = seccionActual === 'Empleados' ? 'emp_telefono' : 'cli_telefono';
     
-    // Validar contraseñas
     if (objeto[passwordField] && objeto[confirmField]) {
         if (objeto[passwordField] !== objeto[confirmField]) {
             Swal.fire({ icon: 'error', title: 'Error', text: 'Las contraseñas no coinciden' });
             return;
         }
-        // Validar fortaleza
         const password = objeto[passwordField];
         const errores = [];
         if (password.length < 6) errores.push('• Al menos 6 caracteres');
         if (!/[A-Z]/.test(password)) errores.push('• Al menos una mayúscula (A-Z)');
         if (!/[a-z]/.test(password)) errores.push('• Al menos una minúscula (a-z)');
         if (!/[0-9]/.test(password)) errores.push('• Al menos un número (0-9)');
-        
         if (errores.length > 0) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Contraseña débil',
-                html: 'La contraseña debe cumplir:<br>' + errores.join('<br>')
-            });
+            Swal.fire({ icon: 'error', title: 'Contraseña débil', html: 'La contraseña debe cumplir:<br>' + errores.join('<br>') });
             return;
         }
     }
     
-    // Validar que si uno está lleno, el otro también
     if ((objeto[passwordField] && !objeto[confirmField]) || (!objeto[passwordField] && objeto[confirmField])) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Debe llenar ambos campos de contraseña' });
         return;
     }
     
-    // Validar teléfono (
     if (objeto[telefonoField] && !/^\d{10}$/.test(objeto[telefonoField])) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'El teléfono debe tener exactamente 10 dígitos' });
         return;
     }
     
-    // Validar email
     if (objeto[emailField] && !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(objeto[emailField])) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Ingrese un correo electrónico válido' });
         return;
     }
 
-    // Limpiar valores vacíos
     Object.keys(objeto).forEach(key => {
-        if (objeto[key] === '' && key !== 'cli_estado' && key !== 'emp_estado') {
-            delete objeto[key];
-        }
+        if (objeto[key] === '' && key !== 'cli_estado' && key !== 'emp_estado') delete objeto[key];
     });
 
-    // Si edita y no puso contraseña
     if (editandoID) {
         if (!objeto[passwordField] || objeto[passwordField] === '') {
             delete objeto[passwordField];
@@ -362,28 +321,17 @@ function guardarRegistro(e) {
 
     const token = localStorage.getItem('token');
     const metodo = editandoID ? "PUT" : "POST";
-    const url = editandoID
-        ? `${CONFIG[seccionActual].api}/${editandoID}`
-        : CONFIG[seccionActual].api;
-
-    console.log(`Guardando: ${metodo} ${url}`, objeto);
+    const url = editandoID ? `${CONFIG[seccionActual].api}/${editandoID}` : CONFIG[seccionActual].api;
 
     fetch(url, {
         method: metodo,
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Authorization": `Bearer ${token}`
-        },
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify(objeto)
     })
     .then(async res => {
         const data = await res.json();
         if (!res.ok) {
-            if (data.errors) {
-                const mensajes = Object.values(data.errors).flat().join('<br>');
-                throw new Error(mensajes);
-            }
+            if (data.errors) throw new Error(Object.values(data.errors).flat().join('<br>'));
             throw new Error(data.message || 'Error del servidor');
         }
         return data;
@@ -402,9 +350,12 @@ function prepararEdicion(reg) {
     editandoID = CONFIG[seccionActual].getId(reg);
     const titulo = document.getElementById("modalTitulo");
     if (titulo) titulo.innerText = "Editar " + seccionActual.slice(0, -1);
-    generarInputs(reg);
+    
     const modal = document.getElementById("modalCatalogo");
-    if (modal) modal.style.display = "flex";
+    if (modal) {
+        modal.style.display = "flex";
+        setTimeout(() => generarInputs(reg), 50);
+    }
 }
 
 function eliminarRegistro(id, reg) {
@@ -412,16 +363,10 @@ function eliminarRegistro(id, reg) {
         Swal.fire({ icon: 'error', title: 'Acción no permitida', text: 'No se puede eliminar a un Administrador.' });
         return;
     }
-
     Swal.fire({
-        title: '¿Eliminar registro?',
-        text: 'Esta acción no se puede deshacer',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
+        title: '¿Eliminar registro?', text: 'Esta acción no se puede deshacer', icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
             const token = localStorage.getItem('token');
@@ -453,10 +398,10 @@ function filtrarTabla() {
     });
 }
 
-setTimeout(() => {
-    cargarSeccion('Clientes');
-}, 100);
+// Inicialización
+setTimeout(() => cargarSeccion('Clientes'), 100);
 
+// Exponer globalmente
 window.cargarSeccion = cargarSeccion;
 window.abrirModalRegistro = abrirModalRegistro;
 window.guardarRegistro = guardarRegistro;
