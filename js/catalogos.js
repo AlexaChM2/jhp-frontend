@@ -197,7 +197,10 @@ function abrirModalRegistro() {
     const modal = document.getElementById("modalCatalogo");
     if (modal) {
         modal.style.display = "flex";
-        setTimeout(() => generarInputs(), 50);
+        // Esperar a que el modal esté visible
+        setTimeout(() => {
+            generarInputs();
+        }, 100);
     }
 }
 
@@ -354,7 +357,9 @@ function prepararEdicion(reg) {
     const modal = document.getElementById("modalCatalogo");
     if (modal) {
         modal.style.display = "flex";
-        setTimeout(() => generarInputs(reg), 50);
+        setTimeout(() => {
+            generarInputs(reg);
+        }, 100);
     }
 }
 
