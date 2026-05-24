@@ -450,11 +450,9 @@ function filtrarTabla() {
     });
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => cargarSeccion('Clientes'));
-} else {
+setTimeout(() => {
     cargarSeccion('Clientes');
-}
+}, 100);
 
 window.cargarSeccion = cargarSeccion;
 window.abrirModalRegistro = abrirModalRegistro;
