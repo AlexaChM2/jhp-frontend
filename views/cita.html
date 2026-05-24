@@ -35,28 +35,6 @@
         </button>
     </div>
 
-    <!-- Calendario de Disponibilidad -->
-    <div class="card shadow-sm border-0 mt-4 mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">
-                <i class="fas fa-calendar-alt me-2"></i>Calendario de Disponibilidad
-            </h5>
-        </div>
-        <div class="card-body">
-            <div id="calendarioCitas" style="min-height: 500px;"></div>
-            <hr>
-            <div class="d-flex justify-content-center gap-4 flex-wrap">
-                <div><span class="badge bg-success">✅</span> Días con horarios disponibles</div>
-                <div><span class="badge bg-warning text-dark">⚠️</span> Disponibilidad parcial</div>
-                <div><span class="badge bg-danger">🔴</span> Sin disponibilidad / No laboral</div>
-            </div>
-            <small class="text-muted mt-3 d-block text-center">
-                <i class="fas fa-clock me-1"></i>
-                Horario: Lunes a Viernes de 9:00 AM a 6:00 PM | Duración mínima: 3 horas por cita
-            </small>
-        </div>
-    </div>
-
     <!-- Tabla de Citas -->
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
@@ -78,14 +56,14 @@
     </div>
 </div>
 
-<!-- MODAL DE CITA -->
+<!-- MODAL DE CITA CON CALENDARIO INTEGRADO -->
 <div id="modalCita" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1050; align-items:center; justify-content:center;">
-    <div class="modal-content bg-white shadow-lg" style="width:95%; max-width:650px; border-radius:12px; overflow:visible;">
+    <div class="modal-content bg-white shadow-lg" style="width:95%; max-width:750px; border-radius:12px; overflow:visible;">
         <div class="modal-header p-3 bg-warning d-flex justify-content-between align-items-center">
             <h5 class="m-0 fw-bold" id="tituloModalCita">Programar Cita</h5>
             <button type="button" class="btn-close" onclick="window.cerrarModalCita()"></button>
         </div>
-        <div class="modal-body p-4">
+        <div class="modal-body p-4" style="max-height: 80vh; overflow-y: auto;">
             <form id="formCita">
                 <input type="hidden" id="edit_id_cita" name="id_cita">
                 
@@ -108,17 +86,18 @@
                         </select>
                     </div>
 
-                    <!-- Fecha Programada con validación -->
+                    <!-- CALENDARIO DE SELECCIÓN DE FECHA -->
                     <div class="col-md-12">
-                        <label class="form-label fw-bold">Fecha Programada *</label>
-                        <input type="datetime-local" name="cita_fecha_programada" id="cita_fecha" class="form-control" required onchange="consultarClimaFecha(this.value)">
+                        <label class="form-label fw-bold">Seleccionar Fecha</label>
+                        <div id="calendarioSelector" class="border rounded p-2" style="background: #f8f9fa;"></div>
                         <div id="errorHorarioCita" class="text-danger small mt-1"></div>
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Horario disponible: Lunes a Viernes de 9:00 AM a 6:00 PM<br>
-                            <i class="fas fa-hourglass-half me-1"></i>
-                            Duración mínima por cita: 3 horas
-                        </small>
+                        <input type="hidden" id="cita_fecha" name="cita_fecha_programada">
+                    </div>
+
+                    <!-- HORARIOS DISPONIBLES -->
+                    <div class="col-md-12" id="horariosContainer" style="display: none;">
+                        <label class="form-label fw-bold">Horarios Disponibles</label>
+                        <div id="listaHorariosDisponibles" class="d-flex flex-wrap gap-2 mb-2"></div>
                     </div>
 
                     <!-- Clima para la fecha -->
@@ -170,109 +149,3 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
 <script src="js/cita.js"></script>
-
-<script>
-(function() {
-    const API_CLIMA = "http://localhost:8000/api/clima";
-
-    function cargarClimaActual() {
-        const el = document.getElementById('clima-actual-texto');
-        if (!el) return;
-        
-        fetch(`${API_CLIMA}/actual`)
-            .then(res => res.json())
-            .then(data => {
-                console.log('Clima actual:', data);
-                if (data && !data.error) {
-                    const temp = data.temperatura || 'N/A';
-                    const desc = data.descripcion || '';
-                    const rec = data.recomendacion || '';
-                    el.innerHTML = `<strong>${temp}</strong> - ${desc}<br><small>${rec}</small>`;
-                    
-                    const icono = document.getElementById('clima-icono');
-                    if (icono && data.icono) {
-                        icono.src = data.icono;
-                        icono.style.display = 'inline';
-                    }
-                }
-            })
-            .catch(err => {
-                console.error('Error clima:', err);
-                el.textContent = 'No disponible';
-            });
-    }
-
-    function cargarPronostico() {
-        const el = document.getElementById('pronostico-texto');
-        if (!el) return;
-        
-        fetch(`${API_CLIMA}/pronostico`)
-            .then(res => res.json())
-            .then(data => {
-                console.log('Pronóstico:', data);
-                if (Array.isArray(data) && data.length > 0) {
-                    const hoy = data[0];
-                    el.innerHTML = `Hoy: <strong>${hoy.temp_max} / ${hoy.temp_min}</strong> - ${hoy.descripcion}`;
-                }
-            })
-            .catch(err => {
-                console.error('Error pronóstico:', err);
-                el.textContent = 'No disponible';
-            });
-    }
-
-    window.consultarClimaFecha = function(fecha) {
-        if (!fecha) return;
-        
-        const fechaSolo = fecha.split('T')[0];
-        console.log('Consultando clima para:', fechaSolo);
-        
-        fetch(`${API_CLIMA}/pronostico`)
-            .then(res => res.json())
-            .then(data => {
-                const dia = Array.isArray(data) ? data.find(d => d.fecha === fechaSolo) : null;
-                const infoDiv = document.getElementById('clima-cita-info');
-                const infoTexto = document.getElementById('clima-fecha-texto');
-                
-                if (infoDiv && infoTexto) {
-                    if (dia) {
-                        infoDiv.style.display = 'block';
-                        if (dia.recomendable) {
-                            infoDiv.className = 'alert alert-success py-2 mb-0 mt-2';
-                            infoTexto.innerHTML = `<i class="fas fa-sun me-1"></i> ${dia.descripcion} | ${dia.temp_max}° / ${dia.temp_min}° | ¡Buen día para cita!`;
-                        } else {
-                            infoDiv.className = 'alert alert-warning py-2 mb-0 mt-2';
-                            infoTexto.innerHTML = `<i class="fas fa-cloud-rain me-1"></i> ${dia.descripcion} | ${dia.temp_max}° / ${dia.temp_min}° | Lluvia: ${dia.lluvia || 'Posible'}`;
-                        }
-                    } else {
-                        infoDiv.style.display = 'block';
-                        infoDiv.className = 'alert alert-info py-2 mb-0 mt-2';
-                        infoTexto.innerHTML = `<i class="fas fa-cloud me-1"></i> Sin datos de clima para esta fecha`;
-                    }
-                }
-            })
-            .catch(err => console.error('Error clima fecha:', err));
-    };
-
-    // Inicializar cuando el DOM esté listo
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(() => {
-            cargarClimaActual();
-            cargarPronostico();
-            if (typeof window.inicializarCalendario === 'function') {
-                window.inicializarCalendario();
-            }
-        }, 500);
-    } else {
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => {
-                cargarClimaActual();
-                cargarPronostico();
-                if (typeof window.inicializarCalendario === 'function') {
-                    window.inicializarCalendario();
-                }
-            }, 500);
-        });
-    }
-})();
-</script>

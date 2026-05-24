@@ -5,157 +5,108 @@ var API_EMP_CITAS = "https://jhpapi-production.up.railway.app/api/empleados";
 let clienteIdCita = null;
 let empleadoIdCita = null;
 let editandoCitaId = null;
-let citasIniciadas = false;
 let citasExistentes = [];
-let currentCalendar = null;
+let calendarSelector = null;
+let fechaSeleccionadaGlobal = null;
 
-// ========== CONFIGURACIÓN ==========
 const CONFIG = {
     HORARIO: {
-        INICIO: 9,      // 9 AM
-        FIN: 18,        // 6 PM
-        DIAS_LABORALES: [1, 2, 3, 4, 5], // Lunes a Viernes (1=Lunes, 5=Viernes)
+        INICIO: 9,
+        FIN: 18,
+        DIAS_LABORALES: [1, 2, 3, 4, 5],
         DURACION_MINIMA_HORAS: 3
     },
     COLORES: {
-        DISPONIBLE: '#28a745',   // Verde - Días con horarios disponibles
-        NO_DISPONIBLE: '#dc3545', // Rojo - Días sin horarios disponibles
-        PARCIAL: '#ffc107'        // Amarillo - Días con disponibilidad parcial
+        DISPONIBLE: '#28a745',
+        NO_DISPONIBLE: '#dc3545',
+        PARCIAL: '#ffc107'
     }
 };
 
-// ========== AUTO-INICIALIZACIÓN ==========
-(function() {
-    document.addEventListener('vista-cargada', function(e) {
-        if (e.detail && e.detail.vista && 
-            (e.detail.vista.includes('cita') || e.detail.vista.includes('Cita'))) {
-            citasIniciadas = false;
-            setTimeout(() => {
-                listarCitas();
-                cargarSelectEmpleados();
-                inicializarSelectorFecha();
-                inicializarCalendario();
-            }, 500);
-        }
-    });
-    
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        const tabla = document.getElementById('tablaCitas');
-        if (tabla) setTimeout(() => {
-            listarCitas();
-            inicializarCalendario();
-        }, 300);
-    }
-})();
-
-// ========== INICIALIZAR CALENDARIO ==========
-async function inicializarCalendario() {
-    const calendarEl = document.getElementById('calendarioCitas');
+// ========== INICIALIZAR CALENDARIO SELECCIONABLE ==========
+async function inicializarCalendarioSelector() {
+    const calendarEl = document.getElementById('calendarioSelector');
     if (!calendarEl) return;
     
-    if (currentCalendar) {
-        currentCalendar.destroy();
+    if (calendarSelector) {
+        calendarSelector.destroy();
     }
     
     await cargarCitasExistentes();
-    const eventos = await generarEventosCalendario();
     
-    currentCalendar = new FullCalendar.Calendar(calendarEl, {
+    calendarSelector = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'es',
         headerToolbar: {
-            left: 'prev,next today',
+            left: 'prev,next',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek'
+            right: ''
         },
         height: 'auto',
-        events: eventos,
-        eventClick: function(info) {
-            if (info.event.extendedProps.disponibilidad) {
-                mostrarHorariosDisponibles(info.event.start);
-            }
+        dateClick: function(info) {
+            seleccionarFecha(info.date);
         },
         dayCellDidMount: function(info) {
-            // Personalizar tooltip en días
-            const fechaStr = info.date.toLocaleDateString('es-MX');
-            const evento = eventos.find(e => e.start.toDateString() === info.date.toDateString());
-            if (evento) {
-                info.el.style.cursor = 'pointer';
-                info.el.title = evento.title;
-            }
+            aplicarColorDia(info);
         }
     });
     
-    currentCalendar.render();
+    calendarSelector.render();
 }
 
-async function generarEventosCalendario() {
-    await cargarCitasExistentes();
-    
-    const eventos = [];
+function aplicarColorDia(info) {
+    const fecha = info.date;
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     
-    const fin = new Date(hoy);
-    fin.setMonth(fin.getMonth() + 3);
-    
-    for (let d = new Date(hoy); d <= fin; d.setDate(d.getDate() + 1)) {
-        const diaSemana = d.getDay();
-        let diaJS = diaSemana === 0 ? 7 : diaSemana;
-        const esLaboral = CONFIG.HORARIO.DIAS_LABORALES.includes(diaJS);
-        
-        if (!esLaboral) {
-            eventos.push({
-                title: '🔴 No laboral',
-                start: new Date(d),
-                allDay: true,
-                backgroundColor: CONFIG.COLORES.NO_DISPONIBLE,
-                borderColor: CONFIG.COLORES.NO_DISPONIBLE,
-                textColor: 'white',
-                extendedProps: { disponibilidad: false }
-            });
-            continue;
-        }
-        
-        const disponibilidad = await verificarDisponibilidadDia(d);
-        
-        if (disponibilidad.completa) {
-            eventos.push({
-                title: '✅ Disponible',
-                start: new Date(d),
-                allDay: true,
-                backgroundColor: CONFIG.COLORES.DISPONIBLE,
-                borderColor: CONFIG.COLORES.DISPONIBLE,
-                textColor: 'white',
-                extendedProps: { disponibilidad: true, horarios: disponibilidad.horarios }
-            });
-        } else if (disponibilidad.parcial) {
-            eventos.push({
-                title: '⚠️ Disponibilidad parcial',
-                start: new Date(d),
-                allDay: true,
-                backgroundColor: CONFIG.COLORES.PARCIAL,
-                borderColor: CONFIG.COLORES.PARCIAL,
-                textColor: 'black',
-                extendedProps: { disponibilidad: true, horarios: disponibilidad.horarios }
-            });
-        } else {
-            eventos.push({
-                title: '🔴 Sin disponibilidad',
-                start: new Date(d),
-                allDay: true,
-                backgroundColor: CONFIG.COLORES.NO_DISPONIBLE,
-                borderColor: CONFIG.COLORES.NO_DISPONIBLE,
-                textColor: 'white',
-                extendedProps: { disponibilidad: false }
-            });
-        }
+    if (fecha < hoy) {
+        info.el.style.backgroundColor = '#e9ecef';
+        info.el.style.pointerEvents = 'none';
+        info.el.style.opacity = '0.5';
+        return;
     }
     
-    return eventos;
+    const disponibilidad = obtenerDisponibilidadDia(fecha);
+    
+    if (disponibilidad === 'completa') {
+        info.el.style.backgroundColor = CONFIG.COLORES.DISPONIBLE;
+        info.el.style.color = 'white';
+        info.el.style.borderRadius = '8px';
+        info.el.style.cursor = 'pointer';
+    } else if (disponibilidad === 'parcial') {
+        info.el.style.backgroundColor = CONFIG.COLORES.PARCIAL;
+        info.el.style.color = 'black';
+        info.el.style.borderRadius = '8px';
+        info.el.style.cursor = 'pointer';
+    } else {
+        info.el.style.backgroundColor = CONFIG.COLORES.NO_DISPONIBLE;
+        info.el.style.color = 'white';
+        info.el.style.borderRadius = '8px';
+        info.el.style.opacity = '0.7';
+        info.el.style.cursor = 'not-allowed';
+    }
 }
 
-async function verificarDisponibilidadDia(fecha) {
+function obtenerDisponibilidadDia(fecha) {
+    const diaSemana = fecha.getDay();
+    let diaJS = diaSemana === 0 ? 7 : diaSemana;
+    
+    if (!CONFIG.HORARIO.DIAS_LABORALES.includes(diaJS)) {
+        return 'no_disponible';
+    }
+    
+    const horariosDisponibles = obtenerHorariosDisponiblesSync(fecha);
+    
+    if (horariosDisponibles.length === 0) {
+        return 'no_disponible';
+    } else if (horariosDisponibles.length < 5) {
+        return 'parcial';
+    } else {
+        return 'completa';
+    }
+}
+
+function obtenerHorariosDisponiblesSync(fecha) {
     const fechaStr = fecha.toDateString();
     const citasDia = citasExistentes.filter(cita => {
         const fechaCita = new Date(cita.cita_fecha_programada);
@@ -189,215 +140,92 @@ async function verificarDisponibilidadDia(fecha) {
         }
     }
     
-    return {
-        completa: horariosDisponibles.length > 0,
-        parcial: horariosDisponibles.length > 0 && horariosDisponibles.length < 5,
-        horarios: horariosDisponibles
-    };
+    return horariosDisponibles;
 }
 
-function mostrarHorariosDisponibles(fecha) {
-    const modalHtml = `
-        <div class="modal fade" id="modalHorarios" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title">
-                            <i class="fas fa-calendar-day me-2"></i>Horarios Disponibles
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p class="mb-3">
-                            <strong>${fecha.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
-                        </p>
-                        <div id="listaHorariosDisponibles" class="d-flex flex-wrap gap-2">
-                            <div class="text-center w-100 py-3">
-                                <div class="spinner-border text-primary" role="status"></div>
-                                <p class="mt-2">Cargando horarios...</p>
-                            </div>
-                        </div>
-                        <small class="text-muted mt-3 d-block">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Cada cita tiene una duración mínima de ${CONFIG.HORARIO.DURACION_MINIMA_HORAS} horas.
-                        </small>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+async function seleccionarFecha(fecha) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
     
-    // Eliminar modal existente si lo hay
-    const existingModal = document.getElementById('modalHorarios');
-    if (existingModal) existingModal.remove();
-    
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modalElement = document.getElementById('modalHorarios');
-    const modal = new bootstrap.Modal(modalElement);
-    
-    // Cargar horarios
-    cargarYMostrarHorarios(fecha, modal);
-    
-    modal.show();
-    
-    modalElement.addEventListener('hidden.bs.modal', function() {
-        modalElement.remove();
-    });
-}
-
-async function cargarYMostrarHorarios(fecha, modal) {
-    const container = document.getElementById('listaHorariosDisponibles');
-    const disponibilidad = await verificarDisponibilidadDia(fecha);
-    
-    if (disponibilidad.horarios.length === 0) {
-        container.innerHTML = `
-            <div class="alert alert-warning text-center w-100">
-                <i class="fas fa-calendar-times fa-2x mb-2 d-block"></i>
-                No hay horarios disponibles para este día.
-            </div>
-        `;
+    if (fecha < hoy) {
+        Swal.fire("Aviso", "No se pueden seleccionar fechas pasadas", "warning");
         return;
     }
     
-    container.innerHTML = `
-        <div class="row g-2 w-100">
-            ${disponibilidad.horarios.map(horario => `
-                <div class="col-6 col-md-4">
-                    <button class="btn btn-outline-success w-100 py-2 seleccionar-horario-btn" 
-                            data-inicio="${horario.inicio}"
-                            data-fin="${horario.fin}"
-                            style="border-radius: 10px;">
-                        <i class="fas fa-clock me-1"></i>
-                        ${horario.texto}
-                    </button>
-                </div>
-            `).join('')}
-        </div>
-    `;
+    fechaSeleccionadaGlobal = fecha;
+    const horariosDisponibles = obtenerHorariosDisponiblesSync(fecha);
     
-    // Agregar eventos a los botones
-    container.querySelectorAll('.seleccionar-horario-btn').forEach(btn => {
+    if (horariosDisponibles.length === 0) {
+        Swal.fire("Sin disponibilidad", "No hay horarios disponibles para esta fecha", "warning");
+        return;
+    }
+    
+    mostrarHorariosDisponiblesModal(horariosDisponibles, fecha);
+    consultarClimaFecha(fecha.toISOString().split('T')[0]);
+}
+
+function mostrarHorariosDisponiblesModal(horarios, fecha) {
+    const container = document.getElementById('listaHorariosDisponibles');
+    const horariosContainer = document.getElementById('horariosContainer');
+    
+    if (!container) return;
+    
+    container.innerHTML = horarios.map(horario => `
+        <button type="button" class="btn btn-outline-success seleccionar-horario-btn" 
+                data-inicio="${horario.inicio}"
+                style="border-radius: 8px; padding: 10px 20px;">
+            <i class="fas fa-clock me-1"></i> ${horario.texto}
+        </button>
+    `).join('');
+    
+    horariosContainer.style.display = 'block';
+    
+    document.querySelectorAll('.seleccionar-horario-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const horaInicio = parseInt(this.dataset.inicio);
-            const fechaSeleccionada = new Date(fecha);
-            fechaSeleccionada.setHours(horaInicio, 0, 0, 0);
+            const fechaHora = new Date(fecha);
+            fechaHora.setHours(horaInicio, 0, 0, 0);
             
-            // Formatear para input datetime-local
-            const año = fechaSeleccionada.getFullYear();
-            const mes = String(fechaSeleccionada.getMonth() + 1).padStart(2, '0');
-            const dia = String(fechaSeleccionada.getDate()).padStart(2, '0');
+            const año = fechaHora.getFullYear();
+            const mes = String(fechaHora.getMonth() + 1).padStart(2, '0');
+            const dia = String(fechaHora.getDate()).padStart(2, '0');
             const hora = String(horaInicio).padStart(2, '0');
             
             const fechaFormateada = `${año}-${mes}-${dia}T${hora}:00`;
+            document.getElementById("cita_fecha").value = fechaFormateada;
             
-            // Cerrar modal de horarios
-            modal.hide();
+            // Cambiar estilo del botón seleccionado
+            document.querySelectorAll('.seleccionar-horario-btn').forEach(b => {
+                b.classList.remove('btn-success');
+                b.classList.add('btn-outline-success');
+            });
+            this.classList.remove('btn-outline-success');
+            this.classList.add('btn-success');
             
-            // Abrir modal de cita con fecha preseleccionada
-            setTimeout(() => {
-                abrirModalCitaConFecha(fechaFormateada);
-            }, 300);
+            Swal.fire({
+                icon: 'success',
+                title: 'Horario seleccionado',
+                text: `Cita programada para ${fechaHora.toLocaleString('es-MX')}`,
+                timer: 1500,
+                showConfirmButton: false
+            });
         });
     });
 }
 
-function abrirModalCitaConFecha(fecha) {
-    abrirModalCita();
-    const inputFecha = document.getElementById("cita_fecha");
-    if (inputFecha) {
-        inputFecha.value = fecha;
-        validarHorarioCita();
+function consultarClimaFecha(fecha) {
+    // Función de clima - mantener la existente
+    const infoDiv = document.getElementById('clima-cita-info');
+    const infoTexto = document.getElementById('clima-fecha-texto');
+    
+    if (infoDiv && infoTexto) {
+        infoDiv.style.display = 'block';
+        infoDiv.className = 'alert alert-info py-2 mb-0 mt-2';
+        infoTexto.innerHTML = `<i class="fas fa-cloud-sun me-1"></i> Fecha seleccionada: ${new Date(fecha).toLocaleDateString('es-MX')}`;
     }
 }
 
-// ========== INICIALIZAR SELECTOR DE FECHA ==========
-function inicializarSelectorFecha() {
-    const inputFecha = document.getElementById("cita_fecha");
-    if (!inputFecha) return;
-    
-    inputFecha.addEventListener('change', validarHorarioCita);
-    inputFecha.addEventListener('input', validarHorarioCita);
-    
-    const ahora = new Date();
-    ahora.setMinutes(0, 0, 0);
-    const año = ahora.getFullYear();
-    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-    const dia = String(ahora.getDate()).padStart(2, '0');
-    const hora = String(CONFIG.HORARIO.INICIO).padStart(2, '0');
-    inputFecha.min = `${año}-${mes}-${dia}T${hora}:00`;
-}
-
-async function validarHorarioCita() {
-    const inputFecha = document.getElementById("cita_fecha");
-    const fechaSeleccionada = inputFecha.value;
-    let errorDiv = document.getElementById("errorHorarioCita");
-    
-    if (!errorDiv) {
-        errorDiv = document.createElement("div");
-        errorDiv.id = "errorHorarioCita";
-        errorDiv.className = "text-danger small mt-1";
-        inputFecha.parentNode.appendChild(errorDiv);
-    }
-    
-    if (!fechaSeleccionada) return true;
-    
-    const fecha = new Date(fechaSeleccionada);
-    const diaSemana = fecha.getDay();
-    let diaJS = diaSemana === 0 ? 7 : diaSemana;
-    let diaLaboral = CONFIG.HORARIO.DIAS_LABORALES.includes(diaJS);
-    
-    if (!diaLaboral) {
-        errorDiv.textContent = "❌ Los sábados y domingos no hay servicio. Selecciona un día de lunes a viernes.";
-        inputFecha.value = "";
-        return false;
-    }
-    
-    const hora = fecha.getHours();
-    if (hora < CONFIG.HORARIO.INICIO || hora >= CONFIG.HORARIO.FIN) {
-        errorDiv.textContent = `❌ El horario de atención es de ${CONFIG.HORARIO.INICIO}:00 AM a ${CONFIG.HORARIO.FIN}:00 PM.`;
-        inputFecha.value = "";
-        return false;
-    }
-    
-    const horaFin = hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS;
-    if (horaFin > CONFIG.HORARIO.FIN) {
-        errorDiv.textContent = `❌ La cita requiere ${CONFIG.HORARIO.DURACION_MINIMA_HORAS} horas. El horario máximo para iniciar es a las ${CONFIG.HORARIO.FIN - CONFIG.HORARIO.DURACION_MINIMA_HORAS}:00.`;
-        inputFecha.value = "";
-        return false;
-    }
-    
-    await cargarCitasExistentes();
-    const conflicto = verificarConflictoHorario(fechaSeleccionada);
-    
-    if (conflicto) {
-        errorDiv.textContent = "❌ Ya existe una cita programada en este horario. Selecciona otro horario.";
-        inputFecha.value = "";
-        return false;
-    }
-    
-    errorDiv.textContent = "";
-    return true;
-}
-
-function verificarConflictoHorario(fechaSeleccionada) {
-    const fechaInicio = new Date(fechaSeleccionada);
-    const fechaFin = new Date(fechaInicio);
-    fechaFin.setHours(fechaFin.getHours() + CONFIG.HORARIO.DURACION_MINIMA_HORAS);
-    
-    return citasExistentes.some(cita => {
-        if (editandoCitaId === cita.id_cita) return false;
-        
-        const citaInicio = new Date(cita.cita_fecha_programada);
-        const citaFin = new Date(citaInicio);
-        citaFin.setHours(citaFin.getHours() + CONFIG.HORARIO.DURACION_MINIMA_HORAS);
-        
-        return (fechaInicio < citaFin && fechaFin > citaInicio);
-    });
-}
-
+// ========== CARGAR CITAS EXISTENTES ==========
 async function cargarCitasExistentes() {
     try {
         const res = await fetch(API_CITA_CITAS);
@@ -410,31 +238,26 @@ async function cargarCitasExistentes() {
     }
 }
 
-// ========== CARGAR SELECT DE EMPLEADOS ==========
-function cargarSelectEmpleados() {
-    fetch(API_EMP_CITAS)
-        .then(res => res.json())
-        .then(response => {
-            const empleados = response.success ? (response.data?.data || response.data) : response;
-            const datos = Array.isArray(empleados) ? empleados : [];
-            const sel = document.getElementById("id_empleado_select");
-            if (sel) {
-                sel.innerHTML = '<option value="">Seleccione empleado...</option>' +
-                    datos.map(e => `<option value="${e.id_empleados}">${e.emp_nombre} ${e.emp_apaterno || ''} (${e.emp_rol})</option>`).join('');
-            }
-        });
-}
-
 // ========== LISTAR CITAS ==========
 function listarCitas() {
     const tbody = document.getElementById("tablaCitas");
     if (!tbody) return;
+    
+    const filtro = document.getElementById("inputBuscarCitaLocal")?.value.toLowerCase() || '';
 
     fetch(API_CITA_CITAS)
         .then(res => res.json())
         .then(response => {
             const data = response.success ? (response.data?.data || response.data) : response;
-            const citas = Array.isArray(data) ? data : [];
+            let citas = Array.isArray(data) ? data : [];
+            
+            if (filtro) {
+                citas = citas.filter(c => {
+                    const folio = `#${c.id_cita}`;
+                    const cliente = c.cliente ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.toLowerCase() : '';
+                    return folio.includes(filtro) || cliente.includes(filtro);
+                });
+            }
 
             if (citas.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3">No hay citas registradas</td></tr>';
@@ -459,10 +282,9 @@ function listarCitas() {
                     <td><span class="badge bg-${estadoClass}">${c.cita_estado || 'Pendiente'}</span></td>
                     <td class="text-center">
                         <div class="btn-group btn-group-sm">
-                            ${c.cita_estado !== 'Realizada' ? `
                             <button class="btn btn-success" onclick="window.prepararServicio(${c.id_cita})" title="Iniciar Servicio">
                                 <i class="fas fa-tools"></i>
-                            </button>` : ''}
+                            </button>
                             <button class="btn btn-warning" onclick="window.editarCita(${c.id_cita})" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -477,10 +299,19 @@ function listarCitas() {
         .catch(err => console.error("Error al listar citas:", err));
 }
 
-// ========== PREPARAR SERVICIO DESDE CITA ==========
-function prepararServicio(idCita) {
-    localStorage.setItem('id_cita_seleccionada', idCita);
-    if (typeof window.cargarVista === 'function') window.cargarVista('views/servicios.html');
+// ========== CARGAR SELECT DE EMPLEADOS ==========
+function cargarSelectEmpleados() {
+    fetch(API_EMP_CITAS)
+        .then(res => res.json())
+        .then(response => {
+            const empleados = response.success ? (response.data?.data || response.data) : response;
+            const datos = Array.isArray(empleados) ? empleados : [];
+            const sel = document.getElementById("id_empleado_select");
+            if (sel) {
+                sel.innerHTML = '<option value="">Seleccione empleado...</option>' +
+                    datos.map(e => `<option value="${e.id_empleados}">${e.emp_nombre} ${e.emp_apaterno || ''} (${e.emp_rol})</option>`).join('');
+            }
+        });
 }
 
 // ========== BUSCAR CLIENTE ==========
@@ -514,37 +345,48 @@ function seleccionarClienteCita(id, nombre) {
     document.getElementById("resCliCita").style.display = "none";
 }
 
-// ========== MODAL ==========
-function abrirModalCita() {
+function seleccionarEmpleadoCita(id, nombre) {
+    empleadoIdCita = parseInt(id);
+}
+
+// ========== PREPARAR SERVICIO ==========
+function prepararServicio(idCita) {
+    localStorage.setItem('id_cita_seleccionada', idCita);
+    if (typeof window.cargarVista === 'function') window.cargarVista('views/servicios.html');
+}
+
+// ========== ABRIR MODAL ==========
+async function abrirModalCita() {
     const modal = document.getElementById("modalCita");
     if (modal) {
         modal.style.display = "flex";
-        cargarSelectEmpleados();
+        await cargarSelectEmpleados();
+        await cargarCitasExistentes();
+        await inicializarCalendarioSelector();
         editandoCitaId = null;
         clienteIdCita = null;
         empleadoIdCita = null;
-        const errorDiv = document.getElementById("errorHorarioCita");
-        if (errorDiv) errorDiv.textContent = "";
-    }
-}
-
-function abrirModalCitaConFecha(fecha) {
-    abrirModalCita();
-    const inputFecha = document.getElementById("cita_fecha");
-    if (inputFecha) {
-        inputFecha.value = fecha;
-        validarHorarioCita();
+        document.getElementById("busCliCita").value = "";
+        document.getElementById("cita_motivo").value = "";
+        document.getElementById("cita_estado").value = "Pendiente";
+        document.getElementById("cita_tipo").value = "Servicio";
+        document.getElementById("horariosContainer").style.display = "none";
+        document.getElementById("clima-cita-info").style.display = "none";
+        document.getElementById("cita_fecha").value = "";
     }
 }
 
 function cerrarModalCita() {
     const modal = document.getElementById("modalCita");
     if (modal) modal.style.display = "none";
-    const form = document.getElementById("formCita");
-    if (form) form.reset();
+    if (calendarSelector) {
+        calendarSelector.destroy();
+        calendarSelector = null;
+    }
     editandoCitaId = null;
     clienteIdCita = null;
     empleadoIdCita = null;
+    fechaSeleccionadaGlobal = null;
 }
 
 // ========== GUARDAR CITA ==========
@@ -561,10 +403,9 @@ async function guardarCita(e) {
     }
     
     const fechaSeleccionada = document.getElementById("cita_fecha").value;
-    const esValido = await validarHorarioCita();
     
-    if (!esValido) {
-        return Swal.fire("Horario no válido", "Revisa el horario seleccionado", "warning");
+    if (!fechaSeleccionada) {
+        return Swal.fire("Aviso", "Selecciona una fecha y horario para la cita", "warning");
     }
     
     const data = {
@@ -591,7 +432,6 @@ async function guardarCita(e) {
             Swal.fire({ icon: 'success', title: editandoCitaId ? 'Cita actualizada' : 'Cita registrada', timer: 1500, showConfirmButton: false });
             cerrarModalCita();
             listarCitas();
-            inicializarCalendario();
         } else {
             throw new Error(result.message || 'Error al guardar');
         }
@@ -601,35 +441,40 @@ async function guardarCita(e) {
 }
 
 // ========== EDITAR CITA ==========
-function editarCita(id) {
-    fetch(`${API_CITA_CITAS}/${id}`)
-        .then(res => res.json())
-        .then(response => {
-            const c = response.success ? response.data : response;
-            if (!c) return Swal.fire("Error", "No se encontró la cita", "error");
-            
-            editandoCitaId = id;
-            clienteIdCita = c.id_cliente;
-            empleadoIdCita = c.id_empleado;
-            
-            const nombreCliente = c.cliente ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.trim() : '';
-            document.getElementById("busCliCita").value = nombreCliente;
-            
-            if (c.cita_fecha_programada) {
-                document.getElementById("cita_fecha").value = c.cita_fecha_programada.replace(" ", "T").substring(0, 16);
-            }
-            document.getElementById("cita_estado").value = c.cita_estado || 'Pendiente';
-            document.getElementById("cita_tipo").value = c.cita_tipo || 'Servicio';
-            document.getElementById("cita_motivo").value = c.cita_motivo || '';
-            
-            abrirModalCita();
-            
-            setTimeout(() => {
-                const selEmp = document.getElementById("id_empleado_select");
-                if (selEmp && c.id_empleado) selEmp.value = c.id_empleado;
-            }, 300);
-        })
-        .catch(err => Swal.fire("Error", "No se pudieron cargar los datos", "error"));
+async function editarCita(id) {
+    try {
+        const res = await fetch(`${API_CITA_CITAS}/${id}`);
+        const response = await res.json();
+        const c = response.success ? response.data : response;
+        
+        if (!c) return Swal.fire("Error", "No se encontró la cita", "error");
+        
+        editandoCitaId = id;
+        clienteIdCita = c.id_cliente;
+        empleadoIdCita = c.id_empleado;
+        
+        await abrirModalCita();
+        
+        const nombreCliente = c.cliente ? `${c.cliente.cli_nombre || ''} ${c.cliente.cli_apaterno || ''}`.trim() : '';
+        document.getElementById("busCliCita").value = nombreCliente;
+        document.getElementById("cita_estado").value = c.cita_estado || 'Pendiente';
+        document.getElementById("cita_tipo").value = c.cita_tipo || 'Servicio';
+        document.getElementById("cita_motivo").value = c.cita_motivo || '';
+        
+        if (c.cita_fecha_programada) {
+            const fecha = new Date(c.cita_fecha_programada);
+            seleccionarFecha(fecha);
+            document.getElementById("cita_fecha").value = c.cita_fecha_programada.replace(" ", "T").substring(0, 16);
+        }
+        
+        setTimeout(() => {
+            const selEmp = document.getElementById("id_empleado_select");
+            if (selEmp && c.id_empleado) selEmp.value = c.id_empleado;
+        }, 500);
+        
+    } catch (err) {
+        Swal.fire("Error", "No se pudieron cargar los datos", "error");
+    }
 }
 
 // ========== ELIMINAR CITA ==========
@@ -648,7 +493,6 @@ function eliminarCita(id) {
                 .then(() => {
                     Swal.fire('Eliminada', 'La cita ha sido eliminada', 'success');
                     listarCitas();
-                    inicializarCalendario();
                 })
                 .catch(() => Swal.fire("Error", "No se pudo eliminar la cita", "error"));
         }
@@ -661,8 +505,21 @@ window.abrirModalCita = abrirModalCita;
 window.cerrarModalCita = cerrarModalCita;
 window.buscarClienteCita = buscarClienteCita;
 window.seleccionarClienteCita = seleccionarClienteCita;
+window.seleccionarEmpleadoCita = seleccionarEmpleadoCita;
 window.guardarCita = guardarCita;
 window.editarCita = editarCita;
 window.eliminarCita = eliminarCita;
 window.prepararServicio = prepararServicio;
-window.inicializarCalendario = inicializarCalendario;
+
+// Inicializar cuando el DOM esté listo
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(() => {
+        listarCitas();
+        cargarSelectEmpleados();
+    }, 300);
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        listarCitas();
+        cargarSelectEmpleados();
+    });
+}
