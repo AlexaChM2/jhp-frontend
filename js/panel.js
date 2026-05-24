@@ -7,10 +7,11 @@ let calendarioPanel = null;
 var mapaRefacciones = null;
 var marcadoresRefacciones = [];
 
-// ========== SISTEMA DE NOTIFICACIONES ==========
+// ========== SISTEMA DE NOTIFICACIONES CON BOOTSTRAP ==========
 
 var notificaciones = [];
 var ultimoStockCheck = null;
+var dropdownNotificaciones = null;
 
 function verificarStockBajoPanel() {
     fetch(API_PRODUCTOS_PANEL)
@@ -19,7 +20,6 @@ function verificarStockBajoPanel() {
             var data = response.success ? response.data : response;
             var productos = Array.isArray(data) ? data : [];
             
-            // Filtrar productos con problemas de stock
             var bajos = productos.filter(function(p) { 
                 return p.pro_stock <= 5 && p.pro_stock > 0; 
             });
@@ -28,7 +28,7 @@ function verificarStockBajoPanel() {
             });
             var total = bajos.length + agotados.length;
 
-            // Actualizar alerta visual antigua (para mantener compatibilidad)
+            // Alerta tradicional (para mantener compatibilidad)
             var alertaEl = document.getElementById("alertaStockPanel");
             if (alertaEl) {
                 if (total === 0) {
@@ -48,13 +48,11 @@ function verificarStockBajoPanel() {
             
             // Crear notificaciones
             crearNotificaciones(agotados, bajos);
-            
-            // Actualizar contador y mostrar notificaciones si es primera vez
             actualizarContadorNotificaciones();
             
-            // Si hay notificaciones nuevas y es la primera vez, mostrar animación
-            if (total > 0 && !ultimoStockCheck) {
-                mostrarNotificacionesNuevas();
+            // Animar campana si hay notificaciones nuevas
+            if (total > 0 && notificacionesNuevas()) {
+                animarCampana();
             }
             
             ultimoStockCheck = new Date();
@@ -62,38 +60,53 @@ function verificarStockBajoPanel() {
         .catch(function() {});
 }
 
+function notificacionesNuevas() {
+    if (!ultimoStockCheck) return true;
+    var noLeidas = notificaciones.filter(function(n) { return !n.leido; }).length;
+    return noLeidas > 0;
+}
+
+function animarCampana() {
+    var btn = document.getElementById("btnNotificaciones");
+    if (btn) {
+        btn.classList.add('animate__animated', 'animate__headShake');
+        setTimeout(function() {
+            btn.classList.remove('animate__animated', 'animate__headShake');
+        }, 500);
+    }
+}
+
 function crearNotificaciones(agotados, bajos) {
     notificaciones = [];
     
-    // Agregar productos agotados (prioridad alta)
     agotados.forEach(function(producto) {
         notificaciones.push({
             id: producto.id_producto,
             nombre: producto.pro_nombre,
             stock: producto.pro_stock,
+            codigo: producto.pro_codigo,
             tipo: 'agotado',
-            mensaje: '⚠️ ¡AGOTADO! ' + producto.pro_nombre + ' - Stock: 0 unidades',
+            mensaje: '¡AGOTADO! ' + producto.pro_nombre,
             prioridad: 1,
             timestamp: new Date(),
             leido: false
         });
     });
     
-    // Agregar productos con stock bajo
     bajos.forEach(function(producto) {
         notificaciones.push({
             id: producto.id_producto,
             nombre: producto.pro_nombre,
             stock: producto.pro_stock,
+            codigo: producto.pro_codigo,
             tipo: 'bajo',
-            mensaje: '⚠️ Stock bajo: ' + producto.pro_nombre + ' - Solo quedan ' + producto.pro_stock + ' unidades',
+            mensaje: 'Stock bajo: ' + producto.pro_nombre + ' (' + producto.pro_stock + ' uds)',
             prioridad: 2,
             timestamp: new Date(),
             leido: false
         });
     });
     
-    // Ordenar por prioridad y fecha
     notificaciones.sort(function(a, b) {
         if (a.prioridad !== b.prioridad) {
             return a.prioridad - b.prioridad;
@@ -105,42 +118,20 @@ function crearNotificaciones(agotados, bajos) {
 function actualizarContadorNotificaciones() {
     var noLeidas = notificaciones.filter(function(n) { return !n.leido; }).length;
     var contadorSpan = document.getElementById("contadorNotificaciones");
-    var btnNotificaciones = document.getElementById("btnNotificaciones");
+    var btn = document.getElementById("btnNotificaciones");
     
     if (contadorSpan) {
         if (noLeidas > 0) {
             contadorSpan.textContent = noLeidas > 99 ? '99+' : noLeidas;
             contadorSpan.style.display = 'inline-block';
-            if (btnNotificaciones) {
-                btnNotificaciones.classList.add('text-warning');
+            if (btn) {
+                btn.classList.add('text-warning');
             }
         } else {
             contadorSpan.style.display = 'none';
-            if (btnNotificaciones) {
-                btnNotificaciones.classList.remove('text-warning');
+            if (btn) {
+                btn.classList.remove('text-warning');
             }
-        }
-    }
-}
-
-function mostrarNotificacionesNuevas() {
-    var btn = document.getElementById("btnNotificaciones");
-    if (btn) {
-        btn.classList.add('animacion-campana');
-        setTimeout(function() {
-            btn.classList.remove('animacion-campana');
-        }, 500);
-    }
-}
-
-function toggleNotificaciones() {
-    var dropdown = document.getElementById("dropdownNotificaciones");
-    if (dropdown) {
-        if (dropdown.style.display === 'none' || dropdown.style.display === '') {
-            dropdown.style.display = 'block';
-            cargarListaNotificaciones();
-        } else {
-            dropdown.style.display = 'none';
         }
     }
 }
@@ -160,14 +151,14 @@ function cargarListaNotificaciones() {
         return;
     }
     
-    var html = '';
+    var html = '<div class="list-group list-group-flush">';
     notificaciones.forEach(function(notif, index) {
-        var bgColor = notif.tipo === 'agotado' ? 'bg-danger-light' : '';
-        var icono = notif.tipo === 'agotado' ? 'fa-times-circle text-danger' : 'fa-exclamation-triangle text-warning';
-        var leidoClass = notif.leido ? 'opacity-75' : '';
+        var bgClass = notif.tipo === 'agotado' ? 'bg-danger bg-opacity-10' : 'bg-warning bg-opacity-10';
+        var icono = notif.tipo === 'agotado' ? 'fa-circle-exclamation text-danger' : 'fa-triangle-exclamation text-warning';
+        var leidoClass = notif.leido ? 'opacity-50' : '';
         
         html += `
-            <div class="list-group-item list-group-item-action notificacion-item ${leidoClass}" data-id="${notif.id}" data-index="${index}" onclick="marcarComoLeido(${index})">
+            <div class="list-group-item list-group-item-action ${bgClass} ${leidoClass}" style="cursor: pointer;" onclick="marcarNotificacionComoLeida(${index})">
                 <div class="d-flex align-items-start">
                     <div class="me-3">
                         <i class="fas ${icono} fa-lg"></i>
@@ -177,21 +168,22 @@ function cargarListaNotificaciones() {
                             <strong class="${notif.tipo === 'agotado' ? 'text-danger' : 'text-warning'}">
                                 ${notif.tipo === 'agotado' ? 'AGOTADO' : 'STOCK BAJO'}
                             </strong>
-                            <small class="text-muted">${formatTime(notif.timestamp)}</small>
+                            <small class="text-muted">${formatTimeNotificacion(notif.timestamp)}</small>
                         </div>
                         <p class="mb-0 small">${notif.nombre}</p>
-                        <small class="text-muted">Stock actual: ${notif.stock} unidades</small>
+                        <small class="text-muted">Código: ${notif.codigo || 'N/A'} | Stock: ${notif.stock}</small>
                     </div>
                     ${!notif.leido ? '<span class="badge bg-danger rounded-pill ms-2" style="width: 8px; height: 8px; padding: 0;"></span>' : ''}
                 </div>
             </div>
         `;
     });
+    html += '</div>';
     
     lista.innerHTML = html;
 }
 
-function marcarComoLeido(index) {
+function marcarNotificacionComoLeida(index) {
     if (notificaciones[index]) {
         notificaciones[index].leido = true;
         actualizarContadorNotificaciones();
@@ -199,7 +191,7 @@ function marcarComoLeido(index) {
     }
 }
 
-function marcarTodasComoLeidas() {
+function marcarTodasNotificacionesComoLeidas() {
     notificaciones.forEach(function(notif) {
         notif.leido = true;
     });
@@ -207,66 +199,68 @@ function marcarTodasComoLeidas() {
     cargarListaNotificaciones();
 }
 
-function formatTime(date) {
+function formatTimeNotificacion(date) {
     var now = new Date();
     var diff = Math.floor((now - new Date(date)) / 1000);
     
-    if (diff < 60) return 'Hace ' + diff + ' segundos';
-    if (diff < 3600) return 'Hace ' + Math.floor(diff / 60) + ' minutos';
-    if (diff < 86400) return 'Hace ' + Math.floor(diff / 3600) + ' horas';
+    if (diff < 60) return 'Hace ' + diff + ' seg';
+    if (diff < 3600) return 'Hace ' + Math.floor(diff / 60) + ' min';
+    if (diff < 86400) return 'Hace ' + Math.floor(diff / 3600) + ' h';
     return 'Hace ' + Math.floor(diff / 86400) + ' días';
 }
 
-// Cerrar dropdown al hacer clic fuera
-document.addEventListener('click', function(event) {
-    var dropdown = document.getElementById("dropdownNotificaciones");
-    var btn = document.getElementById("btnNotificaciones");
-    
-    if (dropdown && btn) {
-        if (!dropdown.contains(event.target) && !btn.contains(event.target)) {
-            dropdown.style.display = 'none';
-        }
-    }
-});
-
-// ========== INICIALIZAR EVENTOS DE NOTIFICACIONES ==========
-function inicializarNotificaciones() {
-    var btnNotificaciones = document.getElementById("btnNotificaciones");
-    var cerrarNotificaciones = document.getElementById("cerrarNotificaciones");
-    var btnVerTodo = document.getElementById("btnVerTodo");
-    
-    if (btnNotificaciones) {
-        btnNotificaciones.addEventListener('click', toggleNotificaciones);
-    }
-    
-    if (cerrarNotificaciones) {
-        cerrarNotificaciones.addEventListener('click', function() {
-            var dropdown = document.getElementById("dropdownNotificaciones");
-            if (dropdown) dropdown.style.display = 'none';
+// ========== INICIALIZAR NOTIFICACIONES ==========
+function inicializarNotificacionesBs() {
+    // Inicializar dropdown de Bootstrap
+    var dropdownElement = document.getElementById('btnNotificaciones');
+    if (dropdownElement && typeof bootstrap !== 'undefined') {
+        dropdownNotificaciones = new bootstrap.Dropdown(dropdownElement, {
+            autoClose: true
         });
     }
     
-    if (btnVerTodo) {
-        btnVerTodo.addEventListener('click', function() {
-            // Redirigir a la página de productos o abrir modal
+    // Evento cuando se abre el dropdown
+    document.getElementById('btnNotificaciones').addEventListener('shown.bs.dropdown', function () {
+        cargarListaNotificaciones();
+    });
+    
+    // Cerrar con botón X
+    var cerrarBtn = document.getElementById("cerrarNotificacionesBs");
+    if (cerrarBtn) {
+        cerrarBtn.addEventListener('click', function() {
+            if (dropdownNotificaciones) {
+                dropdownNotificaciones.hide();
+            }
+        });
+    }
+    
+    // Botón ver todos
+    var verTodoBtn = document.getElementById("btnVerTodoBs");
+    if (verTodoBtn) {
+        verTodoBtn.addEventListener('click', function() {
             if (typeof window.cargarVista === 'function') {
                 window.cargarVista('views/inventario.html');
             }
-            var dropdown = document.getElementById("dropdownNotificaciones");
-            if (dropdown) dropdown.style.display = 'none';
+            if (dropdownNotificaciones) {
+                dropdownNotificaciones.hide();
+            }
         });
     }
 }
 
-// Agregar esto al final de la función inicializarPanel
+// Reemplazar la función inicializarPanel
 function inicializarPanelConNotificaciones() {
     inicializarPanel();
-    inicializarNotificaciones();
+    inicializarNotificacionesBs();
     // Verificar stock cada 30 segundos
     setInterval(verificarStockBajoPanel, 30000);
 }
 
-// Reemplazar la inicialización
+// Exponer función global
+window.marcarNotificacionComoLeida = marcarNotificacionComoLeida;
+window.marcarTodasNotificacionesComoLeidas = marcarTodasNotificacionesComoLeidas;
+
+// Reemplazar la inicialización automática
 if (document.getElementById("calendario") || document.getElementById("estado-badge") || document.getElementById("mapaRefaccionarias")) {
     document.addEventListener('DOMContentLoaded', function() {
         inicializarPanelConNotificaciones();
