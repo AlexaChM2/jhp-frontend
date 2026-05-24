@@ -8,6 +8,52 @@ let serviciosMant = [];
 let insumosMant = [];
 
 // ==========================================
+// FUNCIÓN PARA ASEGURAR LIBRERÍAS PDF
+// ==========================================
+async function asegurarLibreriasPDF() {
+    // Verificar jsPDF
+    let jsPDFLib = null;
+    
+    if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
+        jsPDFLib = window.jspdf.jsPDF;
+        console.log('✅ jsPDF ya disponible');
+    } else if (typeof jspdf !== 'undefined') {
+        jsPDFLib = jspdf;
+        console.log('✅ jsPDF ya disponible (global)');
+    } else if (typeof window.jsPDF !== 'undefined') {
+        jsPDFLib = window.jsPDF;
+        console.log('✅ jsPDF ya disponible (window)');
+    }
+    
+    if (!jsPDFLib) {
+        console.log('⏳ Cargando jsPDF...');
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        console.log('✅ jsPDF cargado');
+        
+        // Cargar autoTable
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        console.log('✅ autoTable cargado');
+        
+        // Pequeña pausa para asegurar que las librerías se inicialicen
+        await new Promise(r => setTimeout(r, 100));
+    }
+    
+    return jsPDFLib || window.jspdf?.jsPDF || jspdf || window.jsPDF;
+}
+
+// ==========================================
 // LISTAR MANTENIMIENTOS
 // ==========================================
 async function listarMantenimiento() {
@@ -53,8 +99,8 @@ async function listarMantenimiento() {
                         style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
                         <i class="fas fa-file-pdf"></i>
                     </button>
-                </td>
-            </tr>`;
+                 </td>
+            <tr>`;
         }).join('');
 
         const pendientes = lista.filter(s => s.estado_servicio !== 'Terminado' && s.estado_servicio !== 'Entregado').length;
@@ -327,32 +373,35 @@ window.editarMantenimiento = async function(id) {
 };
 
 // ==========================================
-// DESCARGAR PDF - ABRE EN NUEVA PESTAÑA
+// DESCARGAR PDF CON VERIFICACIÓN DE LIBRERÍAS
 // ==========================================
 window.descargarPDFMantenimiento = async function(id) {
     try {
-        console.log('Generando PDF para mantenimiento:', id);
+        console.log('=== GENERANDO PDF MANTENIMIENTO ===');
         
-        // Verificar que jsPDF está cargado
-        let jsPDFLib = null;
+        // Mostrar loading
+        Swal.fire({
+            title: 'Generando PDF...',
+            text: 'Preparando documento',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
         
-        if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
-            jsPDFLib = window.jspdf.jsPDF;
-        } else if (typeof jspdf !== 'undefined') {
-            jsPDFLib = jspdf;
-        } else if (typeof window.jsPDF !== 'undefined') {
-            jsPDFLib = window.jsPDF;
-        }
+        // 1. Asegurar librerías
+        const jsPDFLib = await asegurarLibreriasPDF();
         
         if (!jsPDFLib) {
-            Swal.fire("Error", "La librería jsPDF no está cargada.", "error");
-            return;
+            throw new Error('No se pudo cargar jsPDF');
         }
         
+        // 2. Obtener datos
         const res = await fetch(`${API_MANT}/${id}`);
         const response = await res.json();
         const m = response.success ? response.data : response;
         
+        console.log('Datos obtenidos:', m);
+        
+        // 3. Crear PDF
         const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
         
         // Encabezado
@@ -361,7 +410,7 @@ window.descargarPDFMantenimiento = async function(id) {
         doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text("Mantenimiento Preventivo", 105, 22, { align: "center" });
+        doc.text("Orden de Mantenimiento", 105, 22, { align: "center" });
         doc.line(10, 25, 200, 25);
         
         let y = 32;
@@ -374,9 +423,17 @@ window.descargarPDFMantenimiento = async function(id) {
             return y + 7;
         }
         
+        // Formatear fecha
+        let fechaFormateada = '-';
+        if (m.fecha_inicio) {
+            const fecha = new Date(m.fecha_inicio);
+            fechaFormateada = `${fecha.getDate()}/${fecha.getMonth()+1}/${fecha.getFullYear()}, ${fecha.getHours().toString().padStart(2,'0')}:${fecha.getMinutes().toString().padStart(2,'0')}:${fecha.getSeconds().toString().padStart(2,'0')}`;
+        }
+        
         y = addLine("Folio:", `#${m.id_mantenimiento}`, y);
+        y = addLine("Fecha:", fechaFormateada, y);
         y = addLine("Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D', y);
-        y = addLine("Mecánico:", m.mecanico?.emp_nombre || 'S/D', y);
+        y = addLine("Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D', y);
         y = addLine("Modelo:", m.moto_modelo || 'N/A', y);
         y = addLine("Estado:", m.estado_servicio || 'Pendiente', y);
         y = addLine("Descripción:", m.moto_llegada_descripcion || '-', y);
@@ -409,6 +466,14 @@ window.descargarPDFMantenimiento = async function(id) {
                     styles: { fontSize: 9 }
                 });
                 y = doc.lastAutoTable.finalY + 5;
+            } else {
+                console.warn('autoTable no disponible, usando método alternativo');
+                filasServicios.forEach(fila => {
+                    doc.text(fila[0], 15, y);
+                    doc.text(fila[1], 190, y, { align: "right" });
+                    y += 6;
+                });
+                y += 5;
             }
         }
         
@@ -443,6 +508,15 @@ window.descargarPDFMantenimiento = async function(id) {
                     styles: { fontSize: 9 }
                 });
                 y = doc.lastAutoTable.finalY + 8;
+            } else {
+                filasInsumos.forEach(fila => {
+                    doc.text(fila[0], 15, y);
+                    doc.text(fila[1], 80, y);
+                    doc.text(fila[2], 120, y);
+                    doc.text(fila[3], 190, y, { align: "right" });
+                    y += 6;
+                });
+                y += 5;
             }
         }
         
@@ -454,19 +528,23 @@ window.descargarPDFMantenimiento = async function(id) {
         // Pie de página
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
-        doc.text("JHP Taller Mecánico - Mantenimiento Preventivo", 105, 285, { align: "center" });
+        doc.text("JHP Taller Mecánico - Orden de Mantenimiento", 105, 285, { align: "center" });
         
-        // 🔥 ABRIR EN NUEVA PESTAÑA (como funciona en servicios)
+        // Cerrar loading
+        Swal.close();
+        
+        // Abrir PDF en nueva pestaña
         const pdfBlob = doc.output('blob');
         const pdfUrl = URL.createObjectURL(pdfBlob);
         window.open(pdfUrl, '_blank');
         
         setTimeout(() => URL.revokeObjectURL(pdfUrl), 100);
         
-        console.log('PDF abierto en nueva pestaña');
+        console.log('✅ PDF generado exitosamente');
         
     } catch (e) {
-        console.error('Error PDF:', e);
+        console.error('❌ Error PDF:', e);
+        Swal.close();
         Swal.fire("Error", "No se pudo generar el PDF: " + e.message, "error");
     }
 };
