@@ -72,7 +72,10 @@
                     <td>
                         <button class="btn btn-sm btn-info" onclick="window.verDetalleServicio(${m.id_mantenimiento})"><i class="fas fa-eye"></i></button>
                         <button class="btn btn-sm btn-warning" onclick="window.editarServicio(${m.id_mantenimiento})"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-danger" onclick="window.descargarPDFServicio(${m.id_mantenimiento})"> <i class="fas fa-print"></i>
+                       <button onclick="window.descargarPDFServicio(${m.id_mantenimiento})" title="Imprimir"
+    style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+    <i class="fas fa-print"></i>
+</button>
                     </td>
                 </tr>`;
             }).join('');
@@ -404,9 +407,9 @@
                 html += `<tr style="font-weight:bold;background:#f8f9fa;"><td style="padding:5px;text-align:right;">Total Mano Obra:</td><td style="text-align:right;">$${totalServ.toFixed(2)}</td></tr></table>`;
             }
 
-            // Insumos tabla de pdf
+            // Insumos tabla de
             if (m.insumos?.length > 0) {
-                html += `<br><strong>📦 Insumos:</strong>
+                html += `<br><strong> Insumos:</strong>
                 <table style="width:100%;font-size:12px;margin-top:5px;">
                     <tr style="background: #1b297a ;color:white;"><th style="padding:5px;">Producto</th><th style="padding:5px;text-align:center;">Cant</th><th style="padding:5px;text-align:right;">P.Unit</th><th style="padding:5px;text-align:right;">Sub</th></tr>`;
                 let totalIns = 0;
@@ -572,7 +575,7 @@ window.descargarPDFServicio = async function(id) {
                 head: [['Servicio', 'Precio']],
                 body: filasServicios,
                 theme: 'striped',
-                headStyles: { fillColor: [40, 167, 69] },
+                headStyles: { fillColor: [253, 126, 20] },  //verde tabla pdf
                 margin: { left: 15, right: 15 },
                 styles: { fontSize: 9 }
             });
@@ -604,7 +607,7 @@ window.descargarPDFServicio = async function(id) {
                 head: [['Producto', 'Cant', 'P. Unit.', 'Subtotal']],
                 body: filasInsumos,
                 theme: 'striped',
-                headStyles: { fillColor: [122, 133, 221] },
+                headStyles: { fillColor: [13, 110, 253] }, //color moradooo sgunda tabla pdf
                 margin: { left: 15, right: 15 },
                 styles: { fontSize: 9 }
             });
