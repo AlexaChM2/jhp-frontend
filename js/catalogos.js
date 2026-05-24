@@ -92,10 +92,7 @@ const CONFIG = {
 
 // INICIALIZACIÓN
 
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("📋 Catálogos inicializados");
-    cargarSeccion("Clientes");
-});
+
 
 function cargarSeccion(nombre) {
     console.log(`Cambiando a sección: ${nombre}`);
@@ -126,7 +123,7 @@ function listarRegistros() {
     const token = localStorage.getItem('token');
     const config = CONFIG[seccionActual];
 
-    console.log(`📥 Cargando ${seccionActual} desde: ${config.api}`);
+    console.log(` Cargando ${seccionActual} desde: ${config.api}`);
 
     fetch(config.api, {
         headers: {
@@ -151,7 +148,7 @@ function listarRegistros() {
             tbody.innerHTML = `<tr><td colspan="${config.columnas.length}" class="text-center py-4">
                 <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                 <p class="text-muted">No hay registros en ${seccionActual}</p>
-                <button class="btn btn-sm btn-outline-primary" onclick="abrirModalRegistro()">
+                <button class="btn btn-sm btn-outline-primary" onclick="window.abrirModalRegistro()">
                     <i class="fas fa-plus"></i> Agregar ${seccionActual.slice(0, -1)}
                 </button></td></tr>`;
             return;
@@ -453,6 +450,11 @@ function filtrarTabla() {
     });
 }
 
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => cargarSeccion('Clientes'));
+} else {
+    cargarSeccion('Clientes');
+}
 
 window.cargarSeccion = cargarSeccion;
 window.abrirModalRegistro = abrirModalRegistro;
