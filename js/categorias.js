@@ -1,15 +1,17 @@
-const API_CATEGORIAS = "https://jhpapi-production.up.railway.app/api/categorias";
+var API_CATEGORIAS_CAT = "https://jhpapi-production.up.railway.app/api/categorias";
 
-function extraerArray(response) {
-    if (Array.isArray(response)) return response;
-    if (response.success && Array.isArray(response.data)) return response.data;
-    if (response.success && response.data && Array.isArray(response.data.data)) return response.data.data;
-    if (response.data && Array.isArray(response.data)) return response.data;
-    return [];
+if (typeof extraerArray === 'undefined') {
+    var extraerArray = function(response) {
+        if (Array.isArray(response)) return response;
+        if (response.success && Array.isArray(response.data)) return response.data;
+        if (response.success && response.data && Array.isArray(response.data.data)) return response.data.data;
+        if (response.data && Array.isArray(response.data)) return response.data;
+        return [];
+    };
 }
 
 function listarCategorias() {
-    fetch(API_CATEGORIAS)
+    fetch(API_CATEGORIAS_CAT)
         .then(res => res.json())
         .then(response => {
             const categorias = extraerArray(response);
@@ -37,9 +39,8 @@ function guardarCategorias() {
         cat_nombre: document.getElementById("categoria_nombre").value,
         cat_descripcion: document.getElementById("categoria_descripcion").value
     };
-    fetch(API_CATEGORIAS, { 
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+    fetch(API_CATEGORIAS_CAT, { 
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(categorias)
     })
     .then(res => res.json())
@@ -49,26 +50,19 @@ function guardarCategorias() {
         document.getElementById("categoria_descripcion").value = "";
         listarCategorias();
     })
-    .catch(err => {
-        Swal.fire({ icon: "error", title: "Error al guardar", text: "No se pudo conectar con el servidor" });
-    });
+    .catch(() => Swal.fire({ icon: "error", title: "Error al guardar" }));
 }
 
 function eliminarCategoria(id_categoria) {
     Swal.fire({
-        title: "¿Seguro?",
-        text: "¡No se podrá recuperar!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#080522",
-        cancelButtonColor: "#b30505",
-        confirmButtonText: "Sí, eliminar",
-        cancelButtonText: "Cancelar"
+        title: "¿Seguro?", text: "¡No se podrá recuperar!", icon: "warning",
+        showCancelButton: true, confirmButtonColor: "#080522", cancelButtonColor: "#b30505",
+        confirmButtonText: "Sí, eliminar", cancelButtonText: "Cancelar"
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(API_CATEGORIAS + "/" + id_categoria, { method: "DELETE" })
+            fetch(API_CATEGORIAS_CAT + "/" + id_categoria, { method: "DELETE" })
             .then(() => {
-                Swal.fire("¡Eliminado!", "El registro ha sido borrado.", "success");
+                Swal.fire("¡Eliminado!", "", "success");
                 listarCategorias();
             });
         }
@@ -79,13 +73,8 @@ window.listarCategorias = listarCategorias;
 window.guardarCategorias = guardarCategorias;
 window.eliminarCategoria = eliminarCategoria;
 
-function intentarInicializar() {
-    if (document.getElementById("tablaCategorias")) listarCategorias();
-}
-intentarInicializar();
+if (document.getElementById("tablaCategorias")) listarCategorias();
 document.addEventListener('vista-cargada', function(e) {
-    if (e.detail && e.detail.vista && e.detail.vista.includes('categoria')) {
-        setTimeout(listarCategorias, 300);
-    }
+    if (e.detail?.vista?.includes('categoria')) setTimeout(listarCategorias, 300);
 });
-setTimeout(intentarInicializar, 500);
+setTimeout(function() { if (document.getElementById("tablaCategorias")) listarCategorias(); }, 500);

@@ -1,19 +1,21 @@
-const API_SERVICIOS = "https://jhpapi-production.up.railway.app/api/servicios";
-const API_CATEGORIAS = "https://jhpapi-production.up.railway.app/api/categorias";
+var API_SERVICIOS_CAT = "https://jhpapi-production.up.railway.app/api/servicios";
+var API_CATEGORIAS_CAT = "https://jhpapi-production.up.railway.app/api/categorias";
 
-function extraerArray(response) {
-    if (Array.isArray(response)) return response;
-    if (response.success && Array.isArray(response.data)) return response.data;
-    if (response.success && response.data && Array.isArray(response.data.data)) return response.data.data;
-    if (response.data && Array.isArray(response.data)) return response.data;
-    return [];
+if (typeof extraerArray === 'undefined') {
+    var extraerArray = function(response) {
+        if (Array.isArray(response)) return response;
+        if (response.success && Array.isArray(response.data)) return response.data;
+        if (response.success && response.data && Array.isArray(response.data.data)) return response.data.data;
+        if (response.data && Array.isArray(response.data)) return response.data;
+        return [];
+    };
 }
 
 async function listarServiciosCat() {
     const tbody = document.getElementById("tablaServiciosCat");
     if (!tbody) return;
     try {
-        const res = await fetch(API_SERVICIOS);
+        const res = await fetch(API_SERVICIOS_CAT);
         const data = await res.json();
         const lista = extraerArray(data);
         tbody.innerHTML = lista.map(s => `
@@ -29,29 +31,25 @@ async function listarServiciosCat() {
                 </td>
             </tr>
         `).join('') || '<tr><td colspan="6" class="text-center py-3">No hay servicios registrados</td></tr>';
-    } catch (e) {
-        console.error(e);
-    }
+    } catch (e) { console.error(e); }
 }
 
-async function cargarCategorias() {
+async function cargarCategoriasCat() {
     try {
-        const res = await fetch(API_CATEGORIAS);
+        const res = await fetch(API_CATEGORIAS_CAT);
         const data = await res.json();
         const lista = extraerArray(data);
         const sel = document.getElementById("ser_categoria");
         if (sel) sel.innerHTML = '<option value="">Seleccione...</option>' + 
             lista.map(c => `<option value="${c.id_categoria}">${c.cat_nombre}</option>`).join('');
-    } catch (e) {
-        console.error(e);
-    }
+    } catch (e) { console.error(e); }
 }
 
 function abrirModalServicioCat() {
     document.getElementById("formServicioCat").reset();
     document.getElementById("servicio_edit_id").value = "";
     document.getElementById("tituloModalServicio").textContent = "Nuevo Servicio";
-    cargarCategorias();
+    cargarCategoriasCat();
     new bootstrap.Modal(document.getElementById('modalServicioCat')).show();
 }
 
@@ -61,16 +59,12 @@ async function guardarServicioCat() {
     const descripcion = document.getElementById("ser_descripcion").value.trim();
     const precio = parseFloat(document.getElementById("ser_precio").value) || 0;
     const categoria = document.getElementById("ser_categoria").value || null;
-
     if (!nombre || precio <= 0) return Swal.fire("Aviso", "Nombre y precio son obligatorios", "warning");
-
-    const url = id ? `${API_SERVICIOS}/${id}` : API_SERVICIOS;
+    const url = id ? `${API_SERVICIOS_CAT}/${id}` : API_SERVICIOS_CAT;
     const method = id ? 'PUT' : 'POST';
-
     try {
         const res = await fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            method, headers: { "Content-Type": "application/json", "Accept": "application/json" },
             body: JSON.stringify({ ser_nombre: nombre, ser_descripcion: descripcion, ser_precio_mano_obra: precio, id_categoria: categoria })
         });
         const result = await res.json();
@@ -79,15 +73,13 @@ async function guardarServicioCat() {
             bootstrap.Modal.getInstance(document.getElementById('modalServicioCat')).hide();
             listarServiciosCat();
         }
-    } catch (e) {
-        Swal.fire("Error", e.message, "error");
-    }
+    } catch (e) { Swal.fire("Error", e.message, "error"); }
 }
 
 async function editarServicioCat(id) {
     try {
-        await cargarCategorias();
-        const res = await fetch(`${API_SERVICIOS}/${id}`);
+        await cargarCategoriasCat();
+        const res = await fetch(`${API_SERVICIOS_CAT}/${id}`);
         const response = await res.json();
         const s = response.success ? response.data : response;
         document.getElementById("servicio_edit_id").value = s.id_servicio;
@@ -97,9 +89,7 @@ async function editarServicioCat(id) {
         document.getElementById("ser_categoria").value = s.id_categoria || "";
         document.getElementById("tituloModalServicio").textContent = "Editar Servicio";
         new bootstrap.Modal(document.getElementById('modalServicioCat')).show();
-    } catch (e) {
-        Swal.fire("Error", "No se pudo cargar", "error");
-    }
+    } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
 }
 
 async function eliminarServicioCat(id) {
@@ -109,15 +99,13 @@ async function eliminarServicioCat(id) {
     });
     if (!result.isConfirmed) return;
     try {
-        await fetch(`${API_SERVICIOS}/${id}`, { method: 'DELETE' });
+        await fetch(`${API_SERVICIOS_CAT}/${id}`, { method: 'DELETE' });
         Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1500 });
         listarServiciosCat();
-    } catch (e) {
-        Swal.fire("Error", "No se pudo eliminar", "error");
-    }
+    } catch (e) { Swal.fire("Error", "No se pudo eliminar", "error"); }
 }
 
-function filtrarServicios() {
+function filtrarServiciosCat() {
     const q = document.getElementById("buscarServicioCat")?.value?.toLowerCase() || '';
     document.querySelectorAll("#tablaServiciosCat tr").forEach(row => {
         row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
@@ -128,16 +116,11 @@ window.abrirModalServicioCat = abrirModalServicioCat;
 window.guardarServicioCat = guardarServicioCat;
 window.editarServicioCat = editarServicioCat;
 window.eliminarServicioCat = eliminarServicioCat;
-window.filtrarServicios = filtrarServicios;
+window.filtrarServicios = filtrarServiciosCat;
 window.listarServiciosCat = listarServiciosCat;
 
-function intentarInicializar() {
-    if (document.getElementById("tablaServiciosCat")) listarServiciosCat();
-}
-intentarInicializar();
+if (document.getElementById("tablaServiciosCat")) listarServiciosCat();
 document.addEventListener('vista-cargada', function(e) {
-    if (e.detail && e.detail.vista && e.detail.vista.includes('servicios_catalogo')) {
-        setTimeout(listarServiciosCat, 300);
-    }
+    if (e.detail?.vista?.includes('servicios_catalogo')) setTimeout(listarServiciosCat, 300);
 });
-setTimeout(intentarInicializar, 500);
+setTimeout(function() { if (document.getElementById("tablaServiciosCat")) listarServiciosCat(); }, 500);
