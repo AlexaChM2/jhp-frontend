@@ -151,10 +151,25 @@ function buscarClienteCita(v) {
         });
 }
 
-function seleccionarClienteCita(id, nombre) {
-    clienteIdCita = id;
-    document.getElementById("busCliCita").value = nombre;
-    document.getElementById("resCliCita").style.display = "none";
+function buscarEmpleadoCita(v) {
+    const lista = document.getElementById("resEmpCita");
+    if (!lista) return;
+    if (v.length < 2) { lista.style.display = "none"; return; }
+
+    fetch(API_EMP_CITAS)
+        .then(res => res.json())
+        .then(response => {
+            const empleados = response.success ? (response.data?.data || response.data) : response;
+            const datos = Array.isArray(empleados) ? empleados : [];
+            const filtrados = datos.filter(e => 
+                e.emp_nombre && e.emp_nombre.toLowerCase().includes(v.toLowerCase())
+            );
+            lista.innerHTML = filtrados.map(e => `
+                <button type="button" class="list-group-item list-group-item-action" 
+                    onclick="window.seleccionarEmpleadoCita(${e.id_empleados}, '${e.emp_nombre.replace(/'/g, "\\'")}')">
+                    ${e.emp_nombre} <span class="badge bg-secondary">${e.emp_rol || 'Empleado'}</span></button>`).join('');
+            lista.style.display = filtrados.length > 0 ? "block" : "none";
+        });
 }
 
 function buscarEmpleadoCita(v) {
