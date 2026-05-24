@@ -163,7 +163,7 @@ function seleccionarProducto(valor) {
 
             const filtrados = datos.filter(p =>
                 (p.pro_nombre && p.pro_nombre.toLowerCase().includes(valor.toLowerCase())) ||
-                (p.pro_codigo && p.pro_codigo.toString().includes(valor))
+                (p.pro_codigo && p.pro_codigo.toLowerCase().includes(valor.toLowerCase()))
             );
 
             if (filtrados.length > 0) {
@@ -173,11 +173,12 @@ function seleccionarProducto(valor) {
                     item.type = "button";
                     item.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center";
                     item.innerHTML = `
-                        <span>${p.pro_nombre || 'Sin nombre'}</span>
+                        <span><strong>${p.pro_codigo || ''}</strong> - ${p.pro_nombre || 'Sin nombre'}</span>
                         <span class="badge bg-primary rounded-pill">$${parseFloat(p.pro_precio_venta || 0).toFixed(2)}</span>
                     `;
                     item.onclick = () => {
-                        document.getElementById("buscarProducto").value = p.pro_nombre || '';
+                        // Mostrar código y nombre en el input
+                        document.getElementById("buscarProducto").value = `${p.pro_codigo} - ${p.pro_nombre}`;
                         document.getElementById("precio_unitario").innerText = parseFloat(p.pro_precio_venta || 0).toFixed(2);
                         productoSeleccionado = p;
                         recalcularSubtotal();
