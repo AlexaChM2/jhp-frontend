@@ -5,9 +5,7 @@
 const API_BASE = "https://jhpapi-production.up.railway.app/api";
 
 const API = {
-    // -------------------------------------------
     // AUTH
-    // -------------------------------------------
     AUTH: {
         LOGIN: `${API_BASE}/auth/login`,
         LOGOUT: `${API_BASE}/auth/logout`,
@@ -16,91 +14,57 @@ const API = {
         RECOVERY: `${API_BASE}/auth/recovery`,
     },
 
-    // -------------------------------------------
     // CATEGORÍAS
-    // -------------------------------------------
     CATEGORIAS: `${API_BASE}/categorias`,
 
-    // -------------------------------------------
     // MARCAS
-    // -------------------------------------------
     MARCAS: `${API_BASE}/marcas`,
     MARCAS_ACTIVAS: `${API_BASE}/marcas/activas`,
 
-    // -------------------------------------------
     // PRODUCTOS
-    // -------------------------------------------
     PRODUCTOS: `${API_BASE}/productos`,
     PRODUCTOS_SEARCH: `${API_BASE}/productos/search`,
 
-    // -------------------------------------------
     // INVENTARIO
-    // -------------------------------------------
     INVENTARIOS: `${API_BASE}/inventarios`,
 
-    // -------------------------------------------
     // CLIENTES
-    // -------------------------------------------
     CLIENTES: `${API_BASE}/clientes`,
 
-    // -------------------------------------------
     // EMPLEADOS
-    // -------------------------------------------
     EMPLEADOS: `${API_BASE}/empleados`,
 
-    // -------------------------------------------
     // PROVEEDORES
-    // -------------------------------------------
     PROVEEDORES: `${API_BASE}/proveedores`,
 
-    // -------------------------------------------
     // SERVICIOS
-    // -------------------------------------------
     SERVICIOS: `${API_BASE}/servicios`,
 
-    // -------------------------------------------
     // CITAS
-    // -------------------------------------------
     CITAS: `${API_BASE}/citas`,
     DETALLE_CITA_SERVICIOS: `${API_BASE}/detalle_cita_servicios`,
 
-    // -------------------------------------------
     // VENTAS
-    // -------------------------------------------
     VENTAS: `${API_BASE}/ventas`,
     DETALLE_VENTAS: `${API_BASE}/detalle_ventas`,
 
-    // -------------------------------------------
     // COMPRAS
-    // -------------------------------------------
     COMPRAS: `${API_BASE}/compras`,
     DETALLE_COMPRAS: `${API_BASE}/detalle_compras`,
 
-    // -------------------------------------------
     // COTIZACIONES
-    // -------------------------------------------
     COTIZACIONES: `${API_BASE}/cotizaciones`,
     DETALLE_COTIZACIONES: `${API_BASE}/detalle_cotizaciones`,
 
-    // -------------------------------------------
     // MANTENIMIENTO
-    // -------------------------------------------
     MANTENIMIENTO: `${API_BASE}/mantenimiento`,
     DETALLE_MANT_INSUMOS: `${API_BASE}/detalle_mantenimiento_insumos`,
     DETALLE_MANT_SERVICIOS: `${API_BASE}/detalle_mantenimiento_servicios`,
 
-    // -------------------------------------------
     // CONTROL CAJA
-    // -------------------------------------------
     CAJA: `${API_BASE}/control_caja`,
 
-    // -------------------------------------------
     // FUNCIONES ÚTILES
-    // -------------------------------------------
-    
-    /**
-     * Obtener headers con token
-     */
     headers() {
         const token = localStorage.getItem('token');
         return {
@@ -110,21 +74,13 @@ const API = {
         };
     },
 
-    /**
-     * GET request genérico
-     */
     async get(url, params = {}) {
         const query = new URLSearchParams(params).toString();
         const fullUrl = query ? `${url}?${query}` : url;
-        const res = await fetch(fullUrl, {
-            headers: this.headers(),
-        });
+        const res = await fetch(fullUrl, { headers: this.headers() });
         return res.json();
     },
 
-    /**
-     * POST request genérico
-     */
     async post(url, data = {}) {
         const res = await fetch(url, {
             method: 'POST',
@@ -134,9 +90,6 @@ const API = {
         return res.json();
     },
 
-    /**
-     * PUT request genérico
-     */
     async put(url, data = {}) {
         const res = await fetch(url, {
             method: 'PUT',
@@ -146,9 +99,6 @@ const API = {
         return res.json();
     },
 
-    /**
-     * DELETE request genérico
-     */
     async delete(url) {
         const res = await fetch(url, {
             method: 'DELETE',
@@ -158,5 +108,4 @@ const API = {
     },
 };
 
-// Exponer globalmente
 window.API = API;

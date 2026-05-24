@@ -1,5 +1,5 @@
 
-const API_BASE = "https://jhpapi-production.up.railway.app/api";
+
 let seccionActual = "Clientes";
 let editandoID = null;
 

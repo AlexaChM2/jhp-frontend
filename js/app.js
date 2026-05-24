@@ -1,5 +1,5 @@
 window.cargarVista = function(vista) {
-    console.log('📂 cargarVista:', vista);
+    console.log(' cargarVista:', vista);
     
     fetch(vista)
         .then(response => {
@@ -64,7 +64,7 @@ window.cargarVista = function(vista) {
 
         })
         .catch(error => {
-            console.error('❌ Error al cargar vista:', error);
+            console.error(' Error al cargar vista:', error);
             const container = document.getElementById('contenido');
             if (container) {
                 container.innerHTML = `
@@ -84,7 +84,7 @@ window.cargarVista = function(vista) {
 };
 
 function inicializarVista(vista) {
-    console.log('🚀 Inicializando vista:', vista);
+    console.log(' Inicializando vista:', vista);
     
     // ⚠️ IMPORTANTE: Emitir evento para que los scripts lo capturen
     const event = new CustomEvent('vista-cargada', { 
@@ -92,7 +92,7 @@ function inicializarVista(vista) {
         bubbles: true 
     });
     document.dispatchEvent(event);
-    console.log('📢 Evento vista-cargada emitido');
+    console.log(' Evento vista-cargada emitido');
 
     // Configuración de vistas
     const configVistas = {
@@ -111,7 +111,7 @@ function inicializarVista(vista) {
     if (vista.includes('reporte') || vista.includes('Reporte') ||
         vista.includes('cita') || vista.includes('Cita') ||
         vista.includes('cotizacion') || vista.includes('Cotizacion')) {
-        console.log('⏩ Vista con auto-inicialización, esperando script...');
+        console.log(' Vista con auto-inicialización, esperando script...');
         return;
     }
 
@@ -126,7 +126,7 @@ function inicializarVista(vista) {
     }
 
     if (!configurada) {
-        console.log('📌 Vista sin inicialización automática:', vista);
+        console.log(' Vista sin inicialización automática:', vista);
     }
 }
 
@@ -135,26 +135,26 @@ function ejecutarConReintentos(funcionPrincipal, funcionFallback, args = [], int
     const delay = 500;
 
     if (typeof window[funcionPrincipal] === 'function') {
-        console.log(`✅ Ejecutando: ${funcionPrincipal}`);
+        console.log(` Ejecutando: ${funcionPrincipal}`);
         window[funcionPrincipal](...args);
         return;
     }
 
     if (funcionFallback && typeof window[funcionFallback] === 'function') {
-        console.log(`✅ Ejecutando fallback: ${funcionFallback}`);
+        console.log(` Ejecutando fallback: ${funcionFallback}`);
         window[funcionFallback](...args);
         return;
     }
 
     if (intentos < maxIntentos) {
         if (intentos === 0 || intentos % 3 === 0) {
-            console.log(`⏳ Esperando ${funcionPrincipal}... (intento ${intentos + 1}/${maxIntentos})`);
+            console.log(` Esperando ${funcionPrincipal}... (intento ${intentos + 1}/${maxIntentos})`);
         }
         setTimeout(() => {
             ejecutarConReintentos(funcionPrincipal, funcionFallback, args, intentos + 1);
         }, delay);
     } else {
-        console.warn(`⚠️ No se encontró: ${funcionPrincipal} después de ${maxIntentos} intentos`);
+        console.warn(` No se encontró: ${funcionPrincipal} después de ${maxIntentos} intentos`);
     }
 }
 
@@ -174,4 +174,4 @@ document.addEventListener('click', function(e) {
     });
 });
 
-console.log('✅ app.js - Listo');
+console.log(' app.js - Listo');
