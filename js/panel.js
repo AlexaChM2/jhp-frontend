@@ -727,6 +727,227 @@ function actualizarCitas() {
     inicializarCalendario();
 }
 
+
+///
+
+// ========== SISTEMA DE NOTIFICACIONES CON BOOTSTRAP ==========
+// Este código va al FINAL de tu archivo panel.js
+
+var notificaciones = [];
+var ultimoStockCheck = null;
+var dropdownNotificaciones = null;
+
+// Función modificada para manejar notificaciones
+function verificarStockBajoPanelConNotificaciones() {
+    fetch(API_PRODUCTOS_PANEL)
+        .then(function(res) { return res.json(); })
+        .then(function(response) {
+            var data = response.success ? response.data : response;
+            var productos = Array.isArray(data) ? data : [];
+            
+            var bajos = productos.filter(function(p) { 
+                return p.pro_stock <= 5 && p.pro_stock > 0; 
+            });
+            var agotados = productos.filter(function(p) { 
+                return p.pro_stock <= 0; 
+            });
+            var total = bajos.length + agotados.length;
+
+            // Alerta tradicional
+            var alertaEl = document.getElementById("alertaStockPanel");
+            if (alertaEl) {
+                if (total === 0) {
+                    alertaEl.style.display = "none";
+                } else {
+                    var mensaje = '';
+                    if (agotados.length > 0) mensaje += agotados.length + ' producto(s) agotado(s)';
+                    if (bajos.length > 0) {
+                        if (mensaje) mensaje += ' | ';
+                        mensaje += bajos.length + ' con stock bajo';
+                    }
+                    alertaEl.style.display = "block";
+                    var textoEl = document.getElementById("stockAlertaTexto");
+                    if (textoEl) textoEl.textContent = mensaje;
+                }
+            }
+            
+            crearNotificaciones(agotados, bajos);
+            actualizarContadorNotificaciones();
+            
+            ultimoStockCheck = new Date();
+        })
+        .catch(function() {});
+}
+
+function crearNotificaciones(agotados, bajos) {
+    notificaciones = [];
+    
+    agotados.forEach(function(producto) {
+        notificaciones.push({
+            id: producto.id_producto,
+            nombre: producto.pro_nombre,
+            stock: producto.pro_stock,
+            codigo: producto.pro_codigo,
+            tipo: 'agotado',
+            prioridad: 1,
+            timestamp: new Date(),
+            leido: false
+        });
+    });
+    
+    bajos.forEach(function(producto) {
+        notificaciones.push({
+            id: producto.id_producto,
+            nombre: producto.pro_nombre,
+            stock: producto.pro_stock,
+            codigo: producto.pro_codigo,
+            tipo: 'bajo',
+            prioridad: 2,
+            timestamp: new Date(),
+            leido: false
+        });
+    });
+    
+    notificaciones.sort(function(a, b) {
+        if (a.prioridad !== b.prioridad) {
+            return a.prioridad - b.prioridad;
+        }
+        return b.timestamp - a.timestamp;
+    });
+}
+
+function actualizarContadorNotificaciones() {
+    var noLeidas = notificaciones.filter(function(n) { return !n.leido; }).length;
+    var contadorSpan = document.getElementById("contadorNotificaciones");
+    
+    if (contadorSpan) {
+        if (noLeidas > 0) {
+            contadorSpan.textContent = noLeidas > 99 ? '99+' : noLeidas;
+            contadorSpan.style.display = 'inline-block';
+        } else {
+            contadorSpan.style.display = 'none';
+        }
+    }
+}
+
+function cargarListaNotificaciones() {
+    var lista = document.getElementById("listaNotificaciones");
+    if (!lista) return;
+    
+    if (notificaciones.length === 0) {
+        lista.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <p class="mb-0">¡Todo en orden!</p>
+                <small class="text-muted">No hay productos con stock bajo</small>
+            </div>
+        `;
+        return;
+    }
+    
+    var html = '<div class="list-group list-group-flush">';
+    notificaciones.forEach(function(notif, index) {
+        var bgClass = notif.tipo === 'agotado' ? 'bg-danger bg-opacity-10' : 'bg-warning bg-opacity-10';
+        var icono = notif.tipo === 'agotado' ? 'fa-circle-exclamation text-danger' : 'fa-triangle-exclamation text-warning';
+        var leidoClass = notif.leido ? 'opacity-50' : '';
+        
+        html += `
+            <div class="list-group-item list-group-item-action ${bgClass} ${leidoClass}" style="cursor: pointer;" onclick="marcarNotificacionComoLeida(${index})">
+                <div class="d-flex align-items-start">
+                    <div class="me-3">
+                        <i class="fas ${icono} fa-lg"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <strong class="${notif.tipo === 'agotado' ? 'text-danger' : 'text-warning'}">
+                                ${notif.tipo === 'agotado' ? 'AGOTADO' : 'STOCK BAJO'}
+                            </strong>
+                            <small class="text-muted">${formatTimeNotificacion(notif.timestamp)}</small>
+                        </div>
+                        <p class="mb-0 small">${notif.nombre}</p>
+                        <small class="text-muted">Stock: ${notif.stock} unidades</small>
+                    </div>
+                    ${!notif.leido ? '<span class="badge bg-danger rounded-pill ms-2" style="width: 8px; height: 8px; padding: 0;"></span>' : ''}
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    lista.innerHTML = html;
+}
+
+function marcarNotificacionComoLeida(index) {
+    if (notificaciones[index]) {
+        notificaciones[index].leido = true;
+        actualizarContadorNotificaciones();
+        cargarListaNotificaciones();
+    }
+}
+
+function formatTimeNotificacion(date) {
+    var now = new Date();
+    var diff = Math.floor((now - new Date(date)) / 1000);
+    
+    if (diff < 60) return 'Hace ' + diff + ' seg';
+    if (diff < 3600) return 'Hace ' + Math.floor(diff / 60) + ' min';
+    if (diff < 86400) return 'Hace ' + Math.floor(diff / 3600) + ' h';
+    return 'Hace ' + Math.floor(diff / 86400) + ' días';
+}
+
+function inicializarNotificacionesBs() {
+    var dropdownElement = document.getElementById('btnNotificaciones');
+    if (dropdownElement && typeof bootstrap !== 'undefined') {
+        dropdownNotificaciones = new bootstrap.Dropdown(dropdownElement, {
+            autoClose: true
+        });
+    }
+    
+    var btnNotificaciones = document.getElementById('btnNotificaciones');
+    if (btnNotificaciones) {
+        btnNotificaciones.addEventListener('shown.bs.dropdown', function () {
+            cargarListaNotificaciones();
+        });
+    }
+    
+    var cerrarBtn = document.getElementById("cerrarNotificacionesBs");
+    if (cerrarBtn) {
+        cerrarBtn.addEventListener('click', function() {
+            if (dropdownNotificaciones) {
+                dropdownNotificaciones.hide();
+            }
+        });
+    }
+    
+    var verTodoBtn = document.getElementById("btnVerTodoBs");
+    if (verTodoBtn) {
+        verTodoBtn.addEventListener('click', function() {
+            if (typeof window.cargarVista === 'function') {
+                window.cargarVista('views/inventario.html');
+            }
+            if (dropdownNotificaciones) {
+                dropdownNotificaciones.hide();
+            }
+        });
+    }
+}
+
+// Sobrescribir la función verificarStockBajoPanel original
+var verificarStockBajoPanelOriginal = window.verificarStockBajoPanel;
+window.verificarStockBajoPanel = verificarStockBajoPanelConNotificaciones;
+
+// Inicializar notificaciones si existe el botón
+if (document.getElementById("btnNotificaciones")) {
+    inicializarNotificacionesBs();
+}
+
+// Exponer funciones
+window.marcarNotificacionComoLeida = marcarNotificacionComoLeida;
+
+///
+
+
+
 // ========== EXPONER FUNCIONES GLOBALES ==========
 window.inicializarPanel = inicializarPanel;
 window.verificarEstadoCaja = verificarEstadoCaja;
@@ -751,3 +972,4 @@ if (document.getElementById("calendario") || document.getElementById("estado-bad
         inicializarPanel();
     }
 }
+
