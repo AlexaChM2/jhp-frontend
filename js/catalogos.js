@@ -32,26 +32,25 @@ const CONFIG = {
             <td><span class="badge bg-${reg.cli_estado === 'Activo' ? 'success' : 'secondary'}">${reg.cli_estado || 'N/A'}</span></td>
         `
     },
-    Proveedores: {
-       api: "https://jhpapi-production.up.railway.app/api/proveedores",
-        campos: ["prov_nombre", "prov_contacto", "prov_telefono", "prov_email", "prov_direccion"],
-        labels: ["Empresa/Nombre *", "Contacto", "Teléfono", "Email", "Dirección"],
-        columnas: ["ID", "Proveedor", "Contacto", "Teléfono", "Email", "Acciones"],
-     extraerDatos: (response) => {
-    if (response.success && Array.isArray(response.data)) {
-        return response.data;
-    }
-    return [];
-},
-        getId: (reg) => reg.id_proveedor,
-        formatearFila: (reg) => `
-            <td>${reg.id_proveedor || ''}</td>
-            <td>${reg.prov_nombre || 'N/A'}</td>
-            <td>${reg.prov_contacto || 'N/A'}</td>
-            <td>${reg.prov_telefono || 'N/A'}</td>
-            <td>${reg.prov_email || 'N/A'}</td>
-        `
+ Proveedores: {
+    api: "https://jhpapi-production.up.railway.app/api/proveedores",
+    campos: ["prov_nombre", "prov_contacto", "prov_telefono", "prov_email", "prov_direccion"],
+    labels: ["Empresa/Nombre *", "Contacto", "Teléfono", "Email", "Dirección"],
+    columnas: ["ID", "Proveedor", "Contacto", "Teléfono", "Email", "Acciones"],
+    extraerDatos: (response) => {
+        if (Array.isArray(response)) return response;
+        if (response.success && Array.isArray(response.data)) return response.data;
+        return [];
     },
+    getId: (reg) => reg.id_proveedor,
+    formatearFila: (reg) => `
+        <td>${reg.id_proveedor || ''}</td>
+        <td>${reg.prov_nombre || 'N/A'}</td>
+        <td>${reg.prov_contacto || 'N/A'}</td>
+        <td>${reg.prov_telefono || 'N/A'}</td>
+        <td>${reg.prov_email || 'N/A'}</td>
+    `
+},
     Empleados: {
         api: "https://jhpapi-production.up.railway.app/api/empleados",
         campos: [
