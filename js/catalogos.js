@@ -5,7 +5,7 @@ let editandoID = null;
 
 const CONFIG = {
   Clientes: {
-        api: `${API_BASE}/clientes`,
+        api: "https://jhpapi-production.up.railway.app/api/clientes",
         campos: [
             "cli_nombre", "cli_apaterno", "cli_amaterno", 
             "cli_telefono", "cli_correo", "cli_direccion",
@@ -33,7 +33,7 @@ const CONFIG = {
         `
     },
     Proveedores: {
-        api: `${API_BASE}/proveedores`,
+       api: "https://jhpapi-production.up.railway.app/api/proveedores",
         campos: ["prov_nombre", "prov_contacto", "prov_telefono", "prov_email", "prov_direccion"],
         labels: ["Empresa/Nombre *", "Contacto", "Teléfono", "Email", "Dirección"],
         columnas: ["ID", "Proveedor", "Contacto", "Teléfono", "Email", "Acciones"],
@@ -53,7 +53,7 @@ const CONFIG = {
         `
     },
     Empleados: {
-        api: `${API_BASE}/empleados`,
+        api: "https://jhpapi-production.up.railway.app/api/empleados",
         campos: [
             "emp_nombre", "emp_apaterno", "emp_amaterno", 
             "emp_telefono", "emp_rol", "emp_correo", 
