@@ -42,6 +42,7 @@ function verificarStockBajoPanel() {
 
 // ========== INICIALIZAR ==========
 function inicializarPanel() {
+    console.log('=== INICIALIZANDO PANEL ===');
     verificarEstadoCaja();
     cargarVentasHoy();
     cargarCitasPanel();
@@ -50,46 +51,56 @@ function inicializarPanel() {
     setTimeout(buscarRefaccionarias, 1500);
 }
 
-// ========== CAJA ==========
+// ========== CAJA CON DIAGNÓSTICO ==========
 function verificarEstadoCaja() {
+    console.log('🔍 Verificando estado de caja...');
+    console.log('URL:', API_CAJA_PANEL + '/estado');
+    
     fetch(API_CAJA_PANEL + '/estado')
-        .then(function(res) { return res.json(); })
+        .then(function(res) { 
+            console.log('📡 Status respuesta:', res.status);
+            return res.json(); 
+        })
         .then(function(data) {
+            console.log('📦 Datos recibidos:', data);
+            
             var badge = document.getElementById("estado-badge");
             var btn = document.getElementById("btn-caja");
             var montoTexto = document.getElementById("monto-apertura-texto");
             var montoVal = document.getElementById("monto-inicial-val");
 
-            // Tu controller usa 'caja_abierta'
-            var cajaAbierta = data.caja_abierta || (data.status === 'success' && data.caja_abierta);
+            var cajaAbierta = data.caja_abierta === true;
+            console.log('Caja abierta:', cajaAbierta);
             
             if (cajaAbierta) {
+                console.log('✅ Caja está ABIERTA');
                 if (badge) { 
                     badge.textContent = "Abierta"; 
                     badge.className = "badge bg-success mb-3"; 
                 }
                 if (btn) { 
                     btn.innerHTML = '<i class="fas fa-door-closed"></i> Cerrar Caja'; 
-                    btn.onclick = confirmarCerrarCaja; 
+                    btn.onclick = function() { confirmarCerrarCaja(); };
                 }
                 if (montoTexto) montoTexto.style.display = "block";
                 if (montoVal && data.monto_inicial) {
                     montoVal.textContent = '$' + parseFloat(data.monto_inicial).toFixed(2);
                 }
             } else {
+                console.log('❌ Caja está CERRADA');
                 if (badge) { 
                     badge.textContent = "Cerrada"; 
                     badge.className = "badge bg-danger mb-3"; 
                 }
                 if (btn) { 
                     btn.innerHTML = '<i class="fas fa-door-open"></i> Abrir Caja'; 
-                    btn.onclick = abrirModalCaja; 
+                    btn.onclick = function() { abrirModalCaja(); };
                 }
                 if (montoTexto) montoTexto.style.display = "none";
             }
         })
         .catch(function(error) {
-            console.error('Error al verificar caja:', error);
+            console.error('❌ Error al verificar caja:', error);
             var badge = document.getElementById("estado-badge");
             if (badge) {
                 badge.textContent = "Error";
@@ -99,24 +110,33 @@ function verificarEstadoCaja() {
 }
 
 function abrirModalCaja() {
+    console.log('📂 Abriendo modal de caja');
     document.getElementById("modal-caja").style.display = "flex";
+    var inputMonto = document.getElementById("monto_inicial");
+    if (inputMonto) inputMonto.value = "";
 }
 
 function cerrarModal() {
+    console.log('🔒 Cerrando modal de caja');
     document.getElementById("modal-caja").style.display = "none";
     var inputMonto = document.getElementById("monto_inicial");
     if (inputMonto) inputMonto.value = "";
 }
 
 function confirmarAbrirCaja() {
+    console.log('=== CONFIRMAR ABRIR CAJA ===');
     var monto = parseFloat(document.getElementById("monto_inicial").value) || 0;
     
+    console.log('💰 Monto ingresado:', monto);
+    
     if (monto <= 0) {
+        console.log('⚠️ Monto inválido');
         Swal.fire("Error", "Ingresa un monto inicial válido", "warning");
         return;
     }
     
     var token = localStorage.getItem('token');
+    console.log('🔑 Token:', token ? 'Presente' : 'No hay token');
     
     Swal.fire({
         title: 'Abriendo caja...',
@@ -127,22 +147,33 @@ function confirmarAbrirCaja() {
         }
     });
     
+    var requestBody = { 
+        accion: "abrir",
+        monto_inicial: monto, 
+        id_empleado: 1 
+    };
+    
+    console.log('📤 Enviando a:', API_CAJA_PANEL);
+    console.log('📦 Body:', requestBody);
+    
     fetch(API_CAJA_PANEL, {
         method: "POST",
         headers: { 
             "Content-Type": "application/json", 
-            "Accept": "application/json",
-            "Authorization": "Bearer " + (token || '')
+            "Accept": "application/json"
         },
-        body: JSON.stringify({ 
-            accion: "abrir",
-            monto_inicial: monto,
-            id_empleado: 1
-        })
+        body: JSON.stringify(requestBody)
     })
-    .then(function(res) { return res.json(); })
+    .then(function(res) { 
+        console.log('📡 Status:', res.status);
+        console.log('📡 Status Text:', res.statusText);
+        return res.json(); 
+    })
     .then(function(data) {
+        console.log('📦 Respuesta completa:', data);
+        
         if (data.status === 'success') {
+            console.log('✅ Caja abierta exitosamente');
             Swal.fire({ 
                 icon: 'success', 
                 title: 'Caja Abierta', 
@@ -154,19 +185,24 @@ function confirmarAbrirCaja() {
             verificarEstadoCaja();
             cargarVentasHoy();
         } else {
+            console.log('❌ Error en respuesta:', data.message);
             Swal.fire("Error", data.message || "No se pudo abrir la caja", "error");
         }
     })
     .catch(function(error) {
+        console.error('❌ Fetch error:', error);
         Swal.fire("Error", "Error al conectar: " + error.message, "error");
     });
 }
 
 function confirmarCerrarCaja() {
-    // Primero obtener información de la caja actual
+    console.log('=== CONFIRMAR CERRAR CAJA ===');
+    
     fetch(API_CAJA_PANEL + '/estado')
         .then(function(res) { return res.json(); })
         .then(function(data) {
+            console.log('📦 Estado actual:', data);
+            
             if (!data.caja_abierta) {
                 Swal.fire("Info", "No hay caja abierta", "info");
                 return;
@@ -198,12 +234,13 @@ function confirmarCerrarCaja() {
             });
         })
         .catch(function(error) {
+            console.error('❌ Error:', error);
             Swal.fire("Error", "No se pudo obtener información de la caja: " + error.message, "error");
         });
 }
 
 function cerrarCajaOperacion() {
-    var token = localStorage.getItem('token');
+    console.log('=== EJECUTANDO CIERRE DE CAJA ===');
     
     Swal.fire({
         title: 'Cerrando caja...',
@@ -214,19 +251,23 @@ function cerrarCajaOperacion() {
         }
     });
     
+    console.log('📤 Enviando cierre a:', API_CAJA_PANEL);
+    
     fetch(API_CAJA_PANEL, {
         method: "POST",
         headers: { 
             "Content-Type": "application/json", 
-            "Accept": "application/json",
-            "Authorization": "Bearer " + (token || '')
+            "Accept": "application/json"
         },
-        body: JSON.stringify({ 
-            accion: "cerrar"
-        })
+        body: JSON.stringify({ accion: "cerrar" })
     })
-    .then(function(res) { return res.json(); })
+    .then(function(res) { 
+        console.log('📡 Status:', res.status);
+        return res.json(); 
+    })
     .then(function(data) {
+        console.log('📦 Respuesta cierre:', data);
+        
         if (data.status === 'success') {
             var ventasHoy = parseFloat(data.ventas_hoy || 0);
             var montoFinal = parseFloat(data.monto_final_esperado || 0);
@@ -246,6 +287,7 @@ function cerrarCajaOperacion() {
         }
     })
     .catch(function(error) {
+        console.error('❌ Error en cierre:', error);
         Swal.fire("Error", "Error al conectar: " + error.message, "error");
     });
 }
@@ -356,7 +398,7 @@ function inicializarCalendario() {
             var data = response.success ? (response.data?.data || response.data) : response;
             var citas = Array.isArray(data) ? data : [];
             var eventos = citas.map(function(c) {
-                var color = '#ffc107'; // Amarillo por defecto (Pendiente)
+                var color = '#ffc107';
                 if (c.cita_estado === 'Realizada') color = '#28a745';
                 if (c.cita_estado === 'Cancelada') color = '#dc3545';
                 if (c.cita_estado === 'Confirmada') color = '#17a2b8';
@@ -411,7 +453,7 @@ function buscarRefaccionarias() {
         navigator.geolocation.getCurrentPosition(function(position) {
             inicializarMapa(position.coords.latitude, position.coords.longitude);
         }, function() {
-            inicializarMapa(19.4326, -99.1332); // Centro de CDMX por defecto
+            inicializarMapa(19.4326, -99.1332);
         });
     } else {
         inicializarMapa(19.4326, -99.1332);
@@ -462,7 +504,6 @@ function buscarRefaccionariasCercanas(lat, lng) {
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
-        // Limpiar marcadores anteriores
         marcadoresRefacciones.forEach(function(m) { 
             mapaRefacciones.removeLayer(m); 
         });
@@ -522,6 +563,25 @@ function actualizarCitas() {
     inicializarCalendario();
 }
 
+// ========== FUNCIÓN DE DIAGNÓSTICO MANUAL ==========
+function diagnosticarAPI() {
+    console.log('=== DIAGNÓSTICO COMPLETO ===');
+    console.log('1. URL de API:', API_CAJA_PANEL);
+    
+    fetch(API_CAJA_PANEL + '/estado')
+        .then(r => r.json())
+        .then(data => {
+            console.log('2. Estado actual:', data);
+            return fetch(API_CAJA_PANEL);
+        })
+        .then(r => r.json())
+        .then(data => {
+            console.log('3. Todas las cajas:', data);
+            console.log('=== DIAGNÓSTICO COMPLETADO ===');
+        })
+        .catch(err => console.error('Error diagnóstico:', err));
+}
+
 // ========== EXPONER FUNCIONES GLOBALES ==========
 window.inicializarPanel = inicializarPanel;
 window.verificarEstadoCaja = verificarEstadoCaja;
@@ -533,6 +593,7 @@ window.cargarCitasPanel = cargarCitasPanel;
 window.actualizarVentas = actualizarVentas;
 window.actualizarCitas = actualizarCitas;
 window.buscarRefaccionarias = buscarRefaccionarias;
+window.diagnosticarAPI = diagnosticarAPI;
 
 // ========== INICIALIZACIÓN AUTOMÁTICA ==========
 if (document.getElementById("calendario") || document.getElementById("estado-badge") || document.getElementById("mapaRefaccionarias")) {
@@ -540,7 +601,6 @@ if (document.getElementById("calendario") || document.getElementById("estado-bad
         inicializarPanel();
     });
     
-    // Si ya está cargado el DOM
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', inicializarPanel);
     } else {
