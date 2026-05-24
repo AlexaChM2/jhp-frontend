@@ -73,7 +73,7 @@ function mostrarAlertaStockBajo() {
                     cancelButtonColor: '#6c757d'
                 }).then((result) => {
                     if (result.isConfirmed && typeof window.cargarVista === 'function') {
-                        window.cargarVista('views/producto.html');
+                        window.cargarVista('views/productos.html');
                     }
                 });
             }
