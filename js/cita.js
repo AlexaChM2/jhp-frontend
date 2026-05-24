@@ -1,7 +1,3 @@
-// ==========================================
-// CITAS.JS - VERSIÓN CORREGIDA
-// ==========================================
-
 var API_CITA_CITAS = "https://jhpapi-production.up.railway.app/api/citas";
 var API_CLI_CITAS = "https://jhpapi-production.up.railway.app/api/clientes";
 var API_EMP_CITAS = "https://jhpapi-production.up.railway.app/api/empleados";
@@ -28,7 +24,6 @@ const CONFIG = {
     }
 };
 
-// ========== PERSISTENCIA LOCAL ==========
 function guardarEnCache(datos) {
     localStorage.setItem('citas_cache', JSON.stringify({
         data: datos,
@@ -40,18 +35,17 @@ function obtenerDeCache() {
     const cache = localStorage.getItem('citas_cache');
     if (cache) {
         const parsed = JSON.parse(cache);
-        if (Date.now() - parsed.timestamp < 300000) { // 5 minutos
+        if (Date.now() - parsed.timestamp < 300000) {
             return parsed.data;
         }
     }
     return null;
 }
 
-// ========== CARGAR CITAS ==========
 async function cargarCitasExistentes() {
     const cacheData = obtenerDeCache();
     if (cacheData && !inicializadoCitas) {
-        console.log('📦 Usando caché de citas');
+        console.log('Usando caché de citas');
         citasExistentes = cacheData;
         return citasExistentes;
     }
@@ -63,10 +57,10 @@ async function cargarCitasExistentes() {
         const data = response.success ? (response.data?.data || response.data) : response;
         citasExistentes = Array.isArray(data) ? data : [];
         guardarEnCache(citasExistentes);
-        console.log('✅ Citas cargadas:', citasExistentes.length);
+        console.log('Citas cargadas:', citasExistentes.length);
         return citasExistentes;
     } catch (error) {
-        console.error('❌ Error cargando citas:', error);
+        console.error('Error cargando citas:', error);
         if (cacheData) {
             citasExistentes = cacheData;
             return citasExistentes;
@@ -76,7 +70,6 @@ async function cargarCitasExistentes() {
     }
 }
 
-// ========== INICIALIZAR CALENDARIO VISUAL ==========
 async function inicializarCalendarioVisual() {
     const calendarEl = document.getElementById('calendarioVisual');
     if (!calendarEl) return;
@@ -90,7 +83,7 @@ async function inicializarCalendarioVisual() {
         let color = '#17a2b8';
         if (cita.cita_estado === 'Realizada') color = '#28a745';
         if (cita.cita_estado === 'Cancelada') color = '#dc3545';
-        if (cita.cita_estado === 'Confirmada') color = '#17a2b8';  // Celeste
+        if (cita.cita_estado === 'Confirmada') color = '#17a2b8';
         
         return {
             id: cita.id_cita,
@@ -125,7 +118,6 @@ async function inicializarCalendarioVisual() {
     calendarVisual.render();
 }
 
-// ========== INICIALIZAR CALENDARIO SELECTOR (MODAL) ==========
 async function inicializarCalendarioSelector() {
     const calendarEl = document.getElementById('calendarioSelector');
     if (!calendarEl) return;
@@ -287,7 +279,6 @@ async function seleccionarFecha(fecha) {
     if (horariosContainer) horariosContainer.style.display = 'block';
 }
 
-// ========== TABLA DE CITAS ==========
 async function listarCitas() {
     const tbody = document.getElementById("tablaCitas");
     if (!tbody) return;
@@ -339,12 +330,11 @@ async function listarCitas() {
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
-              </td>
-        </tr>`;
+               </td>
+         </tr>`;
     }).join('');
 }
 
-// ========== CLIENTES Y EMPLEADOS ==========
 function buscarClienteCita(v) {
     const lista = document.getElementById("resCliCita");
     if (!lista) return;
@@ -401,7 +391,6 @@ function prepararServicio(idCita) {
     }
 }
 
-// ========== MODAL ==========
 function abrirModalCita() {
     const modal = document.getElementById("modalCita");
     if (modal) {
@@ -428,7 +417,6 @@ function cerrarModalCita() {
     empleadoIdCita = null;
 }
 
-// ========== GUARDAR CITA ==========
 async function guardarCita(e) {
     if (e) e.preventDefault();
     
@@ -485,7 +473,6 @@ async function guardarCita(e) {
     }
 }
 
-// ========== EDITAR CITA ==========
 async function editarCita(id) {
     await cargarCitasExistentes();
     const c = citasExistentes.find(cita => cita.id_cita === id);
@@ -514,7 +501,6 @@ async function editarCita(id) {
     }, 300);
 }
 
-// ========== ELIMINAR CITA ==========
 function eliminarCita(id) {
     Swal.fire({
         title: '¿Eliminar cita?',
@@ -545,27 +531,24 @@ function eliminarCita(id) {
     });
 }
 
-// ========== INICIALIZACIÓN ==========
 async function inicializarModuloCitas() {
-    console.log('🚀 Inicializando módulo de citas...');
+    console.log('Inicializando módulo de citas...');
     inicializadoCitas = true;
     await cargarCitasExistentes();
     await listarCitas();
     cargarSelectEmpleados();
     await inicializarCalendarioVisual();
-    console.log('✅ Módulo de citas listo');
+    console.log('Módulo de citas listo');
 }
 
-// ========== EVENTO VISTA CARGADA ==========
 document.addEventListener('vista-cargada', function(e) {
     const vista = e.detail?.vista || '';
     if (vista.includes('cita') || vista.includes('Cita')) {
-        console.log('📅 Vista de citas detectada, iniciando...');
+        console.log('Vista de citas detectada, iniciando...');
         setTimeout(inicializarModuloCitas, 300);
     }
 });
 
-// ========== EXPONER FUNCIONES ==========
 window.listarCitas = listarCitas;
 window.abrirModalCita = abrirModalCita;
 window.cerrarModalCita = cerrarModalCita;
@@ -578,7 +561,6 @@ window.eliminarCita = eliminarCita;
 window.prepararServicio = prepararServicio;
 window.inicializarModuloCitas = inicializarModuloCitas;
 
-// Si ya hay un contenedor de citas visible
 if (document.getElementById('tablaCitas')) {
     setTimeout(inicializarModuloCitas, 300);
 }
