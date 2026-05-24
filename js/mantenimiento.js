@@ -329,6 +329,9 @@ window.editarMantenimiento = async function(id) {
 // ==========================================
 // DESCARGAR PDF - ABRE EN NUEVA PESTAÑA
 // ==========================================
+// ==========================================
+// DESCARGAR PDF - MISMO DISEÑO QUE SERVICIOS
+// ==========================================
 window.descargarPDFMantenimiento = async function(id) {
     try {
         console.log('Generando PDF para mantenimiento:', id);
@@ -355,15 +358,16 @@ window.descargarPDFMantenimiento = async function(id) {
         
         const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
         
-        // Encabezado
+        // ENCABEZADO (igual que servicios)
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
         doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text("Mantenimiento Preventivo", 105, 22, { align: "center" });
+        doc.text("Mantenimiento Preventivo", 105, 22, { align: "center" }); // Solo cambia el título
         doc.line(10, 25, 200, 25);
         
+        // DATOS GENERALES (igual que servicios, pero sin Fecha y con Tipo)
         let y = 32;
         
         function addLine(label, value, y) {
@@ -376,13 +380,14 @@ window.descargarPDFMantenimiento = async function(id) {
         
         y = addLine("Folio:", `#${m.id_mantenimiento}`, y);
         y = addLine("Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D', y);
-        y = addLine("Mecánico:", m.mecanico?.emp_nombre || 'S/D', y);
+        y = addLine("Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D', y);
         y = addLine("Modelo:", m.moto_modelo || 'N/A', y);
+        y = addLine("Tipo:", m.tipo || 'Correctivo', y);
         y = addLine("Estado:", m.estado_servicio || 'Pendiente', y);
         y = addLine("Descripción:", m.moto_llegada_descripcion || '-', y);
         y = addLine("Trabajo Realizado:", m.trabajo_realizado || 'Pendiente', y);
         
-        // Tabla de servicios
+        // TABLA DE SERVICIOS (MANO DE OBRA) - MISMO DISEÑO
         if (m.servicios && m.servicios.length > 0) {
             y += 5;
             doc.setFontSize(12);
@@ -404,7 +409,7 @@ window.descargarPDFMantenimiento = async function(id) {
                     head: [['Servicio', 'Precio']],
                     body: filasServicios,
                     theme: 'striped',
-                    headStyles: { fillColor: [253, 126, 20] },
+                    headStyles: { fillColor: [253, 126, 20] }, // Naranja como en servicios
                     margin: { left: 15, right: 15 },
                     styles: { fontSize: 9 }
                 });
@@ -412,7 +417,7 @@ window.descargarPDFMantenimiento = async function(id) {
             }
         }
         
-        // Tabla de insumos
+        // TABLA DE INSUMOS - MISMO DISEÑO
         if (m.insumos && m.insumos.length > 0) {
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
@@ -438,7 +443,7 @@ window.descargarPDFMantenimiento = async function(id) {
                     head: [['Producto', 'Cant', 'P. Unit.', 'Subtotal']],
                     body: filasInsumos,
                     theme: 'striped',
-                    headStyles: { fillColor: [13, 110, 253] },
+                    headStyles: { fillColor: [13, 110, 253] }, // Azul como en servicios
                     margin: { left: 15, right: 15 },
                     styles: { fontSize: 9 }
                 });
@@ -446,24 +451,24 @@ window.descargarPDFMantenimiento = async function(id) {
             }
         }
         
-        // Total general
+        // TOTAL GENERAL - MISMO DISEÑO
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 190, y, { align: "right" });
         
-        // Pie de página
+        // PIE DE PÁGINA - MISMO DISEÑO
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.text("JHP Taller Mecánico - Mantenimiento Preventivo", 105, 285, { align: "center" });
         
-        // 🔥 ABRIR EN NUEVA PESTAÑA (como funciona en servicios)
+        // ABRIR EN NUEVA PESTAÑA (como funciona en servicios)
         const pdfBlob = doc.output('blob');
         const pdfUrl = URL.createObjectURL(pdfBlob);
         window.open(pdfUrl, '_blank');
         
         setTimeout(() => URL.revokeObjectURL(pdfUrl), 100);
         
-        console.log('PDF abierto en nueva pestaña');
+        console.log('PDF de mantenimiento generado correctamente');
         
     } catch (e) {
         console.error('Error PDF:', e);
