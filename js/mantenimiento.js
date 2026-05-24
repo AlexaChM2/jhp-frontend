@@ -95,10 +95,9 @@ async function listarMantenimiento() {
                         style="background:#ffc107;color:#000;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="window.descargarPDFMantenimiento(${m.id_mantenimiento})" title="Ver PDF"
-                        style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
-                        <i class="fas fa-file-pdf"></i>
-                    </button>
+                    <button onclick="window.descargarPDFServicio(${m.id_mantenimiento})" title="Imprimir"
+                            style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+                            <i class="fas fa-print"></i></button>
                  </td>
             <tr>`;
         }).join('');
