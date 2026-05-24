@@ -23,6 +23,10 @@ async function listarMantenimiento() {
 
         if (lista.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3">No hay mantenimientos</td></tr>';
+            // Resetear contadores
+            document.getElementById("totalMantPendientes").textContent = 0;
+            document.getElementById("totalMantCompletados").textContent = 0;
+            document.getElementById("totalMantProximos").textContent = '-';
             return;
         }
 
@@ -53,6 +57,14 @@ async function listarMantenimiento() {
                 </td>
             </tr>`;
         }).join('');
+
+        // Actualizar contadores
+        const pendientes = lista.filter(s => s.estado_servicio !== 'Terminado' && s.estado_servicio !== 'Entregado').length;
+        const completados = lista.filter(s => s.estado_servicio === 'Terminado' || s.estado_servicio === 'Entregado').length;
+
+        document.getElementById("totalMantPendientes").textContent = pendientes;
+        document.getElementById("totalMantCompletados").textContent = completados;
+        document.getElementById("totalMantProximos").textContent = '-';
 
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error al cargar</td></tr>';
@@ -257,7 +269,7 @@ window.verMantenimiento = async function(id) {
             </table>`;
 
         if (m.servicios?.length > 0) {
-            html += `<hr><strong>🔧 Mano de Obra:</strong>
+            html += `<hr><strong> Mano de Obra:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#d3a934;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
             let totalServ = 0;
@@ -269,7 +281,7 @@ window.verMantenimiento = async function(id) {
         }
 
         if (m.insumos?.length > 0) {
-            html += `<br><strong>📦 Insumos:</strong>
+            html += `<br><strong> Insumos:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#1b297a;color:white;"><th style="padding:5px;">Producto</th><th style="text-align:center;">Cant</th><th style="text-align:right;">P.Unit</th><th style="text-align:right;">Sub</th></tr>`;
             let totalIns = 0;

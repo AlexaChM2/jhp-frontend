@@ -404,7 +404,7 @@
 
             // Servicios
             if (m.servicios?.length > 0) {
-                html += `<hr><strong>🔧 Mano de Obra:</strong>
+                html += `<hr><strong> Mano de Obra:</strong>
                 <table style="width:100%;font-size:12px;margin-top:5px;">
                     <tr style="background: #d3a934 ;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
                 let totalServ = 0;
