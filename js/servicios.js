@@ -378,7 +378,7 @@
             const m = response.success ? response.data : response;
 
             const estadoColor = m.estado_servicio === 'Terminado' || m.estado_servicio === 'Entregado' ? '#28a745' :
-                               m.estado_servicio === 'En Proceso' ? '#17a2b8' : '#ffc107';
+                               m.estado_servicio === 'En Proceso' ? '#117483' : '#ffc107';
 
             let html = `
             <div style="font-size:14px;">
