@@ -96,10 +96,35 @@ function listarCitas() {
 }
 
 function prepararServicio(idCita) {
-    localStorage.setItem('id_cita_seleccionada', idCita);
-    if (typeof window.cargarVista === 'function') {
-        window.cargarVista('views/servicios.html');
-    }
+    // Obtener el tipo de cita primero
+    fetch(`${API_CITA}/${idCita}`)
+        .then(res => res.json())
+        .then(response => {
+            const cita = response.success ? response.data : response;
+            const tipo = cita.cita_tipo || 'Servicio';
+            
+            localStorage.setItem('id_cita_seleccionada', idCita);
+            
+            if (tipo === 'Venta') {
+                // Redirigir a ventas
+                if (typeof window.cargarVista === 'function') {
+                    window.cargarVista('views/ventas.html');
+                }
+            } else {
+                // Redirigir a servicios
+                if (typeof window.cargarVista === 'function') {
+                    window.cargarVista('views/servicios.html');
+                }
+            }
+        })
+        .catch(err => {
+            console.error("Error al obtener tipo de cita:", err);
+            // Por defecto, ir a servicios
+            localStorage.setItem('id_cita_seleccionada', idCita);
+            if (typeof window.cargarVista === 'function') {
+                window.cargarVista('views/servicios.html');
+            }
+        });
 }
 
 function buscarClienteCita(v) {
@@ -191,6 +216,7 @@ function guardarCita(e) {
         id_empleado: parseInt(empleadoIdCita),
         cita_fecha_programada: document.getElementById("cita_fecha").value,
         cita_estado: document.getElementById("cita_estado").value || 'Pendiente',
+           cita_tipo: document.getElementById("cita_tipo")?.value || 'Servicio',
         cita_motivo: document.getElementById("cita_motivo").value
     };
     const url = editandoCitaId ? `${API_CITA}/${editandoCitaId}` : API_CITA;
@@ -233,6 +259,7 @@ function editarCita(id) {
                 document.getElementById("cita_fecha").value = c.cita_fecha_programada.replace(" ", "T").substring(0, 16);
             }
             document.getElementById("cita_estado").value = c.cita_estado || 'Pendiente';
+            document.getElementById("cita_tipo").value = c.cita_tipo || 'Servicio';
             document.getElementById("cita_motivo").value = c.cita_motivo || '';
             abrirModalCita();
         })

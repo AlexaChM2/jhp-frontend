@@ -71,7 +71,7 @@
                     <td><span class="badge bg-${estadoClass}">${m.estado_servicio||'Pendiente'}</span></td>
                     <td>
                         <button onclick="window.verDetalleServicio(${m.id_mantenimiento})" title="Ver Detalle"
-    style="background:#0d6efd;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+    style="background: #1756b6;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
     <i class="fas fa-eye"></i>
 </button>
 
