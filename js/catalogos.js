@@ -2,7 +2,7 @@ let seccionActual = "Clientes";
 let editandoID = null;
 
 const CONFIG = {
-  Clientes: {
+    Clientes: {
         api: "https://jhpapi-production.up.railway.app/api/clientes",
         campos: [
             "cli_nombre", "cli_apaterno", "cli_amaterno", 
@@ -83,22 +83,14 @@ const CONFIG = {
     }
 };
 
-// ==========================================
-// FUNCIONES
-// ==========================================
-
 function cargarSeccion(nombre) {
-    console.log(`Cambiando a sección: ${nombre}`);
     seccionActual = nombre;
     editandoID = null;
-
     const btnLabel = document.getElementById("btnLabelRegistro");
     if (btnLabel) btnLabel.innerText = nombre;
-
     document.querySelectorAll(".nav-link").forEach(btn => {
         btn.classList.toggle("active", btn.innerText.trim() === nombre);
     });
-
     dibujarCabecera();
     listarRegistros();
 }
@@ -115,14 +107,8 @@ function dibujarCabecera() {
 function listarRegistros() {
     const token = localStorage.getItem('token');
     const config = CONFIG[seccionActual];
-
-    console.log(`📥 Cargando ${seccionActual} desde: ${config.api}`);
-
     fetch(config.api, {
-        headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
     })
     .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -131,12 +117,9 @@ function listarRegistros() {
     .then(response => {
         const datos = config.extraerDatos(response);
         const registros = Array.isArray(datos) ? datos : [];
-        console.log(`Registros procesados: ${registros.length}`);
-
         const tbody = document.getElementById("tbodyDinamico");
         if (!tbody) return;
         tbody.innerHTML = "";
-
         if (registros.length === 0) {
             tbody.innerHTML = `<tr><td colspan="${config.columnas.length}" class="text-center py-4">
                 <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
@@ -146,21 +129,17 @@ function listarRegistros() {
                 </button></td></tr>`;
             return;
         }
-
         registros.forEach(reg => {
             const fila = document.createElement('tr');
             fila.innerHTML = config.formatearFila(reg);
-
             const tdAcciones = document.createElement('td');
             tdAcciones.style.whiteSpace = 'nowrap';
-
             const btnEditar = document.createElement('button');
             btnEditar.className = 'btn btn-sm btn-warning me-1';
             btnEditar.innerHTML = '<i class="fas fa-edit"></i>';
             btnEditar.title = 'Editar';
             btnEditar.onclick = () => prepararEdicion(reg);
             tdAcciones.appendChild(btnEditar);
-
             const esAdmin = seccionActual === 'Empleados' && reg.emp_rol === 'Administrador';
             if (!esAdmin) {
                 const btnEliminar = document.createElement('button');
@@ -170,13 +149,11 @@ function listarRegistros() {
                 btnEliminar.onclick = () => eliminarRegistro(config.getId(reg), reg);
                 tdAcciones.appendChild(btnEliminar);
             }
-
             fila.appendChild(tdAcciones);
             tbody.appendChild(fila);
         });
     })
     .catch(error => {
-        console.error(`Error al cargar ${seccionActual}:`, error);
         const tbody = document.getElementById("tbodyDinamico");
         if (tbody) {
             tbody.innerHTML = `<tr><td colspan="${CONFIG[seccionActual].columnas.length}" class="text-center py-4">
@@ -193,14 +170,10 @@ function abrirModalRegistro() {
     editandoID = null;
     const titulo = document.getElementById("modalTitulo");
     if (titulo) titulo.innerText = "Nuevo " + seccionActual.slice(0, -1);
-    
     const modal = document.getElementById("modalCatalogo");
     if (modal) {
         modal.style.display = "flex";
-        // Esperar a que el modal esté visible
-        setTimeout(() => {
-            generarInputs();
-        }, 100);
+        setTimeout(() => generarInputs(), 100);
     }
 }
 
@@ -209,63 +182,49 @@ function generarInputs(datos = null) {
     if (!contenedor) return;
     contenedor.innerHTML = "";
     const config = CONFIG[seccionActual];
-
     config.campos.forEach((campo, index) => {
         const valor = datos ? (datos[campo] || '') : '';
         let inputHtml = '';
-
         if (campo === "emp_rol") {
-            inputHtml = `
-                <select class="form-select" name="${campo}" required>
-                    <option value="">Seleccionar rol...</option>
-                    <option value="Vendedor" ${valor === 'Vendedor' ? 'selected' : ''}>Vendedor</option>
-                    <option value="Administrador" ${valor === 'Administrador' ? 'selected' : ''}>Administrador</option>
-                    <option value="Mecanico" ${valor === 'Mecanico' ? 'selected' : ''}>Mecánico</option>
-                </select>`;
+            inputHtml = `<select class="form-select" name="${campo}" required>
+                <option value="">Seleccionar rol...</option>
+                <option value="Vendedor" ${valor === 'Vendedor' ? 'selected' : ''}>Vendedor</option>
+                <option value="Administrador" ${valor === 'Administrador' ? 'selected' : ''}>Administrador</option>
+                <option value="Mecanico" ${valor === 'Mecanico' ? 'selected' : ''}>Mecánico</option></select>`;
         } else if (campo === "cli_estado" || campo === "emp_estado") {
-            inputHtml = `
-                <select class="form-select" name="${campo}">
-                    <option value="Activo" ${valor === 'Activo' ? 'selected' : ''}>Activo</option>
-                    <option value="Inactivo" ${valor === 'Inactivo' ? 'selected' : ''}>Inactivo</option>
-                </select>`;
+            inputHtml = `<select class="form-select" name="${campo}">
+                <option value="Activo" ${valor === 'Activo' ? 'selected' : ''}>Activo</option>
+                <option value="Inactivo" ${valor === 'Inactivo' ? 'selected' : ''}>Inactivo</option></select>`;
         } else if (campo.includes("direccion")) {
             inputHtml = `<textarea class="form-control" name="${campo}" rows="3" maxlength="255">${valor}</textarea>`;
         } else if (campo.includes("password_confirmation")) {
-            const esEdicion = editandoID !== null;
-            const required = esEdicion ? '' : 'required';
-            const placeholder = esEdicion ? 'Repetir nueva contraseña' : 'Repetir contraseña';
+            const required = editandoID ? '' : 'required';
+            const placeholder = editandoID ? 'Repetir nueva contraseña' : 'Repetir contraseña';
             inputHtml = `<input type="password" class="form-control" name="${campo}" placeholder="${placeholder}" ${required} minlength="6" maxlength="50">`;
         } else if (campo.includes("password")) {
-            const esEdicion = editandoID !== null;
-            const required = esEdicion ? '' : 'required';
-            const placeholder = esEdicion ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres';
-            inputHtml = `
-                <input type="password" class="form-control" name="${campo}" placeholder="${placeholder}" ${required} minlength="6" maxlength="50">
+            const required = editandoID ? '' : 'required';
+            const placeholder = editandoID ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres';
+            inputHtml = `<input type="password" class="form-control" name="${campo}" placeholder="${placeholder}" ${required} minlength="6" maxlength="50">
                 <small class="text-muted">Debe tener: 1 mayúscula, 1 minúscula, 1 número, 6+ caracteres</small>`;
         } else if (campo.includes("telefono")) {
-            inputHtml = `
-                <input type="tel" class="form-control" name="${campo}" value="${valor}" maxlength="10" minlength="10"
-                    pattern="[0-9]{10}" title="Debe ingresar exactamente 10 dígitos numéricos"
-                    oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)" placeholder="Ej: 5512345678">`;
+            inputHtml = `<input type="tel" class="form-control" name="${campo}" value="${valor}" maxlength="10" minlength="10"
+                pattern="[0-9]{10}" title="Debe ingresar exactamente 10 dígitos numéricos"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)" placeholder="Ej: 5512345678">`;
         } else if (campo.includes("email") || campo.includes("correo")) {
             inputHtml = `<input type="email" class="form-control" name="${campo}" value="${valor}" required placeholder="ej: usuario@dominio.com">`;
         } else if (campo.includes("nombre") || campo.includes("apaterno") || campo.includes("amaterno")) {
             const required = (campo === 'emp_amaterno' || campo === 'cli_amaterno') ? '' : 'required';
             const maxlength = campo.includes('nombre') && !campo.includes('apaterno') && !campo.includes('amaterno') ? '100' : '50';
-            inputHtml = `
-                <input type="text" class="form-control" name="${campo}" value="${valor}" ${required} maxlength="${maxlength}"
-                    oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')"
-                    placeholder="${campo.includes('amaterno') ? 'Opcional' : 'Requerido'}">`;
+            inputHtml = `<input type="text" class="form-control" name="${campo}" value="${valor}" ${required} maxlength="${maxlength}"
+                oninput="this.value = this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '')"
+                placeholder="${campo.includes('amaterno') ? 'Opcional' : 'Requerido'}">`;
         } else {
             const required = (campo === 'emp_amaterno' || campo === 'cli_amaterno' || campo === 'cli_direccion' || campo === 'emp_direccion') ? '' : 'required';
             inputHtml = `<input type="text" class="form-control" name="${campo}" value="${valor}" ${required}>`;
         }
-
-        contenedor.innerHTML += `
-            <div class="mb-3">
-                <label class="form-label small fw-bold">${config.labels[index]}</label>
-                ${inputHtml}
-            </div>`;
+        contenedor.innerHTML += `<div class="mb-3">
+            <label class="form-label small fw-bold">${config.labels[index]}</label>
+            ${inputHtml}</div>`;
     });
 }
 
@@ -273,16 +232,14 @@ function guardarRegistro(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const objeto = Object.fromEntries(formData.entries());
-
     const passwordField = seccionActual === 'Empleados' ? 'emp_password' : 'cli_password';
     const confirmField = passwordField + '_confirmation';
     const emailField = seccionActual === 'Empleados' ? 'emp_correo' : 'cli_correo';
     const telefonoField = seccionActual === 'Empleados' ? 'emp_telefono' : 'cli_telefono';
-    
+
     if (objeto[passwordField] && objeto[confirmField]) {
         if (objeto[passwordField] !== objeto[confirmField]) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Las contraseñas no coinciden' });
-            return;
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Las contraseñas no coinciden' }); return;
         }
         const password = objeto[passwordField];
         const errores = [];
@@ -291,35 +248,25 @@ function guardarRegistro(e) {
         if (!/[a-z]/.test(password)) errores.push('• Al menos una minúscula (a-z)');
         if (!/[0-9]/.test(password)) errores.push('• Al menos un número (0-9)');
         if (errores.length > 0) {
-            Swal.fire({ icon: 'error', title: 'Contraseña débil', html: 'La contraseña debe cumplir:<br>' + errores.join('<br>') });
-            return;
+            Swal.fire({ icon: 'error', title: 'Contraseña débil', html: 'La contraseña debe cumplir:<br>' + errores.join('<br>') }); return;
         }
     }
-    
     if ((objeto[passwordField] && !objeto[confirmField]) || (!objeto[passwordField] && objeto[confirmField])) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Debe llenar ambos campos de contraseña' });
-        return;
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Debe llenar ambos campos de contraseña' }); return;
     }
-    
     if (objeto[telefonoField] && !/^\d{10}$/.test(objeto[telefonoField])) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'El teléfono debe tener exactamente 10 dígitos' });
-        return;
+        Swal.fire({ icon: 'error', title: 'Error', text: 'El teléfono debe tener exactamente 10 dígitos' }); return;
     }
-    
     if (objeto[emailField] && !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(objeto[emailField])) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Ingrese un correo electrónico válido' });
-        return;
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Ingrese un correo electrónico válido' }); return;
     }
 
     Object.keys(objeto).forEach(key => {
         if (objeto[key] === '' && key !== 'cli_estado' && key !== 'emp_estado') delete objeto[key];
     });
-
-    if (editandoID) {
-        if (!objeto[passwordField] || objeto[passwordField] === '') {
-            delete objeto[passwordField];
-            delete objeto[confirmField];
-        }
+    if (editandoID && (!objeto[passwordField] || objeto[passwordField] === '')) {
+        delete objeto[passwordField];
+        delete objeto[confirmField];
     }
 
     const token = localStorage.getItem('token');
@@ -344,29 +291,23 @@ function guardarRegistro(e) {
         cerrarModalCatalogo();
         listarRegistros();
     })
-    .catch(error => {
-        Swal.fire({ icon: 'error', title: 'Error', html: error.message || 'No se pudo guardar' });
-    });
+    .catch(error => Swal.fire({ icon: 'error', title: 'Error', html: error.message || 'No se pudo guardar' }));
 }
 
 function prepararEdicion(reg) {
     editandoID = CONFIG[seccionActual].getId(reg);
     const titulo = document.getElementById("modalTitulo");
     if (titulo) titulo.innerText = "Editar " + seccionActual.slice(0, -1);
-    
     const modal = document.getElementById("modalCatalogo");
     if (modal) {
         modal.style.display = "flex";
-        setTimeout(() => {
-            generarInputs(reg);
-        }, 100);
+        setTimeout(() => generarInputs(reg), 100);
     }
 }
 
 function eliminarRegistro(id, reg) {
     if (seccionActual === 'Empleados' && reg && reg.emp_rol === 'Administrador') {
-        Swal.fire({ icon: 'error', title: 'Acción no permitida', text: 'No se puede eliminar a un Administrador.' });
-        return;
+        Swal.fire({ icon: 'error', title: 'Acción no permitida', text: 'No se puede eliminar a un Administrador.' }); return;
     }
     Swal.fire({
         title: '¿Eliminar registro?', text: 'Esta acción no se puede deshacer', icon: 'warning',
@@ -403,10 +344,8 @@ function filtrarTabla() {
     });
 }
 
-// Inicialización
 setTimeout(() => cargarSeccion('Clientes'), 100);
 
-// Exponer globalmente
 window.cargarSeccion = cargarSeccion;
 window.abrirModalRegistro = abrirModalRegistro;
 window.guardarRegistro = guardarRegistro;
