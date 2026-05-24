@@ -4,31 +4,29 @@ const API_CATEGORIAS = "https://jhpapi-production.up.railway.app/api/categorias"
 listarCategorias();
 
 function listarCategorias() {
-   
     fetch(API_CATEGORIAS)
         .then(res => res.json())
-        .then(data => {
+        .then(response => {
+            const data = response.success ? response.data : response;
+            const categorias = Array.isArray(data) ? data : [];
             
             let tabla = "";
-            data.forEach(c => {
+            categorias.forEach(c => {
                 tabla += `
                 <tr>
                     <td>${c.id_categoria}</td>
                     <td>${c.cat_nombre}</td>
                     <td>${c.cat_descripcion}</td>
                     <td>
-                        <button  onclick="eliminarCategoria(${c.id_categoria})"
-           style="background: #d41f12; color: white; border: none; border-radius: 10px; padding: 8px 12px; cursor: pointer; margin: 2px;">                    
-                        <i class="fa-regular fa-trash-can"></i></button>
+                        <button onclick="window.eliminarCategoria(${c.id_categoria})"
+                            style="background:#d41f12;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+                            <i class="fa-regular fa-trash-can"></i></button>
                     </td>
                 </tr>`;
             });
-
-
-            
-      document.getElementById("tablaCategorias").innerHTML = tabla;
-    })
-    .catch(err => console.error("Error al listar categorias:", err));
+            document.getElementById("tablaCategorias").innerHTML = tabla || '<tr><td colspan="4" class="text-center py-3">No hay categorías</td></tr>';
+        })
+        .catch(err => console.error("Error al listar categorias:", err));
 }
 //CI
 function guardarCategorias() {
