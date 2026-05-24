@@ -499,67 +499,21 @@
 // DESCARGAR PDF CON VERIFICACIÓN DE LIBRERÍAS
 // ==========================================
 
-// Función para verificar/forzar carga de librerías
-async function asegurarLibreriasPDF() {
-    // Verificar jsPDF
-    let jsPDFLib = null;
-    
-    if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
-        jsPDFLib = window.jspdf.jsPDF;
-        console.log('✅ jsPDF ya disponible');
-    } else if (typeof jspdf !== 'undefined') {
-        jsPDFLib = jspdf;
-        console.log('✅ jsPDF ya disponible (global)');
-    } else if (typeof window.jsPDF !== 'undefined') {
-        jsPDFLib = window.jsPDF;
-        console.log('✅ jsPDF ya disponible (window)');
-    }
-    
-    if (!jsPDFLib) {
-        console.log('⏳ Cargando jsPDF...');
-        await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
-        console.log('✅ jsPDF cargado');
-        
-        // Cargar autoTable
-        await new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js';
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
-        console.log('✅ autoTable cargado');
-    }
-    
-    return jsPDFLib || window.jspdf?.jsPDF || jspdf || window.jsPDF;
-}
 
-// Función principal del PDF
+// ==========================================
+// DESCARGAR PDF - SERVICIOS
+// ==========================================
 window.descargarPDFServicio = async function(id) {
     try {
-        console.log('=== GENERANDO PDF ===');
+        console.log('=== GENERANDO PDF SERVICIO ===');
         
-        // 1. Asegurar librerías
         const jsPDFLib = await asegurarLibreriasPDF();
+        if (!jsPDFLib) throw new Error('No se pudo cargar jsPDF');
         
-        if (!jsPDFLib) {
-            throw new Error('No se pudo cargar jsPDF');
-        }
-        
-        // 2. Obtener datos
         const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
         const response = await res.json();
         const m = response.success ? response.data : response;
         
-        console.log('Datos obtenidos:', m);
-        
-        // 3. Crear PDF
         const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
         
         // Encabezado
@@ -573,77 +527,52 @@ window.descargarPDFServicio = async function(id) {
         
         let y = 32;
         
-        function addLine(label, value, y) {
-            doc.setFont("helvetica", "bold");
-            doc.text(label, 15, y);
-            doc.setFont("helvetica", "normal");
-            doc.text(String(value || '-'), 55, y);
-            return y + 7;
-        }
+        y = addPDFLine(doc, "Folio:", `#${m.id_mantenimiento}`, y);
+        y = addPDFLine(doc, "Fecha:", formatearFecha(m.fecha_inicio), y);
+        y = addPDFLine(doc, "Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D', y);
+        y = addPDFLine(doc, "Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D', y);
+        y = addPDFLine(doc, "Modelo:", m.moto_modelo || 'N/A', y);
+        y = addPDFLine(doc, "Estado:", m.estado_servicio || 'Pendiente', y);
+        y = addPDFLine(doc, "Descripción:", m.moto_llegada_descripcion || '-', y);
+        y = addPDFLine(doc, "Trabajo Realizado:", m.trabajo_realizado || 'Pendiente', y);
         
-        // Formatear fecha
-        let fechaFormateada = '-';
-        if (m.fecha_inicio) {
-            const fecha = new Date(m.fecha_inicio);
-            fechaFormateada = `${fecha.getDate()}/${fecha.getMonth()+1}/${fecha.getFullYear()}, ${fecha.getHours().toString().padStart(2,'0')}:${fecha.getMinutes().toString().padStart(2,'0')}:${fecha.getSeconds().toString().padStart(2,'0')}`;
-        }
-        
-        y = addLine("Folio:", `#${m.id_mantenimiento}`, y);
-        y = addLine("Fecha:", fechaFormateada, y);
-        y = addLine("Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D', y);
-        y = addLine("Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D', y);
-        y = addLine("Modelo:", m.moto_modelo || 'N/A', y);
-        y = addLine("Estado:", m.estado_servicio || 'Pendiente', y);
-        y = addLine("Descripción:", m.moto_llegada_descripcion || '-', y);
-        y = addLine("Trabajo Realizado:", m.trabajo_realizado || 'Pendiente', y);
-        
-        // Tabla de servicios
-        if (m.servicios && m.servicios.length > 0) {
+        // Tabla servicios
+        if (m.servicios?.length > 0) {
             y += 5;
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
             doc.text("Servicios (Mano de Obra)", 15, y);
             y += 6;
             
-            const filasServicios = m.servicios.map(s => [
+            const filas = m.servicios.map(s => [
                 s.servicio?.ser_nombre || 'Servicio #' + s.id_servicio,
                 `$${parseFloat(s.precio_aplicado || 0).toFixed(2)}`
             ]);
+            const total = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado || 0), 0);
+            filas.push(["TOTAL MANO DE OBRA", `$${total.toFixed(2)}`]);
             
-            let totalServicios = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado || 0), 0);
-            filasServicios.push(["TOTAL MANO DE OBRA", `$${totalServicios.toFixed(2)}`]);
-            
-            // Verificar autoTable
             if (typeof doc.autoTable === 'function') {
                 doc.autoTable({
                     startY: y,
                     head: [['Servicio', 'Precio']],
-                    body: filasServicios,
+                    body: filas,
                     theme: 'striped',
                     headStyles: { fillColor: [253, 126, 20] },
                     margin: { left: 15, right: 15 },
                     styles: { fontSize: 9 }
                 });
                 y = doc.lastAutoTable.finalY + 5;
-            } else {
-                console.warn('autoTable no disponible, usando método alternativo');
-                filasServicios.forEach(fila => {
-                    doc.text(fila[0], 15, y);
-                    doc.text(fila[1], 190, y, { align: "right" });
-                    y += 6;
-                });
-                y += 5;
             }
         }
         
-        // Tabla de insumos
-        if (m.insumos && m.insumos.length > 0) {
+        // Tabla insumos
+        if (m.insumos?.length > 0) {
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
             doc.text("Insumos Utilizados", 15, y);
             y += 6;
             
-            const filasInsumos = m.insumos.map(i => {
+            const filas = m.insumos.map(i => {
                 const sub = (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0);
                 return [
                     i.producto?.pro_nombre || 'Producto',
@@ -652,30 +581,20 @@ window.descargarPDFServicio = async function(id) {
                     `$${sub.toFixed(2)}`
                 ];
             });
-            
-            let totalInsumos = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0), 0);
-            filasInsumos.push(["TOTAL INSUMOS", "", "", `$${totalInsumos.toFixed(2)}`]);
+            const total = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0), 0);
+            filas.push(["TOTAL INSUMOS", "", "", `$${total.toFixed(2)}`]);
             
             if (typeof doc.autoTable === 'function') {
                 doc.autoTable({
                     startY: y,
                     head: [['Producto', 'Cant', 'P. Unit.', 'Subtotal']],
-                    body: filasInsumos,
+                    body: filas,
                     theme: 'striped',
                     headStyles: { fillColor: [13, 110, 253] },
                     margin: { left: 15, right: 15 },
                     styles: { fontSize: 9 }
                 });
                 y = doc.lastAutoTable.finalY + 8;
-            } else {
-                filasInsumos.forEach(fila => {
-                    doc.text(fila[0], 15, y);
-                    doc.text(fila[1], 80, y);
-                    doc.text(fila[2], 120, y);
-                    doc.text(fila[3], 190, y, { align: "right" });
-                    y += 6;
-                });
-                y += 5;
             }
         }
         
@@ -684,22 +603,14 @@ window.descargarPDFServicio = async function(id) {
         doc.setFont("helvetica", "bold");
         doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 190, y, { align: "right" });
         
-        // Pie
         doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
         doc.text("JHP Taller Mecánico - Orden de Servicio", 105, 285, { align: "center" });
         
-        // Abrir PDF
         const pdfBlob = doc.output('blob');
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        window.open(pdfUrl, '_blank');
-        
-        setTimeout(() => URL.revokeObjectURL(pdfUrl), 100);
-        
-        console.log('✅ PDF generado exitosamente');
+        window.open(URL.createObjectURL(pdfBlob), '_blank');
         
     } catch (e) {
-        console.error('❌ Error PDF:', e);
+        console.error('Error PDF:', e);
         Swal.fire("Error", "No se pudo generar el PDF: " + e.message, "error");
     }
 };
