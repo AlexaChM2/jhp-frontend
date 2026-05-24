@@ -7,26 +7,22 @@ const API_PROD = "https://jhpapi-production.up.railway.app/api/producto";
 let serviciosMant = [];
 let insumosMant = [];
 
-// ==========================================
-// FUNCIÓN PARA ASEGURAR LIBRERÍAS PDF
-// ==========================================
 async function asegurarLibreriasPDF() {
-    // Verificar jsPDF
     let jsPDFLib = null;
     
     if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
         jsPDFLib = window.jspdf.jsPDF;
-        console.log('✅ jsPDF ya disponible');
+        console.log('jsPDF ya disponible');
     } else if (typeof jspdf !== 'undefined') {
         jsPDFLib = jspdf;
-        console.log('✅ jsPDF ya disponible (global)');
+        console.log('jsPDF ya disponible (global)');
     } else if (typeof window.jsPDF !== 'undefined') {
         jsPDFLib = window.jsPDF;
-        console.log('✅ jsPDF ya disponible (window)');
+        console.log('jsPDF ya disponible (window)');
     }
     
     if (!jsPDFLib) {
-        console.log('⏳ Cargando jsPDF...');
+        console.log('Cargando jsPDF...');
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -34,9 +30,8 @@ async function asegurarLibreriasPDF() {
             script.onerror = reject;
             document.head.appendChild(script);
         });
-        console.log('✅ jsPDF cargado');
+        console.log('jsPDF cargado');
         
-        // Cargar autoTable
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js';
@@ -44,22 +39,49 @@ async function asegurarLibreriasPDF() {
             script.onerror = reject;
             document.head.appendChild(script);
         });
-        console.log('✅ autoTable cargado');
+        console.log('autoTable cargado');
         
-        // Pequeña pausa para asegurar que las librerías se inicialicen
         await new Promise(r => setTimeout(r, 100));
     }
     
     return jsPDFLib || window.jspdf?.jsPDF || jspdf || window.jsPDF;
 }
 
-// ==========================================
-// LISTAR MANTENIMIENTOS
-// ==========================================
+async function actualizarStockProducto(idProducto, cantidad, operacion) {
+    try {
+        const res = await fetch(`${API_PROD}/${idProducto}`);
+        const response = await res.json();
+        const producto = response.success ? response.data : response;
+        
+        let nuevoStock = producto.pro_stock;
+        if (operacion === 'descontar') {
+            nuevoStock = producto.pro_stock - cantidad;
+        } else if (operacion === 'reponer') {
+            nuevoStock = producto.pro_stock + cantidad;
+        }
+        
+        if (nuevoStock < 0) {
+            console.warn(`Stock insuficiente para producto ${idProducto}`);
+            return false;
+        }
+        
+        const updateRes = await fetch(`${API_PROD}/${idProducto}`, {
+            method: 'PUT',
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pro_stock: nuevoStock })
+        });
+        
+        return updateRes.ok;
+    } catch (error) {
+        console.error('Error actualizando stock:', error);
+        return false;
+    }
+}
+
 async function listarMantenimiento() {
     const tbody = document.getElementById("tablaMantenimiento");
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
 
     try {
         const res = await fetch(API_MANT);
@@ -68,7 +90,7 @@ async function listarMantenimiento() {
         const lista = Array.isArray(data) ? data : [];
 
         if (lista.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3">No hay mantenimientos</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3">No hay mantenimientos</td></tr>';
             document.getElementById("totalMantPendientes").textContent = 0;
             document.getElementById("totalMantCompletados").textContent = 0;
             document.getElementById("totalMantProximos").textContent = '-';
@@ -99,12 +121,12 @@ async function listarMantenimiento() {
                         style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
                         <i class="fas fa-print"></i>
                     </button>
-
-
-
-                    
-                 </td>
-            <tr>`;
+                    <button onclick="window.eliminarMantenimiento(${m.id_mantenimiento})" title="Eliminar"
+                        style="background:#dc3545;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
         }).join('');
 
         const pendientes = lista.filter(s => s.estado_servicio !== 'Terminado' && s.estado_servicio !== 'Entregado').length;
@@ -115,13 +137,10 @@ async function listarMantenimiento() {
         document.getElementById("totalMantProximos").textContent = '-';
 
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error al cargar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error al cargar</td></tr>';
     }
 }
 
-// ==========================================
-// CARGAR SELECTS
-// ==========================================
 async function cargarSelectsMant() {
     try {
         const [resCli, resEmp] = await Promise.all([fetch(API_CLI), fetch(API_EMP)]);
@@ -139,9 +158,6 @@ async function cargarSelectsMant() {
     } catch (e) { console.error(e); }
 }
 
-// ==========================================
-// CATÁLOGO DE SERVICIOS
-// ==========================================
 async function cargarCatalogoServiciosMant() {
     try {
         const res = await fetch(API_SERV);
@@ -153,9 +169,6 @@ async function cargarCatalogoServiciosMant() {
     } catch(e) { console.error(e); }
 }
 
-// ==========================================
-// AGREGAR SERVICIO
-// ==========================================
 window.agregarServicioMant = function() {
     const sel = document.getElementById("servicio_id_mant");
     const precio = parseFloat(document.getElementById("servicio_precio_mant")?.value) || 0;
@@ -170,9 +183,6 @@ window.agregarServicioMant = function() {
     actualizarTotalesMant();
 };
 
-// ==========================================
-// BUSCAR INSUMO
-// ==========================================
 window.buscarInsumoMant = function(valor) {
     const lista = document.getElementById("listaResultadosInsumosMant");
     if (!lista || valor.trim().length < 2) { if (lista) lista.style.display = "none"; return; }
@@ -192,9 +202,6 @@ window.seleccionarInsumoMant = function(id, nombre, precio) {
     document.getElementById("listaResultadosInsumosMant").style.display = "none";
 };
 
-// ==========================================
-// AGREGAR INSUMO
-// ==========================================
 window.agregarInsumoMant = function() {
     const id = document.getElementById("buscarInsumoMant").dataset.idProducto;
     const nombre = document.getElementById("buscarInsumoMant").value;
@@ -209,9 +216,6 @@ window.agregarInsumoMant = function() {
     actualizarTotalesMant();
 };
 
-// ==========================================
-// ACTUALIZAR TOTALES
-// ==========================================
 function actualizarTotalesMant() {
     const totalServ = serviciosMant.reduce((s, i) => s + i.precio_aplicado, 0);
     const elServ = document.getElementById("total_mano_obra_mant");
@@ -232,9 +236,6 @@ function actualizarTotalesMant() {
 window.quitarServicioMant = function(i) { serviciosMant.splice(i, 1); actualizarTotalesMant(); };
 window.quitarInsumoMant = function(i) { insumosMant.splice(i, 1); actualizarTotalesMant(); };
 
-// ==========================================
-// ABRIR MODAL
-// ==========================================
 window.abrirModalMantenimiento = function() {
     const form = document.getElementById("formMantenimientoPrev");
     if (form) form.reset();
@@ -249,9 +250,6 @@ window.abrirModalMantenimiento = function() {
     new bootstrap.Modal(document.getElementById('modalMantenimientoPrev')).show();
 };
 
-// ==========================================
-// GUARDAR
-// ==========================================
 window.guardarMantenimiento = async function() {
     const idEditar = document.getElementById("formMantenimientoPrev")?.dataset?.editarId;
     const idCliente = document.getElementById("id_cliente_mant")?.value;
@@ -284,17 +282,21 @@ window.guardarMantenimiento = async function() {
             body: JSON.stringify(body)
         });
         const result = await res.json();
+        
         if (result.success || result.message) {
-            Swal.fire({ icon: 'success', title: idEditar ? '¡Actualizado!' : '¡Registrado!', timer: 1500, showConfirmButton: false });
+            if (!idEditar && insumosMant.length > 0) {
+                for (const insumo of insumosMant) {
+                    await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'descontar');
+                }
+            }
+            
+            Swal.fire({ icon: 'success', title: idEditar ? 'Actualizado!' : 'Registrado!', timer: 1500, showConfirmButton: false });
             bootstrap.Modal.getInstance(document.getElementById('modalMantenimientoPrev'))?.hide();
             listarMantenimiento();
         }
     } catch (e) { Swal.fire("Error", e.message, "error"); }
 };
 
-// ==========================================
-// VER DETALLE
-// ==========================================
 window.verMantenimiento = async function(id) {
     try {
         const res = await fetch(`${API_MANT}/${id}`);
@@ -317,7 +319,7 @@ window.verMantenimiento = async function(id) {
             </table>`;
 
         if (m.servicios?.length > 0) {
-            html += `<hr><strong>🔧 Mano de Obra:</strong>
+            html += `<hr><strong>Mano de Obra:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#d3a934;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
             let totalServ = 0;
@@ -329,14 +331,14 @@ window.verMantenimiento = async function(id) {
         }
 
         if (m.insumos?.length > 0) {
-            html += `<br><strong>📦 Insumos:</strong>
+            html += `<br><strong>Insumos:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#1b297a;color:white;"><th style="padding:5px;">Producto</th><th style="text-align:center;">Cant</th><th style="text-align:right;">P.Unit</th><th style="text-align:right;">Sub</th></tr>`;
             let totalIns = 0;
             m.insumos.forEach(i => {
                 const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0);
                 totalIns += sub;
-                html += `<tr><td>${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`;
+                html += `<tr><td style="padding:5px;">${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`;
             });
             html += `<tr style="font-weight:bold;background:#f8f9fa;"><td colspan="3" style="text-align:right;">Total:</td><td style="text-align:right;">$${totalIns.toFixed(2)}</td></tr></table>`;
         }
@@ -347,9 +349,6 @@ window.verMantenimiento = async function(id) {
     } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
 };
 
-// ==========================================
-// EDITAR
-// ==========================================
 window.editarMantenimiento = async function(id) {
     try {
         await cargarSelectsMant();
@@ -376,20 +375,45 @@ window.editarMantenimiento = async function(id) {
     } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
 };
 
-// ==========================================
-// DESCARGAR PDF CON VERIFICACIÓN DE LIBRERÍAS
-// ==========================================
-// ==========================================
-// FUNCIONES DE PDF (MISMO CÓDIGO QUE SERVICIOS)
-// ==========================================
+window.eliminarMantenimiento = async function(id) {
+    const result = await Swal.fire({
+        title: 'Eliminar mantenimiento',
+        text: 'Se devolverá el stock de los productos',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+    
+    if (!result.isConfirmed) return;
+    
+    try {
+        const resGet = await fetch(`${API_MANT}/${id}`);
+        const response = await resGet.json();
+        const mantenimiento = response.success ? response.data : response;
+        
+        if (mantenimiento.insumos && mantenimiento.insumos.length > 0) {
+            for (const insumo of mantenimiento.insumos) {
+                await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'reponer');
+            }
+        }
+        
+        const resDel = await fetch(`${API_MANT}/${id}`, { method: 'DELETE' });
+        if (resDel.ok) {
+            Swal.fire('Eliminado', 'Mantenimiento eliminado y stock restaurado', 'success');
+            listarMantenimiento();
+        } else {
+            throw new Error('Error al eliminar');
+        }
+    } catch (error) {
+        Swal.fire('Error', 'No se pudo eliminar el mantenimiento', 'error');
+    }
+};
 
-// Función para verificar/forzar carga de librerías
-// ==========================================
-// DESCARGAR PDF - MANTENIMIENTO
-// ==========================================
 window.descargarPDFMantenimiento = async function(id) {
     try {
-        console.log('=== GENERANDO PDF MANTENIMIENTO ===');
+        console.log('Generando PDF Mantenimiento');
         
         const jsPDFLib = await asegurarLibreriasPDF();
         if (!jsPDFLib) throw new Error('No se pudo cargar jsPDF');
@@ -400,7 +424,6 @@ window.descargarPDFMantenimiento = async function(id) {
         
         const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
         
-        // Encabezado
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
         doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
@@ -411,6 +434,20 @@ window.descargarPDFMantenimiento = async function(id) {
         
         let y = 32;
         
+        function addPDFLine(doc, label, value, y) {
+            doc.setFont("helvetica", "bold");
+            doc.text(label, 15, y);
+            doc.setFont("helvetica", "normal");
+            doc.text(value || '-', 65, y);
+            return y + 7;
+        }
+        
+        function formatearFecha(fecha) {
+            if (!fecha) return '-';
+            const d = new Date(fecha);
+            return d.toLocaleDateString('es-MX');
+        }
+        
         y = addPDFLine(doc, "Folio:", `#${m.id_mantenimiento}`, y);
         y = addPDFLine(doc, "Fecha:", formatearFecha(m.fecha_inicio), y);
         y = addPDFLine(doc, "Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D', y);
@@ -420,7 +457,6 @@ window.descargarPDFMantenimiento = async function(id) {
         y = addPDFLine(doc, "Descripción:", m.moto_llegada_descripcion || '-', y);
         y = addPDFLine(doc, "Trabajo Realizado:", m.trabajo_realizado || 'Pendiente', y);
         
-        // Tabla servicios
         if (m.servicios?.length > 0) {
             y += 5;
             doc.setFontSize(12);
@@ -449,7 +485,6 @@ window.descargarPDFMantenimiento = async function(id) {
             }
         }
         
-        // Tabla insumos
         if (m.insumos?.length > 0) {
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
@@ -482,7 +517,6 @@ window.descargarPDFMantenimiento = async function(id) {
             }
         }
         
-        // Total
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 190, y, { align: "right" });
@@ -498,15 +532,13 @@ window.descargarPDFMantenimiento = async function(id) {
         Swal.fire("Error", "No se pudo generar el PDF: " + e.message, "error");
     }
 };
-// ==========================================
-// INICIALIZAR
-// ==========================================
+
 window.listarMantenimiento = listarMantenimiento;
 
 document.addEventListener('vista-cargada', function(e) {
     if (e.detail && e.detail.vista && 
         (e.detail.vista.includes('mantenimiento') || e.detail.vista.includes('Mantenimiento'))) {
-        console.log('🔧 Mantenimiento: Vista detectada, recargando...');
+        console.log('Mantenimiento: Vista detectada, recargando...');
         setTimeout(listarMantenimiento, 300);
     }
 });
