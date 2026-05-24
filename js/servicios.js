@@ -559,24 +559,18 @@
         }
     };
 
-        // ==========================================
+    // ==========================================
     // EXPONER E INICIALIZAR
     // ==========================================
     window.inicializarServicios = inicializarServicios;
     window.listarServicios = listarServicios;
 
-    // Forzar inicialización siempre que se detecte la tabla
-    function intentarInicializar() {
-        if (document.getElementById('tablaServicios')) {
-            inicializado = false;
-            inicializarServicios();
-        }
+    // Inicialización al cargar
+    if (document.getElementById('tablaServicios')) {
+        inicializarServicios();
     }
 
-    // Al cargar la página
-    intentarInicializar();
-
-    // Al navegar desde el menú (app.js emite este evento)
+    // Reinicializar cuando se navega desde el menú
     document.addEventListener('vista-cargada', function(e) {
         if (e.detail && e.detail.vista && 
             (e.detail.vista.includes('servicio') || e.detail.vista.includes('Servicio'))) {
@@ -584,9 +578,5 @@
             setTimeout(inicializarServicios, 300);
         }
     });
-
-    // También intentar después de un tiempo (por si el DOM tarda)
-    setTimeout(intentarInicializar, 500);
-    setTimeout(intentarInicializar, 1000);
 
 })();
