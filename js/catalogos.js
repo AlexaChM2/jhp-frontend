@@ -17,12 +17,12 @@ const CONFIG = {
             "Contraseña *", "Confirmar Contraseña *", "Estado"
         ],
         columnas: ["ID", "Nombre Completo", "Teléfono", "Correo", "Estado", "Acciones"],
-        extraerDatos: (response) => {
-            if (response.success && response.data) {
-                return response.data.data || response.data;
-            }
-            return Array.isArray(response) ? response : [];
-        },
+     extraerDatos: (response) => {
+    if (response.success && Array.isArray(response.data)) {
+        return response.data;
+    }
+    return [];
+},
         getId: (reg) => reg.id_cliente,
         formatearFila: (reg) => `
             <td>${reg.id_cliente || ''}</td>
@@ -37,12 +37,12 @@ const CONFIG = {
         campos: ["prov_nombre", "prov_contacto", "prov_telefono", "prov_email", "prov_direccion"],
         labels: ["Empresa/Nombre *", "Contacto", "Teléfono", "Email", "Dirección"],
         columnas: ["ID", "Proveedor", "Contacto", "Teléfono", "Email", "Acciones"],
-        extraerDatos: (response) => {
-            if (response.success && response.data) {
-                return response.data.data || response.data;
-            }
-            return Array.isArray(response) ? response : [];
-        },
+     extraerDatos: (response) => {
+    if (response.success && Array.isArray(response.data)) {
+        return response.data;
+    }
+    return [];
+},
         getId: (reg) => reg.id_proveedor,
         formatearFila: (reg) => `
             <td>${reg.id_proveedor || ''}</td>
@@ -65,12 +65,12 @@ const CONFIG = {
             "Dirección", "Contraseña *", "Confirmar Contraseña *", "Estado"
         ],
         columnas: ["ID", "Empleado", "Rol", "Correo", "Estado", "Acciones"],
-        extraerDatos: (response) => {
-            if (response.success && response.data) {
-                return response.data.data || response.data;
-            }
-            return Array.isArray(response) ? response : [];
-        },
+     extraerDatos: (response) => {
+    if (response.success && Array.isArray(response.data)) {
+        return response.data;
+    }
+    return [];
+},
         getId: (reg) => reg.id_empleados,
         formatearFila: (reg) => `
             <td>${reg.id_empleados || ''}</td>
