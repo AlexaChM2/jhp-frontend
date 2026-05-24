@@ -54,6 +54,9 @@
 
             if (servicios.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3">No hay servicios</td></tr>';
+                document.getElementById("totalServiciosPendientes").textContent = 0;
+                document.getElementById("totalServiciosTerminados").textContent = 0;
+                document.getElementById("ingresosServicios").textContent = '$0.00';
                 return;
             }
 
@@ -71,19 +74,14 @@
                     <td><span class="badge bg-${estadoClass}">${m.estado_servicio||'Pendiente'}</span></td>
                     <td>
                         <button onclick="window.verDetalleServicio(${m.id_mantenimiento})" title="Ver Detalle"
-    style="background: #1756b6;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
-    <i class="fas fa-eye"></i>
-</button>
-
-<button onclick="window.editarServicio(${m.id_mantenimiento})" title="Editar"
-    style="background:#ffc107;color:#000;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
-    <i class="fas fa-edit"></i>
-</button>
-
-<button onclick="window.descargarPDFServicio(${m.id_mantenimiento})" title="Imprimir"
-    style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
-    <i class="fas fa-print"></i>
-</button>
+                            style="background:#1756b6;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+                            <i class="fas fa-eye"></i></button>
+                        <button onclick="window.editarServicio(${m.id_mantenimiento})" title="Editar"
+                            style="background:#ffc107;color:#000;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+                            <i class="fas fa-edit"></i></button>
+                        <button onclick="window.descargarPDFServicio(${m.id_mantenimiento})" title="Imprimir"
+                            style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+                            <i class="fas fa-print"></i></button>
                     </td>
                 </tr>`;
             }).join('');
@@ -123,7 +121,6 @@
             if (selCli) selCli.innerHTML = '<option value="">Seleccione...</option>' + listaCli.map(c => `<option value="${c.id_cliente}">${c.cli_nombre||''} ${c.cli_apaterno||''}</option>`).join('');
             if (selMec) selMec.innerHTML = '<option value="">Seleccione...</option>' + listaEmp.filter(e => e.emp_rol==='Mecanico'||e.emp_rol==='Mecánico').map(e => `<option value="${e.id_empleados}">${e.emp_nombre}</option>`).join('');
 
-            // Cargar catálogo de servicios
             await cargarCatalogoServicios();
         } catch (e) {
             console.error('Error selects:', e);
@@ -193,10 +190,9 @@
                 );
 
                 lista.innerHTML = filtrados.map(p => `
-                    <button type="button" class="list-group-item list-group-item-action" onclick="window.seleccionarInsumo(${p.id_producto},'${p.pro_nombre}',${p.pro_precio_venta})">
+                    <button type="button" class="list-group-item list-group-item-action" onclick="window.seleccionarInsumo(${p.id_producto},'${p.pro_nombre.replace(/'/g, "\\'")}',${p.pro_precio_venta})">
                         ${p.pro_nombre} - $${parseFloat(p.pro_precio_venta).toFixed(2)} (Stock: ${p.pro_stock})
-                    </button>
-                `).join('');
+                    </button>`).join('');
                 lista.style.display = filtrados.length ? "block" : "none";
             });
     };
@@ -238,7 +234,6 @@
     // ACTUALIZAR TOTALES
     // ==========================================
     function actualizarTotales() {
-        // Servicios
         const totalServicios = serviciosAgregados.reduce((s, item) => s + item.precio_aplicado, 0);
         document.getElementById("total_mano_obra").textContent = totalServicios.toFixed(2);
         
@@ -248,12 +243,9 @@
                 <div class="d-flex justify-content-between align-items-center bg-light p-2 mb-1 rounded">
                     <span><i class="fas fa-wrench text-success me-2"></i>${s.nombre}</span>
                     <span>$${s.precio_aplicado.toFixed(2)} 
-                        <button class="btn btn-sm text-danger" onclick="window.quitarServicio(${i})">✕</button>
-                    </span>
-                </div>`).join('');
+                        <button class="btn btn-sm text-danger" onclick="window.quitarServicio(${i})">✕</button></span></div>`).join('');
         }
 
-        // Insumos
         const totalInsumos = insumosAgregados.reduce((s, item) => s + (item.insumo_cantidad * item.insumo_precio_unitario), 0);
         document.getElementById("total_insumos").textContent = totalInsumos.toFixed(2);
         
@@ -263,12 +255,9 @@
                 <div class="d-flex justify-content-between align-items-center bg-light p-2 mb-1 rounded">
                     <span><i class="fas fa-box text-primary me-2"></i>${item.nombre} x${item.insumo_cantidad}</span>
                     <span>$${(item.insumo_cantidad * item.insumo_precio_unitario).toFixed(2)}
-                        <button class="btn btn-sm text-danger" onclick="window.quitarInsumo(${i})">✕</button>
-                    </span>
-                </div>`).join('');
+                        <button class="btn btn-sm text-danger" onclick="window.quitarInsumo(${i})">✕</button></span></div>`).join('');
         }
 
-        // Total general
         document.getElementById("total_general").textContent = (totalServicios + totalInsumos).toFixed(2);
     }
 
@@ -279,39 +268,36 @@
     // ABRIR MODAL
     // ==========================================
     window.abrirModalServicio = function() {
-    const form = document.getElementById("formMantenimiento");
-    if (form) form.reset();
-    
-    const idCita = document.getElementById("id_cita_input");
-    if (idCita) idCita.value = "";
-    
-    if (form) delete form.dataset.editarId;
-    
-    // Limpiar listas
-    serviciosAgregados = [];
-    insumosAgregados = [];
-    
-    // Abrir modal primero
-    const modalEl = document.getElementById('modalMantenimiento');
-    const modal = new bootstrap.Modal(modalEl);
-    modal.show();
-    
-    // Esperar a que el modal esté visible para modificar el DOM
-    modalEl.addEventListener('shown.bs.modal', function() {
-        const titulo = document.getElementById("tituloModal");
-        if (titulo) titulo.textContent = "Nueva Orden de Servicio";
+        const form = document.getElementById("formMantenimiento");
+        if (form) form.reset();
         
-        const btnGuardar = document.getElementById("btnGuardarServicio");
-        if (btnGuardar) btnGuardar.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Orden';
+        const idCita = document.getElementById("id_cita_input");
+        if (idCita) idCita.value = "";
+        
+        if (form) delete form.dataset.editarId;
+        
+        serviciosAgregados = [];
+        insumosAgregados = [];
+        
+        const modalEl = document.getElementById('modalMantenimiento');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        
+        modalEl.addEventListener('shown.bs.modal', function() {
+            const titulo = document.getElementById("tituloModal");
+            if (titulo) titulo.textContent = "Nueva Orden de Servicio";
+            
+            const btnGuardar = document.getElementById("btnGuardarServicio");
+            if (btnGuardar) btnGuardar.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Orden';
 
             const trabajo = document.getElementById("trabajo_realizado");
-    if (trabajo) trabajo.value = "";
+            if (trabajo) trabajo.value = "";
+            
+            actualizarTotales();
+        }, { once: true });
         
-        actualizarTotales();
-    }, { once: true });
-    
-    cargarCatalogoServicios();
-};
+        cargarCatalogoServicios();
+    };
 
     // ==========================================
     // GUARDAR SERVICIO
@@ -323,7 +309,7 @@
         const idMecanico = document.getElementById("id_mecanico")?.value;
         const modelo = document.getElementById("moto_modelo")?.value;
         const descripcion = document.getElementById("moto_llegada_descripcion")?.value;
-        const trabajoRealizado = document.getElementById("trabajo_realizado")?.value; // ← NUEVO
+        const trabajoRealizado = document.getElementById("trabajo_realizado")?.value;
         const estado = document.getElementById("estado_servicio")?.value || "En Proceso";
 
         if (!idCliente || !idMecanico || !modelo) {
@@ -399,39 +385,38 @@
                     <tr><td style="padding:5px;font-weight:bold;">Mecánico:</td><td>${m.mecanico ? m.mecanico.emp_nombre : 'S/D'}</td></tr>
                     <tr><td style="padding:5px;font-weight:bold;">Modelo:</td><td>${m.moto_modelo||'N/A'}</td></tr>
                     <tr><td style="padding:5px;font-weight:bold;">Descripción:</td><td>${m.moto_llegada_descripcion||'-'}</td></tr>
+                    <tr><td style="padding:5px;font-weight:bold;">Trabajo:</td><td>${m.trabajo_realizado||'Pendiente'}</td></tr>
                     <tr><td style="padding:5px;font-weight:bold;">Estado:</td><td><span style="background:${estadoColor};color:white;padding:3px 10px;border-radius:12px;">${m.estado_servicio||'Pendiente'}</span></td></tr>
                 </table>`;
 
-            // Servicios
             if (m.servicios?.length > 0) {
-                html += `<hr><strong> Mano de Obra:</strong>
+                html += `<hr><strong>🔧 Mano de Obra:</strong>
                 <table style="width:100%;font-size:12px;margin-top:5px;">
-                    <tr style="background: #d3a934 ;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
+                    <tr style="background:#d3a934;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
                 let totalServ = 0;
                 m.servicios.forEach(s => {
                     totalServ += parseFloat(s.precio_aplicado||0);
-                    html += `<tr><td style="padding:5px;">${s.servicio?.ser_nombre||'Servicio #'+s.id_servicio}</td><td style="padding:5px;text-align:right;">$${parseFloat(s.precio_aplicado||0).toFixed(2)}</td></tr>`;
+                    html += `<tr><td style="padding:5px;">${s.servicio?.ser_nombre||'Servicio #'+s.id_servicio}</td><td style="text-align:right;">$${parseFloat(s.precio_aplicado||0).toFixed(2)}</td></tr>`;
                 });
-                html += `<tr style="font-weight:bold;background:#f8f9fa;"><td style="padding:5px;text-align:right;">Total Mano Obra:</td><td style="text-align:right;">$${totalServ.toFixed(2)}</td></tr></table>`;
+                html += `<tr style="font-weight:bold;background:#f8f9fa;"><td style="text-align:right;">Total:</td><td style="text-align:right;">$${totalServ.toFixed(2)}</td></tr></table>`;
             }
 
-            // Insumos tabla de
             if (m.insumos?.length > 0) {
-                html += `<br><strong> Insumos:</strong>
+                html += `<br><strong>📦 Insumos:</strong>
                 <table style="width:100%;font-size:12px;margin-top:5px;">
-                    <tr style="background: #1b297a ;color:white;"><th style="padding:5px;">Producto</th><th style="padding:5px;text-align:center;">Cant</th><th style="padding:5px;text-align:right;">P.Unit</th><th style="padding:5px;text-align:right;">Sub</th></tr>`;
+                    <tr style="background:#1b297a;color:white;"><th style="padding:5px;">Producto</th><th style="text-align:center;">Cant</th><th style="text-align:right;">P.Unit</th><th style="text-align:right;">Sub</th></tr>`;
                 let totalIns = 0;
                 m.insumos.forEach(i => {
                     const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0);
                     totalIns += sub;
-                    html += `<tr><td style="padding:5px;">${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`;
+                    html += `<tr><td>${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`;
                 });
-                html += `<tr style="font-weight:bold;background:#f8f9fa;"><td colspan="3" style="text-align:right;">Total Insumos:</td><td style="text-align:right;">$${totalIns.toFixed(2)}</td></tr></table>`;
+                html += `<tr style="font-weight:bold;background:#f8f9fa;"><td colspan="3" style="text-align:right;">Total:</td><td style="text-align:right;">$${totalIns.toFixed(2)}</td></tr></table>`;
             }
 
             html += `<div style="text-align:right;margin-top:15px;font-size:18px;"><strong>TOTAL: $${parseFloat(m.mantenimiento_total||0).toFixed(2)}</strong></div></div>`;
 
-            Swal.fire({ title: `Servicio #${m.id_mantenimiento}`, html: html, width: '650px', confirmButtonText: 'Cerrar', confirmButtonColor: '#080522' });
+            Swal.fire({ title: `Servicio #${m.id_mantenimiento}`, html: html, width: '650px', confirmButtonColor: '#080522' });
         } catch (e) {
             Swal.fire("Error", "No se pudo cargar", "error");
         }
@@ -508,137 +493,90 @@
     }
 
     // ==========================================
-    // EXPONER
+    // DESCARGAR PDF
+    // ==========================================
+    window.descargarPDFServicio = async function(id) {
+        try {
+            const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
+            const response = await res.json();
+            const m = response.success ? response.data : response;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+            doc.setFontSize(16).setFont("helvetica", "bold");
+            doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
+            doc.setFontSize(10).setFont("helvetica", "normal");
+            doc.text("Orden de Servicio", 105, 22, { align: "center" });
+            doc.line(10, 25, 200, 25);
+
+            let y = 32;
+            const datos = [
+                ["Folio:", `#${m.id_mantenimiento}`],
+                ["Fecha:", m.fecha_inicio ? new Date(m.fecha_inicio).toLocaleString() : '-'],
+                ["Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D'],
+                ["Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D'],
+                ["Modelo:", m.moto_modelo || 'N/A'],
+                ["Estado:", m.estado_servicio || 'Pendiente'],
+                ["Descripción:", m.moto_llegada_descripcion || '-'],
+                ["Trabajo Realizado:", m.trabajo_realizado || 'Pendiente'],
+            ];
+            datos.forEach(([label, value]) => {
+                doc.setFont("helvetica", "bold").text(label, 15, y);
+                doc.setFont("helvetica", "normal").text(String(value), 55, y);
+                y += 7;
+            });
+
+            if (m.servicios?.length > 0) {
+                y += 5;
+                doc.setFontSize(12).setFont("helvetica", "bold").text("Servicios (Mano de Obra)", 15, y); y += 6;
+                const filas = m.servicios.map(s => [s.servicio?.ser_nombre || 'Servicio #' + s.id_servicio, `$${parseFloat(s.precio_aplicado||0).toFixed(2)}`]);
+                let total = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado||0), 0);
+                filas.push(["TOTAL MANO DE OBRA", `$${total.toFixed(2)}`]);
+                doc.autoTable({ startY: y, head: [['Servicio', 'Precio']], body: filas, theme: 'striped', headStyles: { fillColor: [253, 126, 20] }, margin: { left: 15, right: 15 }, styles: { fontSize: 9 } });
+                y = doc.lastAutoTable.finalY + 5;
+            }
+
+            if (m.insumos?.length > 0) {
+                doc.setFontSize(12).setFont("helvetica", "bold").text("Insumos Utilizados", 15, y); y += 6;
+                const filas = m.insumos.map(i => {
+                    const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0);
+                    return [i.producto?.pro_nombre||'Producto', String(i.insumo_cantidad||0), `$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}`, `$${sub.toFixed(2)}`];
+                });
+                let total = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0), 0);
+                filas.push(["TOTAL INSUMOS", "", "", `$${total.toFixed(2)}`]);
+                doc.autoTable({ startY: y, head: [['Producto', 'Cant', 'P.Unit', 'Sub']], body: filas, theme: 'striped', headStyles: { fillColor: [13, 110, 253] }, margin: { left: 15, right: 15 }, styles: { fontSize: 9 } });
+                y = doc.lastAutoTable.finalY + 8;
+            }
+
+            doc.setFontSize(14).setFont("helvetica", "bold");
+            doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total||0).toFixed(2)}`, 200, y, { align: "right" });
+            doc.setFontSize(8).setFont("helvetica", "normal");
+            doc.text("JHP Taller Mecánico - Orden de Servicio", 105, 285, { align: "center" });
+            window.open(doc.output('bloburl'), '_blank');
+        } catch (e) {
+            Swal.fire("Error", "No se pudo generar el PDF", "error");
+        }
+    };
+
+    // ==========================================
+    // EXPONER E INICIALIZAR
     // ==========================================
     window.inicializarServicios = inicializarServicios;
     window.listarServicios = listarServicios;
 
+    // Inicialización al cargar
     if (document.getElementById('tablaServicios')) {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', inicializarServicios);
-        } else {
-            inicializarServicios();
-        }
+        inicializarServicios();
     }
 
-    // DESCARGAR DETALLE COMO PDF
-window.descargarPDFServicio = async function(id) {
-    try {
-        const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
-        const response = await res.json();
-        const m = response.success ? response.data : response;
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-
-        // Encabezado
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text("Orden de Servicio", 105, 22, { align: "center" });
-        doc.line(10, 25, 200, 25);
-
-        // Datos generales
-        doc.setFontSize(11);
-        let y = 32;
-        const datos = [
-            ["Folio:", `#${m.id_mantenimiento}`],
-            ["Fecha:", m.fecha_inicio ? new Date(m.fecha_inicio).toLocaleString() : '-'],
-            ["Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D'],
-            ["Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D'],
-            ["Modelo:", m.moto_modelo || 'N/A'],
-            ["Estado:", m.estado_servicio || 'Pendiente'],
-            ["Descripción:", m.moto_llegada_descripcion || '-'],
-            ["Trabajo Realizado:", m.trabajo_realizado || 'Pendiente'],
-        ];
-
-        datos.forEach(([label, value]) => {
-            doc.setFont("helvetica", "bold");
-            doc.text(label, 15, y);
-            doc.setFont("helvetica", "normal");
-            doc.text(String(value), 55, y);
-            y += 7;
-        });
-
-        // Tabla de servicios (Mano de obra)
-        if (m.servicios && m.servicios.length > 0) {
-            y += 5;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("Servicios (Mano de Obra)", 15, y);
-            y += 6;
-
-            const filasServicios = m.servicios.map(s => [
-                s.servicio?.ser_nombre || 'Servicio #' + s.id_servicio,
-                `$${parseFloat(s.precio_aplicado || 0).toFixed(2)}`
-            ]);
-            
-            let totalServicios = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado || 0), 0);
-            filasServicios.push(["TOTAL MANO DE OBRA", `$${totalServicios.toFixed(2)}`]);
-
-            doc.autoTable({
-                startY: y,
-                head: [['Servicio', 'Precio']],
-                body: filasServicios,
-                theme: 'striped',
-                headStyles: { fillColor: [253, 126, 20] },  //verde tabla pdf
-                margin: { left: 15, right: 15 },
-                styles: { fontSize: 9 }
-            });
-            y = doc.lastAutoTable.finalY + 5;
+    // Reinicializar cuando se navega desde el menú
+    document.addEventListener('vista-cargada', function(e) {
+        if (e.detail && e.detail.vista && 
+            (e.detail.vista.includes('servicio') || e.detail.vista.includes('Servicio'))) {
+            inicializado = false;
+            setTimeout(inicializarServicios, 300);
         }
-
-        // Tabla de insumos
-        if (m.insumos && m.insumos.length > 0) {
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("Insumos Utilizados", 15, y);
-            y += 6;
-
-            const filasInsumos = m.insumos.map(i => {
-                const sub = (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0);
-                return [
-                    i.producto?.pro_nombre || 'Producto',
-                    String(i.insumo_cantidad || 0),
-                    `$${parseFloat(i.insumo_precio_unitario || 0).toFixed(2)}`,
-                    `$${sub.toFixed(2)}`
-                ];
-            });
-
-            let totalInsumos = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0), 0);
-            filasInsumos.push(["TOTAL INSUMOS", "", "", `$${totalInsumos.toFixed(2)}`]);
-
-            doc.autoTable({
-                startY: y,
-                head: [['Producto', 'Cant', 'P. Unit.', 'Subtotal']],
-                body: filasInsumos,
-                theme: 'striped',
-                headStyles: { fillColor: [13, 110, 253] }, //color moradooo sgunda tabla pdf
-                margin: { left: 15, right: 15 },
-                styles: { fontSize: 9 }
-            });
-            y = doc.lastAutoTable.finalY + 8;
-        }
-
-        // Total general
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 200, y, { align: "right" });
-
-        // Pie de página
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        doc.text("JHP Taller Mecánico - Orden de Servicio", 105, 285, { align: "center" });
-
-        // Abrir PDF
-        window.open(doc.output('bloburl'), '_blank');
-
-    } catch (e) {
-        console.error("Error PDF:", e);
-        Swal.fire("Error", "No se pudo generar el PDF", "error");
-    }
-};
+    });
 
 })();
