@@ -1,0 +1,116 @@
+<div class="container-fluid mt-4">
+    <h2 class="mb-4"><i class="fas fa-shield-alt me-2"></i>Mantenimiento Preventivo</h2>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" class="form-control form-control-lg" id="inputBuscarMant" placeholder="Buscar por folio o cliente...">
+                <button class="btn btn-dark"><i class="fas fa-search"></i> Buscar</button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <button class="btn btn-dark btn-lg w-100" onclick="window.abrirModalMantenimiento()">
+                <i class="fas fa-plus-circle"></i> Nuevo Mantenimiento
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4"><div class="card text-white bg-warning shadow-sm"><div class="card-body"><h5>Pendientes</h5><h3 id="totalMantPendientes">0</h3></div></div></div>
+        <div class="col-md-4"><div class="card text-white bg-success shadow-sm"><div class="card-body"><h5>Completados</h5><h3 id="totalMantCompletados">0</h3></div></div></div>
+        <div class="col-md-4"><div class="card text-white bg-info shadow-sm"><div class="card-body"><h5>Próximos</h5><h3 id="totalMantProximos">0</h3></div></div></div>
+    </div>
+
+    <div class="card shadow"><div class="card-body p-0"><div class="table-responsive" style="max-height:70vh;overflow-y:auto;">
+        <table class="table table-hover mb-0"><thead class="table-dark"><tr><th>Folio</th><th>Cliente</th><th>Modelo</th><th>Mecánico</th><th>Km Actual</th><th>Próx. Km</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaMantenimiento"><tr><td colspan="9" class="text-center py-4">Cargando...</td></tr></tbody></table>
+    </div></div></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal fade" id="modalMantenimientoPrev" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title"><i class="fas fa-shield-alt me-2"></i><span id="tituloModalMant">Nuevo Mantenimiento</span></h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+            <form id="formMantenimientoPrev" onsubmit="return false;">
+                <input type="hidden" id="id_cita_input_mant">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Cliente *</label>
+                        <select id="id_cliente_mant" class="form-select" required><option value="">Seleccione...</option></select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Mecánico *</label>
+                        <select id="id_mecanico_mant" class="form-select" required><option value="">Seleccione...</option></select>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold">Modelo Motocicleta *</label>
+                        <input type="text" id="moto_modelo_mant" class="form-control" placeholder="Ej. Italika 150Z 2024" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Kilometraje Actual</label>
+                        <input type="number" id="kilometraje_actual" class="form-control" placeholder="Ej. 15000">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Próximo Mantenimiento (km)</label>
+                        <input type="number" id="proximo_kilometraje" class="form-control" placeholder="Ej. 18000">
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold">Observaciones</label>
+                        <textarea id="moto_llegada_descripcion_mant" class="form-control" rows="3" placeholder="Detalles del mantenimiento..."></textarea>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold">Trabajo Realizado</label>
+                        <textarea id="trabajo_realizado_mant" class="form-control" rows="3" placeholder="Describe el trabajo realizado..."></textarea>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Estado</label>
+                        <select id="estado_servicio_mant" class="form-select">
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Terminado">Terminado</option>
+                            <option value="Entregado">Entregado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <hr><h6 class="fw-bold text-success"><i class="fas fa-tools"></i> Servicios (Mano de Obra)</h6>
+                <div class="row mb-2">
+                    <div class="col-md-7"><select id="servicio_id_mant" class="form-select form-select-sm"><option value="">Seleccione servicio...</option></select></div>
+                    <div class="col-md-3"><input type="number" id="servicio_precio_mant" class="form-control form-control-sm" placeholder="$" value="0"></div>
+                    <div class="col-md-2"><button type="button" class="btn btn-outline-success btn-sm w-100" onclick="window.agregarServicioMant()">+</button></div>
+                </div>
+                <div id="listaServiciosAgregadosMant" class="mb-2" style="max-height:120px;overflow-y:auto;"></div>
+                <div class="text-end mb-2">Total Mano de Obra: <strong class="text-success">$<span id="total_mano_obra_mant">0.00</span></strong></div>
+
+                <hr><h6 class="fw-bold text-primary"><i class="fas fa-box"></i> Insumos Utilizados</h6>
+                <div class="row mb-2">
+                    <div class="col-md-6 position-relative">
+                        <input type="text" id="buscarInsumoMant" class="form-control form-control-sm" placeholder="Buscar producto..." oninput="window.buscarInsumoMant(this.value)" autocomplete="off">
+                        <div id="listaResultadosInsumosMant" class="list-group position-absolute w-100" style="z-index:1000;top:100%;display:none;max-height:180px;overflow-y:auto;"></div>
+                    </div>
+                    <div class="col-md-2"><input type="number" id="insumo_cantidad_mant" class="form-control form-control-sm" value="1" min="1"></div>
+                    <div class="col-md-2"><input type="text" id="insumo_precio_mant" class="form-control form-control-sm" value="0" readonly></div>
+                    <div class="col-md-2"><button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="window.agregarInsumoMant()">+</button></div>
+                </div>
+                <div id="listaInsumosAgregadosMant" class="mb-2" style="max-height:120px;overflow-y:auto;"></div>
+                <div class="text-end mb-2">Total Insumos: <strong class="text-primary">$<span id="total_insumos_mant">0.00</span></strong></div>
+
+                <div class="alert alert-info text-center py-2"><h5 class="mb-0">TOTAL: $<span id="total_general_mant">0.00</span></h5></div>
+
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success px-4" id="btnGuardarMant" onclick="window.guardarMantenimiento()">
+                        <i class="fas fa-save me-2"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="js/mantenimiento.js"></script>
