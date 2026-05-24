@@ -375,17 +375,55 @@ window.editarMantenimiento = async function(id) {
 // ==========================================
 // DESCARGAR PDF CON VERIFICACIÓN DE LIBRERÍAS
 // ==========================================
+// ==========================================
+// FUNCIONES DE PDF (MISMO CÓDIGO QUE SERVICIOS)
+// ==========================================
+
+// Función para verificar/forzar carga de librerías
+async function asegurarLibreriasPDF() {
+    // Verificar jsPDF
+    let jsPDFLib = null;
+    
+    if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
+        jsPDFLib = window.jspdf.jsPDF;
+        console.log('✅ jsPDF ya disponible');
+    } else if (typeof jspdf !== 'undefined') {
+        jsPDFLib = jspdf;
+        console.log('✅ jsPDF ya disponible (global)');
+    } else if (typeof window.jsPDF !== 'undefined') {
+        jsPDFLib = window.jsPDF;
+        console.log('✅ jsPDF ya disponible (window)');
+    }
+    
+    if (!jsPDFLib) {
+        console.log('⏳ Cargando jsPDF...');
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        console.log('✅ jsPDF cargado');
+        
+        // Cargar autoTable
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+        console.log('✅ autoTable cargado');
+    }
+    
+    return jsPDFLib || window.jspdf?.jsPDF || jspdf || window.jsPDF;
+}
+
+// Función principal del PDF para mantenimiento
 window.descargarPDFMantenimiento = async function(id) {
     try {
         console.log('=== GENERANDO PDF MANTENIMIENTO ===');
-        
-        // Mostrar loading
-        Swal.fire({
-            title: 'Generando PDF...',
-            text: 'Preparando documento',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
         
         // 1. Asegurar librerías
         const jsPDFLib = await asegurarLibreriasPDF();
@@ -520,31 +558,27 @@ window.descargarPDFMantenimiento = async function(id) {
             }
         }
         
-        // Total general
+        // Total
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 190, y, { align: "right" });
         
-        // Pie de página
+        // Pie
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
         doc.text("JHP Taller Mecánico - Orden de Mantenimiento", 105, 285, { align: "center" });
         
-        // Cerrar loading
-        Swal.close();
-        
-        // Abrir PDF en nueva pestaña
+        // Abrir PDF
         const pdfBlob = doc.output('blob');
         const pdfUrl = URL.createObjectURL(pdfBlob);
         window.open(pdfUrl, '_blank');
         
         setTimeout(() => URL.revokeObjectURL(pdfUrl), 100);
         
-        console.log('✅ PDF generado exitosamente');
+        console.log('✅ PDF de mantenimiento generado exitosamente');
         
     } catch (e) {
         console.error('❌ Error PDF:', e);
-        Swal.close();
         Swal.fire("Error", "No se pudo generar el PDF: " + e.message, "error");
     }
 };
