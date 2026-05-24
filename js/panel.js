@@ -4,19 +4,21 @@ var API_CITAS_PANEL = "https://jhpapi-production.up.railway.app/api/citas";
 var API_PRODUCTOS_PANEL = "https://jhpapi-production.up.railway.app/api/producto";
 
 let calendarioPanel = null;
+var mapaRefacciones = null;
+var marcadoresRefacciones = [];
 
-// ========== ALERTA STOCK BAJO (SUTIL) ==========
+// ========== ALERTA STOCK BAJO ==========
 function verificarStockBajoPanel() {
     fetch(API_PRODUCTOS_PANEL)
-        .then(res => res.json())
-        .then(response => {
-            const data = response.success ? response.data : response;
-            const productos = Array.isArray(data) ? data : [];
-            const bajos = productos.filter(p => p.pro_stock <= 5 && p.pro_stock > 0);
-            const agotados = productos.filter(p => p.pro_stock <= 0);
-            const total = bajos.length + agotados.length;
+        .then(function(res) { return res.json(); })
+        .then(function(response) {
+            var data = response.success ? response.data : response;
+            var productos = Array.isArray(data) ? data : [];
+            var bajos = productos.filter(function(p) { return p.pro_stock <= 5 && p.pro_stock > 0; });
+            var agotados = productos.filter(function(p) { return p.pro_stock <= 0; });
+            var total = bajos.length + agotados.length;
 
-            const alertaEl = document.getElementById("alertaStockPanel");
+            var alertaEl = document.getElementById("alertaStockPanel");
             if (!alertaEl) return;
 
             if (total === 0) {
@@ -24,10 +26,8 @@ function verificarStockBajoPanel() {
                 return;
             }
 
-            let mensaje = '';
-            if (agotados.length > 0) {
-                mensaje += agotados.length + ' producto(s) agotado(s)';
-            }
+            var mensaje = '';
+            if (agotados.length > 0) mensaje += agotados.length + ' producto(s) agotado(s)';
             if (bajos.length > 0) {
                 if (mensaje) mensaje += ' | ';
                 mensaje += bajos.length + ' con stock bajo';
@@ -46,9 +46,10 @@ function inicializarPanel() {
     cargarCitasPanel();
     verificarStockBajoPanel();
     inicializarCalendario();
+    setTimeout(buscarRefaccionarias, 1500);
 }
 
-// ========== ESTADO DE CAJA ==========
+// ========== CAJA ==========
 function verificarEstadoCaja() {
     fetch(API_CAJA_PANEL + '/estado')
         .then(function(res) { return res.json(); })
@@ -82,7 +83,6 @@ function cerrarModal() {
 function confirmarAbrirCaja() {
     var monto = parseFloat(document.getElementById("monto_inicial").value) || 0;
     if (monto <= 0) return Swal.fire("Error", "Ingresa un monto inicial valido", "warning");
-
     var token = localStorage.getItem('token');
     fetch(API_CAJA_PANEL, {
         method: "POST",
@@ -102,8 +102,7 @@ function confirmarCerrarCaja() {
     fetch(API_CAJA_PANEL + '/estado')
         .then(function(res) { return res.json(); })
         .then(function(data) {
-            var idCaja = data.id_caja;
-            fetch(API_CAJA_PANEL + '/' + idCaja, {
+            fetch(API_CAJA_PANEL + '/' + data.id_caja, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer " + token },
                 body: JSON.stringify({ estado: 'Cerrada', fecha_cierre: new Date().toISOString() })
@@ -132,7 +131,7 @@ function cargarVentasHoy() {
         });
 }
 
-// ========== CITAS PANEL ==========
+// ========== CITAS ==========
 function cargarCitasPanel() {
     var filtro = document.getElementById("filtroCitasPanel")?.value || "hoy";
     fetch(API_CITAS_PANEL)
@@ -186,7 +185,6 @@ function cargarCitasPanel() {
 function inicializarCalendario() {
     var calendarEl = document.getElementById('calendario');
     if (!calendarEl) return;
-
     if (calendarioPanel) { calendarioPanel.destroy(); calendarioPanel = null; }
 
     fetch(API_CITAS_PANEL)
@@ -227,49 +225,96 @@ function inicializarCalendario() {
         });
 }
 
-// ========== REFACCIONARIAS CERCANAS (OpenStreetMap - GRATIS) ==========
+// ========== MAPA REFACCIONARIAS ==========
 function buscarRefaccionarias() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
-            cargarRefaccionarias(position.coords.latitude, position.coords.longitude);
+            inicializarMapa(position.coords.latitude, position.coords.longitude);
         }, function() {
-            cargarRefaccionarias(19.4326, -99.1332);
+            inicializarMapa(19.4326, -99.1332);
         });
     } else {
-        cargarRefaccionarias(19.4326, -99.1332);
+        inicializarMapa(19.4326, -99.1332);
     }
 }
 
-function cargarRefaccionarias(lat, lng) {
-    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=5&q=refacciones+motos+cerca&lat=" + lat + "&lon=" + lng + "&bounded=1&viewbox=" + (lng-0.15) + "," + (lat-0.15) + "," + (lng+0.15) + "," + (lat+0.15);
+function inicializarMapa(lat, lng) {
+    var mapaEl = document.getElementById("mapaRefaccionarias");
+    if (!mapaEl) return;
+
+    if (mapaRefacciones) {
+        mapaRefacciones.remove();
+        mapaRefacciones = null;
+    }
+
+    mapaRefacciones = L.map('mapaRefaccionarias').setView([lat, lng], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(mapaRefacciones);
+
+    var tallerIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+    });
+
+    L.marker([lat, lng], {icon: tallerIcon})
+        .addTo(mapaRefacciones)
+        .bindPopup('<b>JHP Taller Mecanico</b><br>Tu ubicacion')
+        .openPopup();
+
+    buscarRefaccionariasCercanas(lat, lng);
+}
+
+function buscarRefaccionariasCercanas(lat, lng) {
+    var query = "refacciones+motocicletas+taller+motos";
+    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=8&q=" + query + "&lat=" + lat + "&lon=" + lng + "&bounded=1&viewbox=" + (lng-0.2) + "," + (lat-0.2) + "," + (lng+0.2) + "," + (lat+0.2);
 
     fetch(url, {
         headers: { 'Accept': 'application/json', 'User-Agent': 'JHP-Taller/1.0' }
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
-        var lista = document.getElementById("listaRefaccionarias");
-        if (!lista) return;
+        marcadoresRefacciones.forEach(function(m) { mapaRefacciones.removeLayer(m); });
+        marcadoresRefacciones = [];
+
+        var listaTexto = document.getElementById("listaRefaccionariasTexto");
+        if (!listaTexto) return;
 
         if (data && data.length > 0) {
-            lista.innerHTML = data.slice(0, 5).map(function(p) {
+            var refaccIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+            });
+
+            var filas = '';
+            data.forEach(function(p, i) {
+                var pLat = parseFloat(p.lat);
+                var pLng = parseFloat(p.lon);
                 var nombre = p.display_name.split(',')[0] || 'Refaccionaria';
                 var direccion = p.display_name.split(',').slice(1, 3).join(',') || '';
-                var tipo = p.type || '';
-                return '<div class="d-flex justify-content-between align-items-center py-2 border-bottom">' +
-                    '<div><strong><i class="fas fa-store text-primary me-1"></i>' + nombre + '</strong>' +
-                    '<br><small class="text-muted">' + direccion + '</small></div>' +
-                    '<a href="https://www.openstreetmap.org/directions?from=' + lat + ',' + lng + '&to=' + p.lat + ',' + p.lon + '" target="_blank" class="btn btn-sm btn-outline-primary" title="Como llegar">' +
-                    '<i class="fas fa-map-marker-alt"></i></a>' +
+
+                var marker = L.marker([pLat, pLng], {icon: refaccIcon})
+                    .addTo(mapaRefacciones)
+                    .bindPopup('<b>' + nombre + '</b><br>' + direccion + '<br><a href="https://www.google.com/maps/dir/' + lat + ',' + lng + '/' + pLat + ',' + pLng + '" target="_blank">Como llegar</a>');
+                marcadoresRefacciones.push(marker);
+
+                filas += '<div class="d-flex justify-content-between align-items-center py-1 border-bottom">' +
+                    '<div><strong>' + (i+1) + '. ' + nombre + '</strong><br><small class="text-muted">' + direccion + '</small></div>' +
+                    '<a href="https://www.google.com/maps/dir/' + lat + ',' + lng + '/' + pLat + ',' + pLng + '" target="_blank" class="btn btn-sm btn-outline-primary" title="Como llegar"><i class="fas fa-directions"></i></a>' +
                 '</div>';
-            }).join('');
+            });
+
+            listaTexto.innerHTML = filas || '<div class="text-muted py-2">No se encontraron resultados</div>';
         } else {
-            lista.innerHTML = '<div class="text-muted py-2"><i class="fas fa-info-circle me-1"></i>No se encontraron refaccionarias cercanas. Intenta con otra ubicacion.</div>';
+            listaTexto.innerHTML = '<div class="text-muted py-2"><i class="fas fa-info-circle me-1"></i>No se encontraron refaccionarias en tu zona.</div>';
         }
     })
     .catch(function() {
-        var lista = document.getElementById("listaRefaccionarias");
-        if (lista) lista.innerHTML = '<div class="text-muted py-2"><i class="fas fa-exclamation-triangle me-1"></i>Error al cargar refaccionarias</div>';
+        var listaTexto = document.getElementById("listaRefaccionariasTexto");
+        if (listaTexto) listaTexto.innerHTML = '<div class="text-muted py-2">Error al cargar refaccionarias</div>';
     });
 }
 
@@ -280,10 +325,8 @@ window.abrirModalCaja = abrirModalCaja;
 window.cerrarModal = cerrarModal;
 window.confirmarAbrirCaja = confirmarAbrirCaja;
 window.cargarCitasPanel = cargarCitasPanel;
-window.buscarRefaccionarias = buscarRefaccionarias;
 
 // Inicializar
 if (document.getElementById("calendario") || document.getElementById("estado-badge")) {
     inicializarPanel();
-    setTimeout(buscarRefaccionarias, 2000);
 }
