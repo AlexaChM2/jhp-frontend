@@ -333,59 +333,167 @@ window.editarMantenimiento = async function(id) {
 // ==========================================
 window.descargarPDFMantenimiento = async function(id) {
     try {
+        console.log('Generando PDF para mantenimiento:', id);
+        
+        // Verificar que jsPDF está cargado (diferentes formas)
+        let jsPDFLib = null;
+        
+        if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
+            jsPDFLib = window.jspdf.jsPDF;
+        } else if (typeof jspdf !== 'undefined') {
+            jsPDFLib = jspdf;
+        } else if (typeof window.jsPDF !== 'undefined') {
+            jsPDFLib = window.jsPDF;
+        }
+        
+        if (!jsPDFLib) {
+            console.error('jsPDF no encontrado');
+            Swal.fire("Error", "La librería jsPDF no está cargada. Contacte al administrador.", "error");
+            return;
+        }
+        
         const res = await fetch(`${API_MANT}/${id}`);
         const response = await res.json();
         const m = response.success ? response.data : response;
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-
-        doc.setFontSize(16).setFont("helvetica", "bold");
+        
+        console.log('Datos del mantenimiento:', m);
+        
+        // Crear documento
+        const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
+        
+        // Encabezado
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
         doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
-        doc.setFontSize(10).setFont("helvetica", "normal");
-        doc.text("Orden de Mantenimiento Preventivo", 105, 22, { align: "center" });
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("Mantenimiento Preventivo", 105, 22, { align: "center" });
         doc.line(10, 25, 200, 25);
-
+        
+        // Datos generales
         let y = 32;
-        const datos = [
-            ["Folio:", `#${m.id_mantenimiento}`],
-            ["Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D'],
-            ["Mecánico:", m.mecanico?.emp_nombre || 'S/D'],
-            ["Modelo:", m.moto_modelo || 'N/A'],
-            ["Estado:", m.estado_servicio || 'Pendiente'],
-            ["Trabajo:", m.trabajo_realizado || 'Pendiente'],
-        ];
-        datos.forEach(([label, value]) => {
-            doc.setFont("helvetica", "bold").text(label, 15, y);
-            doc.setFont("helvetica", "normal").text(String(value), 55, y);
-            y += 7;
-        });
-
-        if (m.servicios?.length > 0) {
+        doc.setFontSize(11);
+        
+        // Función para agregar línea
+        function addLine(label, value, y) {
+            doc.setFont("helvetica", "bold");
+            doc.text(label, 15, y);
+            doc.setFont("helvetica", "normal");
+            doc.text(String(value || '-'), 55, y);
+            return y + 7;
+        }
+        
+        y = addLine("Folio:", `#${m.id_mantenimiento}`, y);
+        y = addLine("Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D', y);
+        y = addLine("Mecánico:", m.mecanico?.emp_nombre || 'S/D', y);
+        y = addLine("Modelo:", m.moto_modelo || 'N/A', y);
+        y = addLine("Estado:", m.estado_servicio || 'Pendiente', y);
+        y = addLine("Descripción:", m.moto_llegada_descripcion || '-', y);
+        y = addLine("Trabajo Realizado:", m.trabajo_realizado || 'Pendiente', y);
+        
+        // Tabla de servicios
+        if (m.servicios && m.servicios.length > 0) {
             y += 5;
-            doc.setFontSize(12).setFont("helvetica", "bold").text("Servicios (Mano de Obra)", 15, y); y += 6;
-            const filas = m.servicios.map(s => [s.servicio?.ser_nombre || 'Servicio', `$${parseFloat(s.precio_aplicado||0).toFixed(2)}`]);
-            let total = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado||0), 0);
-            filas.push(["TOTAL MANO DE OBRA", `$${total.toFixed(2)}`]);
-            doc.autoTable({ startY: y, head: [['Servicio', 'Precio']], body: filas, theme: 'striped', headStyles: { fillColor: [253, 126, 20] }, margin: { left: 15, right: 15 }, styles: { fontSize: 9 } });
-            y = doc.lastAutoTable.finalY + 5;
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("Servicios (Mano de Obra)", 15, y);
+            y += 6;
+            
+            const filasServicios = m.servicios.map(s => [
+                s.servicio?.ser_nombre || 'Servicio #' + s.id_servicio,
+                `$${parseFloat(s.precio_aplicado || 0).toFixed(2)}`
+            ]);
+            
+            let totalServicios = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado || 0), 0);
+            filasServicios.push(["TOTAL MANO DE OBRA", `$${totalServicios.toFixed(2)}`]);
+            
+            // Verificar que autoTable existe
+            if (typeof doc.autoTable === 'function') {
+                doc.autoTable({
+                    startY: y,
+                    head: [['Servicio', 'Precio']],
+                    body: filasServicios,
+                    theme: 'striped',
+                    headStyles: { fillColor: [253, 126, 20] },
+                    margin: { left: 15, right: 15 },
+                    styles: { fontSize: 9 }
+                });
+                y = doc.lastAutoTable.finalY + 5;
+            } else {
+                // Fallback si autoTable no está
+                filasServicios.forEach(fila => {
+                    doc.setFont("helvetica", "normal");
+                    doc.text(fila[0], 15, y);
+                    doc.text(fila[1], 190, y, { align: "right" });
+                    y += 6;
+                });
+                y += 5;
+            }
         }
-
-        if (m.insumos?.length > 0) {
-            doc.setFontSize(12).setFont("helvetica", "bold").text("Insumos", 15, y); y += 6;
-            const filas = m.insumos.map(i => [i.producto?.pro_nombre||'Producto', String(i.insumo_cantidad||0), `$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}`, `$${((i.insumo_cantidad||0)*(i.insumo_precio_unitario||0)).toFixed(2)}`]);
-            let total = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0), 0);
-            filas.push(["TOTAL INSUMOS", "", "", `$${total.toFixed(2)}`]);
-            doc.autoTable({ startY: y, head: [['Producto', 'Cant', 'P.Unit', 'Sub']], body: filas, theme: 'striped', headStyles: { fillColor: [13, 110, 253] }, margin: { left: 15, right: 15 }, styles: { fontSize: 9 } });
-            y = doc.lastAutoTable.finalY + 8;
+        
+        // Tabla de insumos
+        if (m.insumos && m.insumos.length > 0) {
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("Insumos Utilizados", 15, y);
+            y += 6;
+            
+            const filasInsumos = m.insumos.map(i => {
+                const sub = (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0);
+                return [
+                    i.producto?.pro_nombre || 'Producto',
+                    String(i.insumo_cantidad || 0),
+                    `$${parseFloat(i.insumo_precio_unitario || 0).toFixed(2)}`,
+                    `$${sub.toFixed(2)}`
+                ];
+            });
+            
+            let totalInsumos = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0), 0);
+            filasInsumos.push(["TOTAL INSUMOS", "", "", `$${totalInsumos.toFixed(2)}`]);
+            
+            if (typeof doc.autoTable === 'function') {
+                doc.autoTable({
+                    startY: y,
+                    head: [['Producto', 'Cant', 'P. Unit.', 'Subtotal']],
+                    body: filasInsumos,
+                    theme: 'striped',
+                    headStyles: { fillColor: [13, 110, 253] },
+                    margin: { left: 15, right: 15 },
+                    styles: { fontSize: 9 }
+                });
+                y = doc.lastAutoTable.finalY + 8;
+            } else {
+                filasInsumos.forEach(fila => {
+                    doc.setFont("helvetica", "normal");
+                    doc.text(fila[0], 15, y);
+                    doc.text(fila[1], 80, y);
+                    doc.text(fila[2], 120, y);
+                    doc.text(fila[3], 190, y, { align: "right" });
+                    y += 6;
+                });
+                y += 5;
+            }
         }
-
-        doc.setFontSize(14).setFont("helvetica", "bold");
-        doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total||0).toFixed(2)}`, 200, y, { align: "right" });
-        doc.setFontSize(8).setFont("helvetica", "normal");
+        
+        // Total general
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 190, y, { align: "right" });
+        
+        // Pie de página
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
         doc.text("JHP Taller Mecánico - Mantenimiento Preventivo", 105, 285, { align: "center" });
-        window.open(doc.output('bloburl'), '_blank');
-    } catch (e) { Swal.fire("Error", "No se pudo generar PDF", "error"); }
+        
+        // Descargar PDF
+        doc.save(`mantenimiento_${id}.pdf`);
+        
+        console.log('PDF generado exitosamente');
+        
+    } catch (e) {
+        console.error('Error PDF:', e);
+        Swal.fire("Error", "No se pudo generar el PDF: " + e.message, "error");
+    }
 };
 
 // ==========================================
