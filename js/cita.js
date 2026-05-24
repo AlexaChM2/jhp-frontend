@@ -1,13 +1,13 @@
 var API_CITA_CITAS = "https://jhpapi-production.up.railway.app/api/citas";
 var API_CLI_CITAS = "https://jhpapi-production.up.railway.app/api/clientes";
 var API_EMP_CITAS = "https://jhpapi-production.up.railway.app/api/empleados";
-var API_SERVICIOS = "https://jhpapi-production.up.railway.app/api/servicios";
 
 let clienteIdCita = null;
 let empleadoIdCita = null;
 let editandoCitaId = null;
 let citasIniciadas = false;
-let citasExistentes = []; // Para almacenar citas y validar horarios
+let citasExistentes = [];
+let currentCalendar = null;
 
 // ========== CONFIGURACIÓN ==========
 const CONFIG = {
@@ -15,13 +15,12 @@ const CONFIG = {
         INICIO: 9,      // 9 AM
         FIN: 18,        // 6 PM
         DIAS_LABORALES: [1, 2, 3, 4, 5], // Lunes a Viernes (1=Lunes, 5=Viernes)
-        DURACION_MINIMA_HORAS: 3  // Mínimo 3 horas por cita
+        DURACION_MINIMA_HORAS: 3
     },
     COLORES: {
-        DISPONIBLE: '#28a745',  // Verde para días/horarios disponibles
-        NO_DISPONIBLE: '#dc3545', // Rojo para días/horarios no disponibles
-        OCUPADO: '#ffc107',     // Amarillo para días con citas ocupadas
-        CITA_ASIGNADA: '#17a2b8' // Azul para citas existentes
+        DISPONIBLE: '#28a745',   // Verde - Días con horarios disponibles
+        NO_DISPONIBLE: '#dc3545', // Rojo - Días sin horarios disponibles
+        PARCIAL: '#ffc107'        // Amarillo - Días con disponibilidad parcial
     }
 };
 
@@ -35,6 +34,7 @@ const CONFIG = {
                 listarCitas();
                 cargarSelectEmpleados();
                 inicializarSelectorFecha();
+                inicializarCalendario();
             }, 500);
         }
     });
@@ -43,21 +43,284 @@ const CONFIG = {
         const tabla = document.getElementById('tablaCitas');
         if (tabla) setTimeout(() => {
             listarCitas();
-            inicializarSelectorFecha();
+            inicializarCalendario();
         }, 300);
     }
 })();
 
-// ========== INICIALIZAR SELECTOR DE FECHA CON VALIDACIONES ==========
+// ========== INICIALIZAR CALENDARIO ==========
+async function inicializarCalendario() {
+    const calendarEl = document.getElementById('calendarioCitas');
+    if (!calendarEl) return;
+    
+    if (currentCalendar) {
+        currentCalendar.destroy();
+    }
+    
+    await cargarCitasExistentes();
+    const eventos = await generarEventosCalendario();
+    
+    currentCalendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'es',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek'
+        },
+        height: 'auto',
+        events: eventos,
+        eventClick: function(info) {
+            if (info.event.extendedProps.disponibilidad) {
+                mostrarHorariosDisponibles(info.event.start);
+            }
+        },
+        dayCellDidMount: function(info) {
+            // Personalizar tooltip en días
+            const fechaStr = info.date.toLocaleDateString('es-MX');
+            const evento = eventos.find(e => e.start.toDateString() === info.date.toDateString());
+            if (evento) {
+                info.el.style.cursor = 'pointer';
+                info.el.title = evento.title;
+            }
+        }
+    });
+    
+    currentCalendar.render();
+}
+
+async function generarEventosCalendario() {
+    await cargarCitasExistentes();
+    
+    const eventos = [];
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    const fin = new Date(hoy);
+    fin.setMonth(fin.getMonth() + 3);
+    
+    for (let d = new Date(hoy); d <= fin; d.setDate(d.getDate() + 1)) {
+        const diaSemana = d.getDay();
+        let diaJS = diaSemana === 0 ? 7 : diaSemana;
+        const esLaboral = CONFIG.HORARIO.DIAS_LABORALES.includes(diaJS);
+        
+        if (!esLaboral) {
+            eventos.push({
+                title: '🔴 No laboral',
+                start: new Date(d),
+                allDay: true,
+                backgroundColor: CONFIG.COLORES.NO_DISPONIBLE,
+                borderColor: CONFIG.COLORES.NO_DISPONIBLE,
+                textColor: 'white',
+                extendedProps: { disponibilidad: false }
+            });
+            continue;
+        }
+        
+        const disponibilidad = await verificarDisponibilidadDia(d);
+        
+        if (disponibilidad.completa) {
+            eventos.push({
+                title: '✅ Disponible',
+                start: new Date(d),
+                allDay: true,
+                backgroundColor: CONFIG.COLORES.DISPONIBLE,
+                borderColor: CONFIG.COLORES.DISPONIBLE,
+                textColor: 'white',
+                extendedProps: { disponibilidad: true, horarios: disponibilidad.horarios }
+            });
+        } else if (disponibilidad.parcial) {
+            eventos.push({
+                title: '⚠️ Disponibilidad parcial',
+                start: new Date(d),
+                allDay: true,
+                backgroundColor: CONFIG.COLORES.PARCIAL,
+                borderColor: CONFIG.COLORES.PARCIAL,
+                textColor: 'black',
+                extendedProps: { disponibilidad: true, horarios: disponibilidad.horarios }
+            });
+        } else {
+            eventos.push({
+                title: '🔴 Sin disponibilidad',
+                start: new Date(d),
+                allDay: true,
+                backgroundColor: CONFIG.COLORES.NO_DISPONIBLE,
+                borderColor: CONFIG.COLORES.NO_DISPONIBLE,
+                textColor: 'white',
+                extendedProps: { disponibilidad: false }
+            });
+        }
+    }
+    
+    return eventos;
+}
+
+async function verificarDisponibilidadDia(fecha) {
+    const fechaStr = fecha.toDateString();
+    const citasDia = citasExistentes.filter(cita => {
+        const fechaCita = new Date(cita.cita_fecha_programada);
+        return fechaCita.toDateString() === fechaStr;
+    });
+    
+    const horasOcupadas = [];
+    citasDia.forEach(cita => {
+        const fechaCita = new Date(cita.cita_fecha_programada);
+        const inicio = fechaCita.getHours();
+        for (let i = 0; i < CONFIG.HORARIO.DURACION_MINIMA_HORAS; i++) {
+            horasOcupadas.push(inicio + i);
+        }
+    });
+    
+    const horariosDisponibles = [];
+    for (let hora = CONFIG.HORARIO.INICIO; hora <= CONFIG.HORARIO.FIN - CONFIG.HORARIO.DURACION_MINIMA_HORAS; hora++) {
+        let ocupado = false;
+        for (let h = hora; h < hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS; h++) {
+            if (horasOcupadas.includes(h)) {
+                ocupado = true;
+                break;
+            }
+        }
+        if (!ocupado) {
+            horariosDisponibles.push({
+                inicio: hora,
+                fin: hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS,
+                texto: `${hora.toString().padStart(2, '0')}:00 - ${(hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS).toString().padStart(2, '0')}:00`
+            });
+        }
+    }
+    
+    return {
+        completa: horariosDisponibles.length > 0,
+        parcial: horariosDisponibles.length > 0 && horariosDisponibles.length < 5,
+        horarios: horariosDisponibles
+    };
+}
+
+function mostrarHorariosDisponibles(fecha) {
+    const modalHtml = `
+        <div class="modal fade" id="modalHorarios" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-calendar-day me-2"></i>Horarios Disponibles
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">
+                            <strong>${fecha.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+                        </p>
+                        <div id="listaHorariosDisponibles" class="d-flex flex-wrap gap-2">
+                            <div class="text-center w-100 py-3">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2">Cargando horarios...</p>
+                            </div>
+                        </div>
+                        <small class="text-muted mt-3 d-block">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Cada cita tiene una duración mínima de ${CONFIG.HORARIO.DURACION_MINIMA_HORAS} horas.
+                        </small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Eliminar modal existente si lo hay
+    const existingModal = document.getElementById('modalHorarios');
+    if (existingModal) existingModal.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modalElement = document.getElementById('modalHorarios');
+    const modal = new bootstrap.Modal(modalElement);
+    
+    // Cargar horarios
+    cargarYMostrarHorarios(fecha, modal);
+    
+    modal.show();
+    
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        modalElement.remove();
+    });
+}
+
+async function cargarYMostrarHorarios(fecha, modal) {
+    const container = document.getElementById('listaHorariosDisponibles');
+    const disponibilidad = await verificarDisponibilidadDia(fecha);
+    
+    if (disponibilidad.horarios.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-warning text-center w-100">
+                <i class="fas fa-calendar-times fa-2x mb-2 d-block"></i>
+                No hay horarios disponibles para este día.
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="row g-2 w-100">
+            ${disponibilidad.horarios.map(horario => `
+                <div class="col-6 col-md-4">
+                    <button class="btn btn-outline-success w-100 py-2 seleccionar-horario-btn" 
+                            data-inicio="${horario.inicio}"
+                            data-fin="${horario.fin}"
+                            style="border-radius: 10px;">
+                        <i class="fas fa-clock me-1"></i>
+                        ${horario.texto}
+                    </button>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    // Agregar eventos a los botones
+    container.querySelectorAll('.seleccionar-horario-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const horaInicio = parseInt(this.dataset.inicio);
+            const fechaSeleccionada = new Date(fecha);
+            fechaSeleccionada.setHours(horaInicio, 0, 0, 0);
+            
+            // Formatear para input datetime-local
+            const año = fechaSeleccionada.getFullYear();
+            const mes = String(fechaSeleccionada.getMonth() + 1).padStart(2, '0');
+            const dia = String(fechaSeleccionada.getDate()).padStart(2, '0');
+            const hora = String(horaInicio).padStart(2, '0');
+            
+            const fechaFormateada = `${año}-${mes}-${dia}T${hora}:00`;
+            
+            // Cerrar modal de horarios
+            modal.hide();
+            
+            // Abrir modal de cita con fecha preseleccionada
+            setTimeout(() => {
+                abrirModalCitaConFecha(fechaFormateada);
+            }, 300);
+        });
+    });
+}
+
+function abrirModalCitaConFecha(fecha) {
+    abrirModalCita();
+    const inputFecha = document.getElementById("cita_fecha");
+    if (inputFecha) {
+        inputFecha.value = fecha;
+        validarHorarioCita();
+    }
+}
+
+// ========== INICIALIZAR SELECTOR DE FECHA ==========
 function inicializarSelectorFecha() {
     const inputFecha = document.getElementById("cita_fecha");
     if (!inputFecha) return;
     
-    // Configurar el input datetime-local
     inputFecha.addEventListener('change', validarHorarioCita);
     inputFecha.addEventListener('input', validarHorarioCita);
     
-    // Establecer fecha mínima (hoy)
     const ahora = new Date();
     ahora.setMinutes(0, 0, 0);
     const año = ahora.getFullYear();
@@ -67,98 +330,72 @@ function inicializarSelectorFecha() {
     inputFecha.min = `${año}-${mes}-${dia}T${hora}:00`;
 }
 
-// ========== VALIDAR HORARIO DE CITA ==========
 async function validarHorarioCita() {
     const inputFecha = document.getElementById("cita_fecha");
     const fechaSeleccionada = inputFecha.value;
-    const mensajeError = document.getElementById("errorHorarioCita");
-    
-    if (!fechaSeleccionada) return true;
-    
-    const fecha = new Date(fechaSeleccionada);
-    const diaSemana = fecha.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
-    
-    // Convertir día de JavaScript (0-6) a nuestro sistema (1=Lunes)
-    let diaJS = diaSemana === 0 ? 7 : diaSemana;
-    let diaLaboral = CONFIG.HORARIO.DIAS_LABORALES.includes(diaJS);
-    
-    // Validar día laboral
-    if (!diaLaboral) {
-        mostrarErrorHorario("❌ Los sábados y domingos no hay servicio. Selecciona un día de lunes a viernes.");
-        inputFecha.value = "";
-        return false;
-    }
-    
-    // Validar horario
-    const hora = fecha.getHours();
-    if (hora < CONFIG.HORARIO.INICIO || hora >= CONFIG.HORARIO.FIN) {
-        mostrarErrorHorario(`❌ El horario de atención es de ${CONFIG.HORARIO.INICIO}:00 AM a ${CONFIG.HORARIO.FIN}:00 PM.`);
-        inputFecha.value = "";
-        return false;
-    }
-    
-    // Validar hora de cierre (no permitir citas que terminen después de las 6 PM)
-    const horaInicio = hora;
-    const horaFin = horaInicio + CONFIG.HORARIO.DURACION_MINIMA_HORAS;
-    if (horaFin > CONFIG.HORARIO.FIN) {
-        mostrarErrorHorario(`❌ La cita requiere ${CONFIG.HORARIO.DURACION_MINIMA_HORAS} horas. El horario máximo para iniciar es a las ${CONFIG.HORARIO.FIN - CONFIG.HORARIO.DURACION_MINIMA_HORAS}:00 PM.`);
-        inputFecha.value = "";
-        return false;
-    }
-    
-    // Validar cita duplicada
-    const esValida = await validarCitaDuplicada(fechaSeleccionada);
-    if (!esValida) return false;
-    
-    ocultarErrorHorario();
-    return true;
-}
-
-function mostrarErrorHorario(mensaje) {
     let errorDiv = document.getElementById("errorHorarioCita");
+    
     if (!errorDiv) {
-        const inputFecha = document.getElementById("cita_fecha");
         errorDiv = document.createElement("div");
         errorDiv.id = "errorHorarioCita";
         errorDiv.className = "text-danger small mt-1";
         inputFecha.parentNode.appendChild(errorDiv);
     }
-    errorDiv.textContent = mensaje;
-    errorDiv.style.display = "block";
-}
-
-function ocultarErrorHorario() {
-    const errorDiv = document.getElementById("errorHorarioCita");
-    if (errorDiv) errorDiv.style.display = "none";
-}
-
-// ========== VALIDAR CITA DUPLICADA ==========
-async function validarCitaDuplicada(fechaSeleccionada) {
-    await cargarCitasExistentes();
     
+    if (!fechaSeleccionada) return true;
+    
+    const fecha = new Date(fechaSeleccionada);
+    const diaSemana = fecha.getDay();
+    let diaJS = diaSemana === 0 ? 7 : diaSemana;
+    let diaLaboral = CONFIG.HORARIO.DIAS_LABORALES.includes(diaJS);
+    
+    if (!diaLaboral) {
+        errorDiv.textContent = "❌ Los sábados y domingos no hay servicio. Selecciona un día de lunes a viernes.";
+        inputFecha.value = "";
+        return false;
+    }
+    
+    const hora = fecha.getHours();
+    if (hora < CONFIG.HORARIO.INICIO || hora >= CONFIG.HORARIO.FIN) {
+        errorDiv.textContent = `❌ El horario de atención es de ${CONFIG.HORARIO.INICIO}:00 AM a ${CONFIG.HORARIO.FIN}:00 PM.`;
+        inputFecha.value = "";
+        return false;
+    }
+    
+    const horaFin = hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS;
+    if (horaFin > CONFIG.HORARIO.FIN) {
+        errorDiv.textContent = `❌ La cita requiere ${CONFIG.HORARIO.DURACION_MINIMA_HORAS} horas. El horario máximo para iniciar es a las ${CONFIG.HORARIO.FIN - CONFIG.HORARIO.DURACION_MINIMA_HORAS}:00.`;
+        inputFecha.value = "";
+        return false;
+    }
+    
+    await cargarCitasExistentes();
+    const conflicto = verificarConflictoHorario(fechaSeleccionada);
+    
+    if (conflicto) {
+        errorDiv.textContent = "❌ Ya existe una cita programada en este horario. Selecciona otro horario.";
+        inputFecha.value = "";
+        return false;
+    }
+    
+    errorDiv.textContent = "";
+    return true;
+}
+
+function verificarConflictoHorario(fechaSeleccionada) {
     const fechaInicio = new Date(fechaSeleccionada);
     const fechaFin = new Date(fechaInicio);
     fechaFin.setHours(fechaFin.getHours() + CONFIG.HORARIO.DURACION_MINIMA_HORAS);
     
-    // Verificar si hay conflicto con alguna cita existente
-    const conflicto = citasExistentes.some(cita => {
-        if (editandoCitaId === cita.id_cita) return false; // Ignorar la cita actual en edición
+    return citasExistentes.some(cita => {
+        if (editandoCitaId === cita.id_cita) return false;
         
         const citaInicio = new Date(cita.cita_fecha_programada);
         const citaFin = new Date(citaInicio);
         citaFin.setHours(citaFin.getHours() + CONFIG.HORARIO.DURACION_MINIMA_HORAS);
         
-        // Verificar si los rangos se solapan
         return (fechaInicio < citaFin && fechaFin > citaInicio);
     });
-    
-    if (conflicto) {
-        mostrarErrorHorario("❌ Ya existe una cita programada en este horario. Por favor, selecciona otro horario.");
-        document.getElementById("cita_fecha").value = "";
-        return false;
-    }
-    
-    return true;
 }
 
 async function cargarCitasExistentes() {
@@ -201,7 +438,6 @@ function listarCitas() {
 
             if (citas.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center py-3">No hay citas registradas</td></tr>';
-                citasIniciadas = true;
                 return;
             }
 
@@ -212,7 +448,6 @@ function listarCitas() {
                 const empleado = c.empleado ? c.empleado.emp_nombre : 'Sin asignar';
                 const estadoClass = c.cita_estado === 'Realizada' ? 'success' : 
                                    (c.cita_estado === 'Cancelada' ? 'danger' : 'warning');
-                const estadoText = c.cita_estado || 'Pendiente';
 
                 return `
                 <tr>
@@ -221,47 +456,31 @@ function listarCitas() {
                     <td>${cliente}</td>
                     <td>${empleado}</td>
                     <td>${c.cita_motivo || 'N/A'}</td>
-                    <td><span class="badge bg-${estadoClass}">${estadoText}</span></td>
+                    <td><span class="badge bg-${estadoClass}">${c.cita_estado || 'Pendiente'}</span></td>
                     <td class="text-center">
-                        <div class="d-flex gap-1 justify-content-center">
+                        <div class="btn-group btn-group-sm">
                             ${c.cita_estado !== 'Realizada' ? `
-                            <button class="btn btn-sm btn-success" onclick="window.prepararServicio(${c.id_cita})" title="Iniciar Servicio">
+                            <button class="btn btn-success" onclick="window.prepararServicio(${c.id_cita})" title="Iniciar Servicio">
                                 <i class="fas fa-tools"></i>
                             </button>` : ''}
-                            <button class="btn btn-sm btn-warning" onclick="window.editarCita(${c.id_cita})" title="Editar">
+                            <button class="btn btn-warning" onclick="window.editarCita(${c.id_cita})" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="window.eliminarCita(${c.id_cita})" title="Eliminar">
+                            <button class="btn btn-danger" onclick="window.eliminarCita(${c.id_cita})" title="Eliminar">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </td>
                 </tr>`;
             }).join('');
-            
-            citasIniciadas = true;
         })
         .catch(err => console.error("Error al listar citas:", err));
 }
 
 // ========== PREPARAR SERVICIO DESDE CITA ==========
 function prepararServicio(idCita) {
-    fetch(`${API_CITA_CITAS}/${idCita}`)
-        .then(res => res.json())
-        .then(response => {
-            const cita = response.success ? response.data : response;
-            const tipo = cita.cita_tipo || 'Servicio';
-            localStorage.setItem('id_cita_seleccionada', idCita);
-            if (tipo === 'Venta') {
-                if (typeof window.cargarVista === 'function') window.cargarVista('views/ventas.html');
-            } else {
-                if (typeof window.cargarVista === 'function') window.cargarVista('views/servicios.html');
-            }
-        })
-        .catch(() => {
-            localStorage.setItem('id_cita_seleccionada', idCita);
-            if (typeof window.cargarVista === 'function') window.cargarVista('views/servicios.html');
-        });
+    localStorage.setItem('id_cita_seleccionada', idCita);
+    if (typeof window.cargarVista === 'function') window.cargarVista('views/servicios.html');
 }
 
 // ========== BUSCAR CLIENTE ==========
@@ -304,11 +523,17 @@ function abrirModalCita() {
         editandoCitaId = null;
         clienteIdCita = null;
         empleadoIdCita = null;
-        ocultarErrorHorario();
-        
-        // Resetear fecha
-        const inputFecha = document.getElementById("cita_fecha");
-        if (inputFecha) inputFecha.value = "";
+        const errorDiv = document.getElementById("errorHorarioCita");
+        if (errorDiv) errorDiv.textContent = "";
+    }
+}
+
+function abrirModalCitaConFecha(fecha) {
+    abrirModalCita();
+    const inputFecha = document.getElementById("cita_fecha");
+    if (inputFecha) {
+        inputFecha.value = fecha;
+        validarHorarioCita();
     }
 }
 
@@ -320,14 +545,12 @@ function cerrarModalCita() {
     editandoCitaId = null;
     clienteIdCita = null;
     empleadoIdCita = null;
-    ocultarErrorHorario();
 }
 
 // ========== GUARDAR CITA ==========
 async function guardarCita(e) {
     if (e) e.preventDefault();
     
-    // Obtener empleado del select
     const selEmp = document.getElementById("id_empleado_select");
     if (selEmp && selEmp.value) {
         empleadoIdCita = parseInt(selEmp.value);
@@ -338,10 +561,9 @@ async function guardarCita(e) {
     }
     
     const fechaSeleccionada = document.getElementById("cita_fecha").value;
+    const esValido = await validarHorarioCita();
     
-    // Validar horario antes de guardar
-    const esHorarioValido = await validarHorarioCita();
-    if (!esHorarioValido) {
+    if (!esValido) {
         return Swal.fire("Horario no válido", "Revisa el horario seleccionado", "warning");
     }
     
@@ -369,6 +591,7 @@ async function guardarCita(e) {
             Swal.fire({ icon: 'success', title: editandoCitaId ? 'Cita actualizada' : 'Cita registrada', timer: 1500, showConfirmButton: false });
             cerrarModalCita();
             listarCitas();
+            inicializarCalendario();
         } else {
             throw new Error(result.message || 'Error al guardar');
         }
@@ -425,116 +648,14 @@ function eliminarCita(id) {
                 .then(() => {
                     Swal.fire('Eliminada', 'La cita ha sido eliminada', 'success');
                     listarCitas();
+                    inicializarCalendario();
                 })
                 .catch(() => Swal.fire("Error", "No se pudo eliminar la cita", "error"));
         }
     });
 }
 
-// ========== OBTENER DIAS DISPONIBLES PARA EL CALENDARIO ==========
-async function obtenerDiasDisponibles() {
-    await cargarCitasExistentes();
-    
-    const diasDisponibles = [];
-    const hoy = new Date();
-    const fin = new Date();
-    fin.setMonth(fin.getMonth() + 2); // Ver 2 meses hacia adelante
-    
-    for (let d = new Date(hoy); d <= fin; d.setDate(d.getDate() + 1)) {
-        const diaSemana = d.getDay();
-        let diaJS = diaSemana === 0 ? 7 : diaSemana;
-        const esLaboral = CONFIG.HORARIO.DIAS_LABORALES.includes(diaJS);
-        
-        if (esLaboral) {
-            // Verificar si hay espacios disponibles en este día
-            const citasDia = citasExistentes.filter(cita => {
-                const fechaCita = new Date(cita.cita_fecha_programada);
-                return fechaCita.toDateString() === d.toDateString();
-            });
-            
-            // Horas ocupadas por citas existentes
-            const horasOcupadas = citasDia.map(cita => {
-                const fecha = new Date(cita.cita_fecha_programada);
-                return fecha.getHours();
-            });
-            
-            // Verificar si hay al menos un horario disponible
-            let tieneHorarioDisponible = false;
-            for (let hora = CONFIG.HORARIO.INICIO; hora < CONFIG.HORARIO.FIN - CONFIG.HORARIO.DURACION_MINIMA_HORAS + 1; hora++) {
-                let horarioOcupado = false;
-                for (let h = hora; h < hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS; h++) {
-                    if (horasOcupadas.includes(h)) {
-                        horarioOcupado = true;
-                        break;
-                    }
-                }
-                if (!horarioOcupado) {
-                    tieneHorarioDisponible = true;
-                    break;
-                }
-            }
-            
-            diasDisponibles.push({
-                fecha: new Date(d),
-                disponible: tieneHorarioDisponible
-            });
-        }
-    }
-    
-    return diasDisponibles;
-}
-
-// ========== OBTENER HORARIOS DISPONIBLES PARA UNA FECHA ==========
-async function obtenerHorariosDisponibles(fecha) {
-    await cargarCitasExistentes();
-    
-    const fechaObj = new Date(fecha);
-    const diaSemana = fechaObj.getDay();
-    let diaJS = diaSemana === 0 ? 7 : diaSemana;
-    
-    if (!CONFIG.HORARIO.DIAS_LABORALES.includes(diaJS)) {
-        return [];
-    }
-    
-    // Obtener citas de ese día
-    const citasDia = citasExistentes.filter(cita => {
-        const fechaCita = new Date(cita.cita_fecha_programada);
-        return fechaCita.toDateString() === fechaObj.toDateString();
-    });
-    
-    // Horas ocupadas
-    const horasOcupadas = [];
-    citasDia.forEach(cita => {
-        const fecha = new Date(cita.cita_fecha_programada);
-        const inicio = fecha.getHours();
-        for (let i = 0; i < CONFIG.HORARIO.DURACION_MINIMA_HORAS; i++) {
-            horasOcupadas.push(inicio + i);
-        }
-    });
-    
-    // Generar horarios disponibles
-    const horariosDisponibles = [];
-    for (let hora = CONFIG.HORARIO.INICIO; hora <= CONFIG.HORARIO.FIN - CONFIG.HORARIO.DURACION_MINIMA_HORAS; hora++) {
-        let horarioOcupado = false;
-        for (let h = hora; h < hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS; h++) {
-            if (horasOcupadas.includes(h)) {
-                horarioOcupado = true;
-                break;
-            }
-        }
-        if (!horarioOcupado) {
-            horariosDisponibles.push({
-                hora: hora,
-                horaFin: hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS,
-                texto: `${hora.toString().padStart(2, '0')}:00 - ${(hora + CONFIG.HORARIO.DURACION_MINIMA_HORAS).toString().padStart(2, '0')}:00`
-            });
-        }
-    }
-    
-    return horariosDisponibles;
-}
-
-// ========== EXPONER FUNCIONES ==========
+// ========== EXPONER ==========
 window.listarCitas = listarCitas;
 window.abrirModalCita = abrirModalCita;
 window.cerrarModalCita = cerrarModalCita;
@@ -544,5 +665,4 @@ window.guardarCita = guardarCita;
 window.editarCita = editarCita;
 window.eliminarCita = eliminarCita;
 window.prepararServicio = prepararServicio;
-window.obtenerDiasDisponibles = obtenerDiasDisponibles;
-window.obtenerHorariosDisponibles = obtenerHorariosDisponibles;
+window.inicializarCalendario = inicializarCalendario;
