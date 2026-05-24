@@ -1,5 +1,5 @@
 var API_VENTAS_PANEL = "https://jhpapi-production.up.railway.app/api/ventas";
-var API_CAJA_PANEL = "https://jhpapi-production.up.railway.app/api/control_caja";
+var API_CAJA_PANEL = "https://jhpapi-production.up.railway.app/api/caja";
 var API_CITAS_PANEL = "https://jhpapi-production.up.railway.app/api/citas";
 var API_PRODUCTOS_PANEL = "https://jhpapi-production.up.railway.app/api/producto";
 
@@ -51,56 +51,48 @@ function inicializarPanel() {
     setTimeout(buscarRefaccionarias, 1500);
 }
 
-// ========== CAJA CON DIAGNÓSTICO ==========
+// ========== CAJA CON ENDPOINTS SIMPLES ==========
+
 function verificarEstadoCaja() {
-    console.log('🔍 Verificando estado de caja...');
-    console.log('URL:', API_CAJA_PANEL + '/estado');
+    console.log('Verificando estado de caja...');
     
     fetch(API_CAJA_PANEL + '/estado')
-        .then(function(res) { 
-            console.log('📡 Status respuesta:', res.status);
-            return res.json(); 
-        })
+        .then(function(res) { return res.json(); })
         .then(function(data) {
-            console.log('📦 Datos recibidos:', data);
+            console.log('Estado caja:', data);
             
             var badge = document.getElementById("estado-badge");
             var btn = document.getElementById("btn-caja");
             var montoTexto = document.getElementById("monto-apertura-texto");
             var montoVal = document.getElementById("monto-inicial-val");
-
-            var cajaAbierta = data.caja_abierta === true;
-            console.log('Caja abierta:', cajaAbierta);
             
-            if (cajaAbierta) {
-                console.log('✅ Caja está ABIERTA');
+            if (data.caja_abierta === true) {
                 if (badge) { 
                     badge.textContent = "Abierta"; 
                     badge.className = "badge bg-success mb-3"; 
                 }
                 if (btn) { 
                     btn.innerHTML = '<i class="fas fa-door-closed"></i> Cerrar Caja'; 
-                    btn.onclick = function() { confirmarCerrarCaja(); };
+                    btn.onclick = confirmarCerrarCaja; 
                 }
                 if (montoTexto) montoTexto.style.display = "block";
                 if (montoVal && data.monto_inicial) {
                     montoVal.textContent = '$' + parseFloat(data.monto_inicial).toFixed(2);
                 }
             } else {
-                console.log('❌ Caja está CERRADA');
                 if (badge) { 
                     badge.textContent = "Cerrada"; 
                     badge.className = "badge bg-danger mb-3"; 
                 }
                 if (btn) { 
                     btn.innerHTML = '<i class="fas fa-door-open"></i> Abrir Caja'; 
-                    btn.onclick = function() { abrirModalCaja(); };
+                    btn.onclick = abrirModalCaja; 
                 }
                 if (montoTexto) montoTexto.style.display = "none";
             }
         })
         .catch(function(error) {
-            console.error('❌ Error al verificar caja:', error);
+            console.error('Error al verificar caja:', error);
             var badge = document.getElementById("estado-badge");
             if (badge) {
                 badge.textContent = "Error";
@@ -110,185 +102,124 @@ function verificarEstadoCaja() {
 }
 
 function abrirModalCaja() {
-    console.log('📂 Abriendo modal de caja');
     document.getElementById("modal-caja").style.display = "flex";
     var inputMonto = document.getElementById("monto_inicial");
     if (inputMonto) inputMonto.value = "";
 }
 
 function cerrarModal() {
-    console.log('🔒 Cerrando modal de caja');
     document.getElementById("modal-caja").style.display = "none";
-    var inputMonto = document.getElementById("monto_inicial");
-    if (inputMonto) inputMonto.value = "";
 }
 
 function confirmarAbrirCaja() {
-    console.log('=== CONFIRMAR ABRIR CAJA ===');
     var monto = parseFloat(document.getElementById("monto_inicial").value) || 0;
     
-    console.log('💰 Monto ingresado:', monto);
+    console.log('Abriendo caja con monto:', monto);
     
     if (monto <= 0) {
-        console.log('⚠️ Monto inválido');
         Swal.fire("Error", "Ingresa un monto inicial válido", "warning");
         return;
     }
     
-    var token = localStorage.getItem('token');
-    console.log('🔑 Token:', token ? 'Presente' : 'No hay token');
-    
     Swal.fire({
         title: 'Abriendo caja...',
-        text: 'Monto inicial: $' + monto.toFixed(2),
+        text: 'Monto: $' + monto.toFixed(2),
         allowOutsideClick: false,
         didOpen: () => {
             Swal.showLoading();
         }
     });
     
-    var requestBody = { 
-        accion: "abrir",
-        monto_inicial: monto, 
-        id_empleado: 1 
-    };
-    
-    console.log('📤 Enviando a:', API_CAJA_PANEL);
-    console.log('📦 Body:', requestBody);
-    
-    fetch(API_CAJA_PANEL, {
+    fetch(API_CAJA_PANEL + '/abrir', {
         method: "POST",
         headers: { 
-            "Content-Type": "application/json", 
+            "Content-Type": "application/json",
             "Accept": "application/json"
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({ 
+            monto: monto, 
+            empleado_id: 1 
+        })
     })
     .then(function(res) { 
-        console.log('📡 Status:', res.status);
-        console.log('📡 Status Text:', res.statusText);
+        console.log('Status:', res.status);
         return res.json(); 
     })
     .then(function(data) {
-        console.log('📦 Respuesta completa:', data);
+        console.log('Respuesta:', data);
         
-        if (data.status === 'success') {
-            console.log('✅ Caja abierta exitosamente');
+        if (data.success === true) {
             Swal.fire({ 
                 icon: 'success', 
                 title: 'Caja Abierta', 
-                text: 'Monto inicial: $' + monto.toFixed(2),
-                timer: 2000, 
+                text: 'Monto: $' + monto.toFixed(2),
+                timer: 1500, 
                 showConfirmButton: false 
             });
             cerrarModal();
             verificarEstadoCaja();
             cargarVentasHoy();
         } else {
-            console.log('❌ Error en respuesta:', data.message);
             Swal.fire("Error", data.message || "No se pudo abrir la caja", "error");
         }
     })
     .catch(function(error) {
-        console.error('❌ Fetch error:', error);
+        console.error('Error:', error);
         Swal.fire("Error", "Error al conectar: " + error.message, "error");
     });
 }
 
 function confirmarCerrarCaja() {
-    console.log('=== CONFIRMAR CERRAR CAJA ===');
-    
-    fetch(API_CAJA_PANEL + '/estado')
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            console.log('📦 Estado actual:', data);
-            
-            if (!data.caja_abierta) {
-                Swal.fire("Info", "No hay caja abierta", "info");
-                return;
-            }
-            
-            var montoInicial = parseFloat(data.monto_inicial || 0);
-            var ventasHoy = parseFloat(data.ventas_hoy || 0);
-            var totalEsperado = montoInicial + ventasHoy;
-            
+    Swal.fire({
+        title: '¿Cerrar caja?',
+        text: '¿Estás seguro de cerrar la caja?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#17791f',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, cerrar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
             Swal.fire({
-                title: '¿Cerrar caja?',
-                html: `<div style="text-align: left;">
-                    <p><strong>Monto inicial:</strong> $${montoInicial.toFixed(2)}</p>
-                    <p><strong>Ventas del día:</strong> $${ventasHoy.toFixed(2)}</p>
-                    <p><strong>Total esperado:</strong> $${totalEsperado.toFixed(2)}</p>
-                    <hr>
-                    <p>¿Estás seguro de cerrar la caja?</p>
-                </div>`,
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#17791f',
-                cancelButtonColor: '#d33',
-                confirmButtonText: 'Sí, cerrar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    cerrarCajaOperacion();
+                title: 'Cerrando caja...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
                 }
             });
-        })
-        .catch(function(error) {
-            console.error('❌ Error:', error);
-            Swal.fire("Error", "No se pudo obtener información de la caja: " + error.message, "error");
-        });
-}
-
-function cerrarCajaOperacion() {
-    console.log('=== EJECUTANDO CIERRE DE CAJA ===');
-    
-    Swal.fire({
-        title: 'Cerrando caja...',
-        text: 'Calculando ventas del día',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    console.log('📤 Enviando cierre a:', API_CAJA_PANEL);
-    
-    fetch(API_CAJA_PANEL, {
-        method: "POST",
-        headers: { 
-            "Content-Type": "application/json", 
-            "Accept": "application/json"
-        },
-        body: JSON.stringify({ accion: "cerrar" })
-    })
-    .then(function(res) { 
-        console.log('📡 Status:', res.status);
-        return res.json(); 
-    })
-    .then(function(data) {
-        console.log('📦 Respuesta cierre:', data);
-        
-        if (data.status === 'success') {
-            var ventasHoy = parseFloat(data.ventas_hoy || 0);
-            var montoFinal = parseFloat(data.monto_final_esperado || 0);
             
-            Swal.fire({ 
-                icon: 'success', 
-                title: 'Caja Cerrada', 
-                html: `<strong>Ventas del día:</strong> $${ventasHoy.toFixed(2)}<br>
-                       <strong>Monto final:</strong> $${montoFinal.toFixed(2)}`,
-                timer: 3000,
-                showConfirmButton: false 
+            fetch(API_CAJA_PANEL + '/cerrar', {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                console.log('Cierre respuesta:', data);
+                
+                if (data.success === true) {
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'Caja Cerrada', 
+                        html: '<strong>Ventas del día:</strong> $' + (data.ventas || '0.00') + '<br>' +
+                              '<strong>Total final:</strong> $' + (data.total || '0.00'),
+                        timer: 2000,
+                        showConfirmButton: false 
+                    });
+                    verificarEstadoCaja();
+                    cargarVentasHoy();
+                } else {
+                    Swal.fire("Error", data.message || "No se pudo cerrar la caja", "error");
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                Swal.fire("Error", "Error al conectar: " + error.message, "error");
             });
-            verificarEstadoCaja();
-            cargarVentasHoy();
-        } else {
-            Swal.fire("Error", data.message || "No se pudo cerrar la caja", "error");
         }
-    })
-    .catch(function(error) {
-        console.error('❌ Error en cierre:', error);
-        Swal.fire("Error", "Error al conectar: " + error.message, "error");
     });
 }
 
@@ -563,25 +494,6 @@ function actualizarCitas() {
     inicializarCalendario();
 }
 
-// ========== FUNCIÓN DE DIAGNÓSTICO MANUAL ==========
-function diagnosticarAPI() {
-    console.log('=== DIAGNÓSTICO COMPLETO ===');
-    console.log('1. URL de API:', API_CAJA_PANEL);
-    
-    fetch(API_CAJA_PANEL + '/estado')
-        .then(r => r.json())
-        .then(data => {
-            console.log('2. Estado actual:', data);
-            return fetch(API_CAJA_PANEL);
-        })
-        .then(r => r.json())
-        .then(data => {
-            console.log('3. Todas las cajas:', data);
-            console.log('=== DIAGNÓSTICO COMPLETADO ===');
-        })
-        .catch(err => console.error('Error diagnóstico:', err));
-}
-
 // ========== EXPONER FUNCIONES GLOBALES ==========
 window.inicializarPanel = inicializarPanel;
 window.verificarEstadoCaja = verificarEstadoCaja;
@@ -593,7 +505,6 @@ window.cargarCitasPanel = cargarCitasPanel;
 window.actualizarVentas = actualizarVentas;
 window.actualizarCitas = actualizarCitas;
 window.buscarRefaccionarias = buscarRefaccionarias;
-window.diagnosticarAPI = diagnosticarAPI;
 
 // ========== INICIALIZACIÓN AUTOMÁTICA ==========
 if (document.getElementById("calendario") || document.getElementById("estado-badge") || document.getElementById("mapaRefaccionarias")) {
