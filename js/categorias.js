@@ -83,3 +83,25 @@ function eliminarCategoria(id_categoria) {
         }
     });
 }
+
+// Exponer
+window.listarCategorias = listarCategorias;
+window.guardarCategorias = guardarCategorias;
+window.eliminarCategoria = eliminarCategoria;
+
+// Inicialización
+function intentarInicializar() {
+    if (document.getElementById("tablaCategorias")) {
+        listarCategorias();
+    }
+}
+
+intentarInicializar();
+
+document.addEventListener('vista-cargada', function(e) {
+    if (e.detail && e.detail.vista && e.detail.vista.includes('categoria')) {
+        setTimeout(listarCategorias, 300);
+    }
+});
+
+setTimeout(intentarInicializar, 500);
