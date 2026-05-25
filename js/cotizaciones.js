@@ -44,7 +44,7 @@ function cargarClientesSelect() {
     const selectCliente = document.getElementById('filtroClienteCot');
     if (!selectCliente) return;
 
-    fetch(API_CLI_COT) // ✅ CORREGIDO: antes decía API_CLI
+    fetch(API_CLI_COT) 
         .then(res => res.json())
         .then(response => {
             const clientes = response.success ? (response.data?.data || response.data) : response;
@@ -695,17 +695,19 @@ async function crearVentaDesdeCotizacion(cotizacion, idCaja, tipoPago) {
             id_empleado: parseInt(localStorage.getItem('usuario_id')) || 1,
             id_caja: idCaja,
             ven_total: cotizacion.cot_total,
-            ven_tipo_pago: tipoPago,
+            tipo_pago: tipoPago,  // ✅ "tipo_pago" (no ven_tipo_pago)
             detalles: cotizacion.detalles.map(d => ({
                 id_producto: d.id_producto,
-                det_cantidad: d.det_cantidad || d.cantidad,
-                det_precio_unitario: d.det_precio_unitario || d.precio
+                cantidad: d.det_cantidad || d.cantidad || 1,  // ✅ "cantidad" (no det_cantidad)
+                precio: d.det_precio_unitario || d.precio || 0  // ✅ "precio" (no det_precio_unitario)
             }))
         };
 
-        const res = await fetch(API_VENTAS_COT, { // ✅ CORREGIDO
+        console.log('📤 Enviando venta:', JSON.stringify(ventaData, null, 2));
+
+        const res = await fetch(API_VENTAS_COT, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(ventaData)
         });
 
