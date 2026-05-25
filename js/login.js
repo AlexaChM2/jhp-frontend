@@ -62,6 +62,7 @@ async function registrarCliente(event) {
     event.preventDefault();
     hideMessages();
 
+    // Obtener valores del formulario
     const nombre = document.getElementById('regNombre').value.trim();
     const apaterno = document.getElementById('regApaterno').value.trim();
     const amaterno = document.getElementById('regAmaterno').value.trim() || '';
@@ -70,6 +71,8 @@ async function registrarCliente(event) {
     const direccion = document.getElementById('regDireccion').value.trim() || '';
     const password = document.getElementById('regPassword').value;
     const passwordConfirmation = document.getElementById('regPassword_confirmation').value;
+
+    console.log('Datos a enviar:', { nombre, apaterno, amaterno, correo, telefono, direccion });
 
     // Validaciones
     if (!nombre || !apaterno || !correo || !password || !passwordConfirmation) {
@@ -86,14 +89,13 @@ async function registrarCliente(event) {
 
     // Validar teléfono si se proporcionó
     if (telefono && !/^\d{10}$/.test(telefono)) {
-        showError('El teléfono debe tener exactamente 10 dígitos');
+        showError('El teléfono debe tener exactamente 10 dígitos numéricos');
         return;
     }
 
     // Validar contraseña
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
-    if (!passwordRegex.test(password)) {
-        showError('La contraseña debe tener: 1 mayúscula, 1 minúscula, 1 número y mínimo 6 caracteres');
+    if (password.length < 6) {
+        showError('La contraseña debe tener mínimo 6 caracteres');
         return;
     }
 
@@ -126,11 +128,13 @@ async function registrarCliente(event) {
         });
 
         const result = await response.json();
+        console.log('Respuesta del servidor:', result);
 
         if (!response.ok) {
+            // Manejar errores de validación de Laravel
             if (result.errors) {
-                const firstError = Object.values(result.errors)[0];
-                throw new Error(firstError[0]);
+                const errorMessages = Object.values(result.errors).flat();
+                throw new Error(errorMessages.join(', '));
             }
             throw new Error(result.message || 'Error al registrar usuario');
         }
@@ -138,6 +142,7 @@ async function registrarCliente(event) {
         showSuccess('¡Registro exitoso! Ahora puedes iniciar sesión');
         document.getElementById('registerForm').reset();
         
+        // Cambiar a login después de 2 segundos
         setTimeout(() => {
             showLogin();
         }, 2000);
@@ -177,6 +182,7 @@ async function iniciarSesion(event) {
         });
 
         const result = await response.json();
+        console.log('Respuesta login:', result);
 
         if (!response.ok) {
             throw new Error(result.message || 'Credenciales incorrectas');
@@ -226,6 +232,7 @@ async function recuperarPassword(event) {
         });
 
         const result = await response.json();
+        console.log('Respuesta recuperación:', result);
 
         if (!response.ok) {
             throw new Error(result.message || 'Error al enviar instrucciones');
@@ -251,7 +258,14 @@ document.getElementById('loginForm').addEventListener('submit', iniciarSesion);
 document.getElementById('registerForm').addEventListener('submit', registrarCliente);
 document.getElementById('recoveryForm').addEventListener('submit', recuperarPassword);
 
+// Botones de navegación
 document.getElementById('btnForgot').addEventListener('click', showRecovery);
 document.getElementById('linkToRegister').addEventListener('click', showRegister);
 document.getElementById('linkToLoginFromReg').addEventListener('click', showLogin);
 document.getElementById('linkToLoginFromRec').addEventListener('click', showLogin);
+
+// Verificar si ya hay sesión activa
+if (localStorage.getItem('token')) {
+    console.log('Usuario ya autenticado');
+    // window.location.href = 'dashboard.html';
+}
