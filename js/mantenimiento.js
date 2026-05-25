@@ -203,32 +203,46 @@ window.seleccionarInsumoMant = function(id, nombre, precio, stock) {
 // ==========================================
 // AGREGAR INSUMO (PERMITE AGREGAR MÁS)
 // ==========================================
+// ==========================================
+// AGREGAR INSUMO (VERSIÓN CORREGIDA - NO DUPLICA)
+// ==========================================
 window.agregarInsumoMant = function() {
-    const id = document.getElementById("buscarInsumoMant").dataset.idProducto;
+    const idProducto = document.getElementById("buscarInsumoMant").dataset.idProducto;
     const nombre = document.getElementById("buscarInsumoMant").value;
     const cantidad = parseInt(document.getElementById("insumo_cantidad_mant").value) || 1;
     const precio = parseFloat(document.getElementById("insumo_precio_mant").value) || 0;
     const stock = parseInt(document.getElementById("buscarInsumoMant").dataset.stock) || 0;
     
-    if (!id || !nombre) return Swal.fire("Aviso", "Busca y selecciona un producto", "warning");
-    if (cantidad <= 0) return Swal.fire("Aviso", "La cantidad debe ser mayor a 0", "warning");
+    if (!idProducto || !nombre) {
+        return Swal.fire("Aviso", "Busca y selecciona un producto", "warning");
+    }
+    if (cantidad <= 0) {
+        return Swal.fire("Aviso", "La cantidad debe ser mayor a 0", "warning");
+    }
+
+    const idNum = parseInt(idProducto);
     
-    const existente = insumosMant.find(i => i.id_producto === parseInt(id));
+    // 🔥 BUSCAR si ya existe este producto en la lista
+    const indiceExistente = insumosMant.findIndex(i => i.id_producto === idNum);
     
-    if (existente) {
+    if (indiceExistente !== -1) {
+        // ✅ YA EXISTE: solo actualizar la cantidad
+        const existente = insumosMant[indiceExistente];
         const cantidadTotal = existente.insumo_cantidad + cantidad;
-        const stockDisponible = stock - existente.insumo_cantidad;
+        const stockDisponible = stock;
         
-        if (cantidad > stockDisponible) {
-            return Swal.fire("Aviso", `Stock insuficiente. Disponible adicional: ${stockDisponible}`, "warning");
+        if (cantidadTotal > stockDisponible) {
+            return Swal.fire("Aviso", 
+                `Stock insuficiente. Ya tienes ${existente.insumo_cantidad}, disponible: ${stockDisponible}`, 
+                "warning");
         }
         
         Swal.fire({
-            title: 'Producto existente',
+            title: 'Producto ya agregado',
             html: `
-                <p><strong>${nombre}</strong> ya está en la lista con ${existente.insumo_cantidad} unidad(es).</p>
-                <p>¿Deseas agregar ${cantidad} más?</p>
-                <p class="text-muted">Total: ${cantidadTotal} unidad(es)</p>
+                <p><strong>${nombre}</strong> ya está en la lista con <strong>${existente.insumo_cantidad} unidad(es)</strong>.</p>
+                <p>¿Agregar <strong>${cantidad}</strong> más?</p>
+                <p class="text-muted">Nuevo total: <strong>${cantidadTotal} unidad(es)</strong></p>
             `,
             icon: 'question',
             showCancelButton: true,
@@ -237,20 +251,17 @@ window.agregarInsumoMant = function() {
             confirmButtonColor: '#28a745'
         }).then((result) => {
             if (result.isConfirmed) {
-                existente.insumo_cantidad += cantidad;
-                existente.modificado = true;
+                // Solo actualizar la cantidad, NO crear nuevo registro
+                insumosMant[indiceExistente].insumo_cantidad = cantidadTotal;
+                insumosMant[indiceExistente].modificado = true;
                 
-                document.getElementById("buscarInsumoMant").value = "";
-                delete document.getElementById("buscarInsumoMant").dataset.idProducto;
-                document.getElementById("insumo_cantidad_mant").value = 1;
-                document.getElementById("insumo_precio_mant").value = 0;
-                
+                limpiarCamposInsumo();
                 actualizarTotalesMant();
                 
                 Swal.fire({
                     icon: 'success',
-                    title: 'Cantidad actualizada',
-                    text: `Ahora tienes ${existente.insumo_cantidad} unidad(es) de ${nombre}`,
+                    title: 'Actualizado',
+                    text: `Ahora: ${cantidadTotal} unidad(es) de ${nombre}`,
                     timer: 2000,
                     showConfirmButton: false,
                     toast: true,
@@ -259,29 +270,28 @@ window.agregarInsumoMant = function() {
             }
         });
     } else {
+        // ✅ NUEVO: verificar stock
         if (cantidad > stock) {
             return Swal.fire("Aviso", `Stock insuficiente. Disponible: ${stock}`, "warning");
         }
         
+        // Agregar como nuevo (solo 1 vez)
         insumosMant.push({ 
-            id_producto: parseInt(id), 
-            nombre, 
+            id_producto: idNum, 
+            nombre: nombre, 
             insumo_cantidad: cantidad, 
             insumo_precio_unitario: precio,
             esOriginal: false,
             modificado: true
         });
         
-        document.getElementById("buscarInsumoMant").value = "";
-        delete document.getElementById("buscarInsumoMant").dataset.idProducto;
-        document.getElementById("insumo_cantidad_mant").value = 1;
-        document.getElementById("insumo_precio_mant").value = 0;
-        
+        limpiarCamposInsumo();
         actualizarTotalesMant();
         
         Swal.fire({
             icon: 'success',
-            title: 'Producto agregado',
+            title: 'Agregado',
+            text: `${cantidad} unidad(es) de ${nombre}`,
             timer: 1000,
             showConfirmButton: false,
             toast: true,
@@ -289,6 +299,15 @@ window.agregarInsumoMant = function() {
         });
     }
 };
+
+// Función auxiliar para limpiar campos
+function limpiarCamposInsumo() {
+    document.getElementById("buscarInsumoMant").value = "";
+    delete document.getElementById("buscarInsumoMant").dataset.idProducto;
+    delete document.getElementById("buscarInsumoMant").dataset.stock;
+    document.getElementById("insumo_cantidad_mant").value = 1;
+    document.getElementById("insumo_precio_mant").value = 0;
+}
 
 // ==========================================
 // ACTUALIZAR TOTALES
@@ -475,6 +494,12 @@ window.abrirModalMantenimiento = function() {
 // ==========================================
 // GUARDAR MANTENIMIENTO (EL BACKEND MANEJA EL STOCK)
 // ==========================================
+// ==========================================
+// GUARDAR MANTENIMIENTO (SIN DUPLICADOS)
+// ==========================================
+// ==========================================
+// GUARDAR MANTENIMIENTO (SIN DUPLICADOS)
+// ==========================================
 window.guardarMantenimiento = async function() {
     const form = document.getElementById("formMantenimientoPrev");
     const idEditar = form?.dataset?.editarId;
@@ -489,6 +514,32 @@ window.guardarMantenimiento = async function() {
         return Swal.fire("Aviso", "Cliente, Mecánico y Modelo son obligatorios", "warning");
     }
 
+    // 🔥 ELIMINAR DUPLICADOS combinando cantidades del mismo producto
+    const insumosUnicos = [];
+    const mapaInsumos = new Map();
+    
+    for (const item of insumosMant) {
+        if (mapaInsumos.has(item.id_producto)) {
+            // Ya existe: sumar cantidades
+            const existente = mapaInsumos.get(item.id_producto);
+            existente.insumo_cantidad += item.insumo_cantidad;
+        } else {
+            // Nuevo: agregar al mapa
+            mapaInsumos.set(item.id_producto, {
+                id_producto: item.id_producto,
+                insumo_cantidad: item.insumo_cantidad,
+                insumo_precio_unitario: item.insumo_precio_unitario
+            });
+        }
+    }
+    
+    // Convertir mapa a array
+    for (const [id, insumo] of mapaInsumos) {
+        insumosUnicos.push(insumo);
+    }
+
+    console.log('📦 Enviando al backend:', insumosUnicos);
+
     const url = idEditar ? `${API_MANT}/${idEditar}` : API_MANT;
     const method = idEditar ? 'PUT' : 'POST';
 
@@ -500,12 +551,10 @@ window.guardarMantenimiento = async function() {
         trabajo_realizado: trabajo,
         estado_servicio: estado,
         servicios: serviciosMant,
-        insumos: insumosMant.map(i => ({
-            id_producto: i.id_producto,
-            insumo_cantidad: i.insumo_cantidad,
-            insumo_precio_unitario: i.insumo_precio_unitario
-        }))
+        insumos: insumosUnicos  // Array LIMPIO sin duplicados
     };
+
+    console.log('📤 Body completo:', JSON.stringify(body, null, 2));
 
     try {
         Swal.fire({
@@ -536,7 +585,7 @@ window.guardarMantenimiento = async function() {
             throw new Error(result.message || 'Error del servidor');
         }
     } catch (e) { 
-        console.error('Error:', e);
+        console.error('❌ Error:', e);
         Swal.fire("Error", e.message, "error"); 
     }
 };
