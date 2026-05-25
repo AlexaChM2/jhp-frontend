@@ -358,6 +358,9 @@ window.abrirModalMantenimiento = function() {
 // ==========================================
 // GUARDAR MANTENIMIENTO (CORREGIDO)
 // ==========================================
+// En guardarMantenimiento(), ELIMINAR la lógica de actualizarStockProducto
+// porque ahora el backend lo maneja correctamente
+
 window.guardarMantenimiento = async function() {
     const idEditar = document.getElementById("formMantenimientoPrev")?.dataset?.editarId;
     const idCliente = document.getElementById("id_cliente_mant")?.value;
@@ -382,79 +385,27 @@ window.guardarMantenimiento = async function() {
         trabajo_realizado: trabajo,
         estado_servicio: estado,
         servicios: serviciosMant,
-        insumos: insumosMant
+        insumos: insumosMant // Enviar TODOS los insumos (originales + nuevos)
     };
 
     try {
-        // 🔥 LÓGICA CORREGIDA PARA MANEJO DE STOCK
-        if (idEditar) {
-            // Obtener el mantenimiento original para comparar
-            const resGet = await fetch(`${API_MANT}/${idEditar}`);
-            const response = await resGet.json();
-            const original = response.success ? response.data : response;
-            
-            // 1. Identificar insumos que ya NO están en la nueva lista (fueron eliminados)
-            if (original.insumos && original.insumos.length > 0) {
-                for (const insumoOriginal of original.insumos) {
-                    const siguePresente = insumosMant.find(i => i.id_producto === insumoOriginal.id_producto);
-                    
-                    if (!siguePresente) {
-                        // El insumo fue eliminado -> REPONER stock
-                        console.log(`🔄 Reponiendo stock de "${insumoOriginal.producto?.pro_nombre || 'Producto'}" (eliminado de la orden)`);
-                        await actualizarStockProducto(
-                            insumoOriginal.id_producto, 
-                            insumoOriginal.insumo_cantidad, 
-                            'reponer'
-                        );
-                    } else if (siguePresente.insumo_cantidad !== insumoOriginal.insumo_cantidad) {
-                        // La cantidad cambió -> Ajustar diferencia
-                        const diferencia = insumoOriginal.insumo_cantidad - siguePresente.insumo_cantidad;
-                        if (diferencia > 0) {
-                            // Se redujo la cantidad -> Reponer la diferencia
-                            console.log(`🔄 Reponiendo ${diferencia} unidades de "${insumoOriginal.producto?.pro_nombre || 'Producto'}" (cantidad reducida)`);
-                            await actualizarStockProducto(insumoOriginal.id_producto, diferencia, 'reponer');
-                        } else if (diferencia < 0) {
-                            // Se aumentó la cantidad -> Descontar la diferencia adicional
-                            const cantidadAdicional = Math.abs(diferencia);
-                            console.log(`📦 Descontando ${cantidadAdicional} unidades adicionales de "${insumoOriginal.producto?.pro_nombre || 'Producto'}"`);
-                            await actualizarStockProducto(insumoOriginal.id_producto, cantidadAdicional, 'descontar');
-                        }
-                    }
-                }
-            }
-            
-            // 2. Identificar insumos NUEVOS (no estaban en el original)
-            for (const insumoNuevo of insumosMant) {
-                const existiaEnOriginal = original.insumos?.find(i => i.id_producto === insumoNuevo.id_producto);
-                
-                if (!existiaEnOriginal) {
-                    // Es un insumo completamente nuevo -> Descontar stock
-                    console.log(`📦 Descontando ${insumoNuevo.insumo_cantidad} unidades de "${insumoNuevo.nombre}" (nuevo insumo)`);
-                    await actualizarStockProducto(
-                        insumoNuevo.id_producto, 
-                        insumoNuevo.insumo_cantidad, 
-                        'descontar'
-                    );
-                }
-            }
-        }
+        // Mostrar loading
+        Swal.fire({
+            title: 'Guardando...',
+            text: 'Por favor espere',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
         
-        // Guardar/Actualizar el mantenimiento
         const res = await fetch(url, {
             method: method,
             headers: { "Content-Type": "application/json", "Accept": "application/json" },
             body: JSON.stringify(body)
         });
+        
         const result = await res.json();
         
         if (result.success || result.message) {
-            // 🔥 Si es NUEVO mantenimiento, descontar todos los insumos
-            if (!idEditar && insumosMant.length > 0) {
-                for (const insumo of insumosMant) {
-                    await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'descontar');
-                }
-            }
-            
             Swal.fire({ 
                 icon: 'success', 
                 title: idEditar ? '¡Actualizado!' : '¡Registrado!', 
@@ -462,15 +413,17 @@ window.guardarMantenimiento = async function() {
                 timer: 1500, 
                 showConfirmButton: false 
             });
+            
             bootstrap.Modal.getInstance(document.getElementById('modalMantenimientoPrev'))?.hide();
             listarMantenimiento();
+        } else {
+            throw new Error(result.message || 'Error al guardar');
         }
     } catch (e) { 
         console.error('❌ Error al guardar:', e);
         Swal.fire("Error", e.message, "error"); 
     }
 };
-
 // ==========================================
 // VER MANTENIMIENTO
 // ==========================================
