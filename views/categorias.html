@@ -1,26 +1,82 @@
-<h2 class="mb-4"><i class="fa-solid fa-layer-group"></i>Registro de Categorias</h2>
-<input type="text" id="categoria_nombre" placeholder="Ingrese Categoria">
-<input type="text" id="categoria_descripcion" placeholder="Descripción">
+<h2 class="mb-4"><i class="fa-solid fa-layer-group"></i> Catálogos</h2>
 
- <button  onclick="guardarCategorias()">Guardar <i class="fa-solid fa-check ms-1"></i></button>
+<!-- PESTAÑAS -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <button class="nav-link active" onclick="mostrarTab('categorias')">Categorías</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" onclick="mostrarTab('marcas')">Marcas</button>
+    </li>
+</ul>
 
+<!-- TAB: CATEGORÍAS -->
+<div id="tab-categorias">
+    <div class="row mb-3">
+        <div class="col-md-5">
+            <input type="text" id="categoria_nombre" class="form-control" placeholder="Nombre de categoría">
+        </div>
+        <div class="col-md-5">
+            <input type="text" id="categoria_descripcion" class="form-control" placeholder="Descripción">
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-dark w-100" onclick="guardarCategorias()">
+                Guardar <i class="fa-solid fa-check ms-1"></i>
+            </button>
+        </div>
+    </div>
 
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Categoría</th>
+                    <th>Descripción</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaCategorias"></tbody>
+        </table>
+    </div>
+</div>
 
+<!-- TAB: MARCAS -->
+<div id="tab-marcas" style="display:none;">
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <input type="text" id="marca_nombre" class="form-control" placeholder="Nombre de marca">
+        </div>
+        <div class="col-md-4">
+            <input type="text" id="marca_descripcion" class="form-control" placeholder="Descripción">
+        </div>
+        <div class="col-md-2">
+            <select id="marca_estado" class="form-select">
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-dark w-100" onclick="guardarMarca()">
+                Guardar <i class="fa-solid fa-check ms-1"></i>
+            </button>
+        </div>
+    </div>
 
-
-<hr>
-
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Categoria</th>
-            <th>Descripción</th>
-            <th>Acciones</th>
-           
-        </tr>
-    </thead>
-   <tbody id="tablaCategorias"></tbody>
-</table>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Marca</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaMarcas"></tbody>
+        </table>
+    </div>
+</div>
 
 <script src="../js/categorias.js"></script>
