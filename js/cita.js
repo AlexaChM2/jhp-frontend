@@ -437,7 +437,7 @@ async function guardarCita(e) {
     const data = {
         id_cliente: parseInt(clienteIdCita),
         id_empleado: parseInt(empleadoIdCita),
-        cita_fecha_programada: fechaSeleccionada,
+        cita_fecha_programada: fechaSeleccionada.replace('T', ' ') + ':00',
         cita_estado: document.getElementById("cita_estado").value || 'Pendiente',
         cita_tipo: document.getElementById("cita_tipo")?.value || 'Servicio',
         cita_motivo: document.getElementById("cita_motivo").value
