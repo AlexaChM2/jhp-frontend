@@ -215,7 +215,7 @@ async function cargarProximasVisitas() {
         const idProveedor = celdaVisita.id.replace('proxima-visita-', '');
 
         try {
-            const res = await fetch(`${CONFIG.Proveedores.api}/${idProveedor}/proxima-visita`, {
+            const res = await fetch(`${CONFIG.Proveedores.apiVisitas}/${idProveedor}/proxima`, {
                 headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -306,7 +306,7 @@ async function abrirModalVisitas(idProveedor, nombreProveedor) {
                 const res = await fetch(CONFIG.Proveedores.apiVisitas, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ id_proveedor: parseInt(idProv), dia_semana: parseInt(dia), hora_visita: hora + ':00' })
+                body: JSON.stringify({ id_proveedor: parseInt(idProv), dia_semana: parseInt(dia), hora_visita: hora })
                 });
                 if (!res.ok) throw new Error('Error al guardar');
                 return true;
