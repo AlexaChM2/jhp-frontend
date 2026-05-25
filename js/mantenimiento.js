@@ -270,18 +270,16 @@ window.guardarMantenimiento = async function() {
     };
 
     try {
+        // Si es edición, calcular diferencias de stock
+        let insumosOriginales = [];
         if (idEditar) {
             const resGet = await fetch(`${API_MANT}/${idEditar}`);
             const response = await resGet.json();
             const mantenimientoOriginal = response.success ? response.data : response;
-            
-            if (mantenimientoOriginal.insumos && mantenimientoOriginal.insumos.length > 0) {
-                for (const insumo of mantenimientoOriginal.insumos) {
-                    await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'reponer');
-                }
-            }
+            insumosOriginales = mantenimientoOriginal.insumos || [];
         }
         
+        // Enviar la petición de guardado
         const res = await fetch(url, {
             method: method,
             headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -290,7 +288,12 @@ window.guardarMantenimiento = async function() {
         const result = await res.json();
         
         if (result.success || result.message) {
-            if (insumosMant.length > 0) {
+            // Gestionar stock según si es nuevo o edición
+            if (idEditar) {
+                // Para edición: ajustar stock basado en diferencias
+                await ajustarStockPorDiferencias(insumosOriginales, insumosMant);
+            } else {
+                // Para nuevo: solo descontar
                 for (const insumo of insumosMant) {
                     await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'descontar');
                 }
@@ -299,9 +302,42 @@ window.guardarMantenimiento = async function() {
             Swal.fire({ icon: 'success', title: idEditar ? 'Actualizado!' : 'Registrado!', timer: 1500, showConfirmButton: false });
             bootstrap.Modal.getInstance(document.getElementById('modalMantenimientoPrev'))?.hide();
             listarMantenimiento();
+        } else {
+            throw new Error(result.message || 'Error al guardar');
         }
-    } catch (e) { Swal.fire("Error", e.message, "error"); }
+    } catch (e) { 
+        Swal.fire("Error", e.message, "error"); 
+    }
 };
+
+// Nueva función auxiliar para ajustar stock por diferencias
+async function ajustarStockPorDiferencias(originales, nuevos) {
+    // Crear mapas para fácil acceso
+    const originalMap = new Map();
+    for (const ins of originales) {
+        originalMap.set(ins.id_producto, ins.insumo_cantidad);
+    }
+    
+    const nuevosMap = new Map();
+    for (const ins of nuevos) {
+        nuevosMap.set(ins.id_producto, ins.insumo_cantidad);
+    }
+    
+    // Procesar todos los productos únicos
+    const todosIds = new Set([...originalMap.keys(), ...nuevosMap.keys()]);
+    
+    for (const idProducto of todosIds) {
+        const cantidadOriginal = originalMap.get(idProducto) || 0;
+        const cantidadNueva = nuevosMap.get(idProducto) || 0;
+        const diferencia = cantidadNueva - cantidadOriginal;
+        
+        if (diferencia !== 0) {
+            const operacion = diferencia > 0 ? 'descontar' : 'reponer';
+            const cantidadAbs = Math.abs(diferencia);
+            await actualizarStockProducto(idProducto, cantidadAbs, operacion);
+        }
+    }
+}
 
 window.verMantenimiento = async function(id) {
     try {
