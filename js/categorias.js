@@ -96,36 +96,92 @@ function eliminarCategoria(id) {
     });
 }
 
+//editar categoria
+// ==========================================
+// EDITAR CATEGORÍA
+// ==========================================
+function editarCategoria(id) {
+    // Primero obtener los datos actuales de la categoría
+    fetch(`${API_CATEGORIAS_CAT}/${id}`)
+        .then(res => res.json())
+        .then(response => {
+            const categoria = response.data || response;
+            
+            Swal.fire({
+                title: 'Editar Categoría',
+                html: `
+                    <input id="swal-categoria-nombre" class="form-control mb-2" placeholder="Nombre" value="${categoria.cat_nombre || ''}">
+                    <input id="swal-categoria-descripcion" class="form-control mb-2" placeholder="Descripción" value="${categoria.cat_descripcion || ''}">
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Actualizar',
+                preConfirm: () => {
+                    const nombre = document.getElementById('swal-categoria-nombre').value.trim();
+                    if (!nombre) {
+                        Swal.showValidationMessage('El nombre es requerido');
+                        return false;
+                    }
+                    return {
+                        cat_nombre: nombre,
+                        cat_descripcion: document.getElementById('swal-categoria-descripcion').value.trim()
+                    };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`${API_CATEGORIAS_CAT}/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(result.value)
+                    })
+                    .then(async res => {
+                        const json = await res.json();
+                        if (!res.ok) throw new Error(json.message || 'Error al actualizar');
+                        return json;
+                    })
+                    .then(() => {
+                        Swal.fire('¡Actualizada!', 'La categoría ha sido actualizada', 'success');
+                        listarCategorias(); // Recargar la tabla
+                    })
+                    .catch(err => Swal.fire('Error', err.message, 'error'));
+                }
+            });
+        })
+        .catch(err => Swal.fire('Error', 'No se pudo cargar la categoría', 'error'));
+}
+
+// Exponer la función globalmente
+window.editarCategoria = editarCategoria;
+
 // ==========================================
 // MARCAS
 // ==========================================
-function listarMarcas() {
-    fetch(API_MARCAS)
+function listarCategorias() {
+    fetch(API_CATEGORIAS_CAT)
         .then(res => res.json())
         .then(response => {
-            const marcas = extraerArray(response);
+            const categorias = extraerArray(response);
             let tabla = "";
-            marcas.forEach(m => {
-                const estadoClass = m.mar_estado === 'Activo' ? 'success' : 'secondary';
+            categorias.forEach(c => {
                 tabla += `
                 <tr>
-                    <td>${m.id_marca}</td>
-                    <td>${m.mar_nombre}</td>
-                    <td>${m.mar_descripcion || '-'}</td>
-                    <td><span class="badge bg-${estadoClass}">${m.mar_estado || 'Activo'}</span></td>
+                    <td>${c.id_categoria}</td>
+                    <td>${c.cat_nombre}</td>
+                    <td>${c.cat_descripcion || '-'}</td>
                     <td>
-                        <button onclick="window.editarMarca(${m.id_marca})"
+                        <button onclick="window.editarCategoria(${c.id_categoria})"
                             style="background:#ee8a2d;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
-                            <i class="fas fa-edit"></i></button>
-                        <button onclick="window.eliminarMarca(${m.id_marca})"
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="window.eliminarCategoria(${c.id_categoria})"
                             style="background:#d41f12;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
-                            <i class="fa-regular fa-trash-can"></i></button>
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
                     </td>
                 </tr>`;
             });
-            document.getElementById("tablaMarcas").innerHTML = tabla || '<tr><td colspan="5" class="text-center py-3">No hay marcas</td></tr>';
+            document.getElementById("tablaCategorias").innerHTML = tabla || '<tr><td colspan="4" class="text-center py-3">No hay categorías</td><tr>';
         })
-        .catch(err => console.error("Error al listar marcas:", err));
+        .catch(err => console.error("Error al listar categorías:", err));
 }
 
 function guardarMarca() {
