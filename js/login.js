@@ -211,6 +211,9 @@ async function iniciarSesion(event) {
 // ==========================================
 // RECUPERACIÓN DE CONTRASEÑA
 // ==========================================
+// ==========================================
+// RECUPERACIÓN DE CONTRASEÑA (MODIFICADA)
+// ==========================================
 async function recuperarPassword(event) {
     event.preventDefault();
     hideMessages();
@@ -239,7 +242,31 @@ async function recuperarPassword(event) {
             throw new Error(result.message || 'Error al enviar instrucciones');
         }
 
-        showSuccess(result.message || 'Se han enviado las instrucciones a tu correo electrónico');
+        // Mostrar el token en un modal para pruebas
+        if (result.debug_info && result.debug_info.token) {
+            const resetUrl = `${window.location.origin}/reset-password.html?token=${result.debug_info.token}&email=${encodeURIComponent(correo)}`;
+            
+            Swal.fire({
+                icon: 'info',
+                title: '🔐 Token de recuperación',
+                html: `
+                    <div class="text-start">
+                        <p><strong>Correo:</strong> ${correo}</p>
+                        <p><strong>Token:</strong> <code class="bg-light p-1" style="font-size: 11px; word-break: break-all;">${result.debug_info.token}</code></p>
+                        <hr>
+                        <p class="text-muted">Usa este enlace para restablecer tu contraseña:</p>
+                        <a href="${resetUrl}" target="_blank" class="btn btn-primary btn-sm w-100">Restablecer Contraseña</a>
+                        <hr>
+                        <small class="text-muted">En producción, esto se enviaría por correo electrónico</small>
+                    </div>
+                `,
+                confirmButtonText: 'Entendido',
+                width: '500px'
+            });
+        } else {
+            showSuccess(result.message || 'Se han enviado las instrucciones a tu correo electrónico');
+        }
+        
         document.getElementById('recoveryForm').reset();
         
         setTimeout(() => {
