@@ -12,17 +12,13 @@ async function asegurarLibreriasPDF() {
     
     if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
         jsPDFLib = window.jspdf.jsPDF;
-        console.log('jsPDF ya disponible');
     } else if (typeof jspdf !== 'undefined') {
         jsPDFLib = jspdf;
-        console.log('jsPDF ya disponible (global)');
     } else if (typeof window.jsPDF !== 'undefined') {
         jsPDFLib = window.jsPDF;
-        console.log('jsPDF ya disponible (window)');
     }
     
     if (!jsPDFLib) {
-        console.log('Cargando jsPDF...');
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -30,7 +26,6 @@ async function asegurarLibreriasPDF() {
             script.onerror = reject;
             document.head.appendChild(script);
         });
-        console.log('jsPDF cargado');
         
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
@@ -39,7 +34,6 @@ async function asegurarLibreriasPDF() {
             script.onerror = reject;
             document.head.appendChild(script);
         });
-        console.log('autoTable cargado');
         
         await new Promise(r => setTimeout(r, 100));
     }
@@ -81,7 +75,7 @@ async function actualizarStockProducto(idProducto, cantidad, operacion) {
 async function listarMantenimiento() {
     const tbody = document.getElementById("tablaMantenimiento");
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+    tbody.innerHTML = '<td><td colspan="8" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
 
     try {
         const res = await fetch(API_MANT);
@@ -276,6 +270,18 @@ window.guardarMantenimiento = async function() {
     };
 
     try {
+        if (idEditar) {
+            const resGet = await fetch(`${API_MANT}/${idEditar}`);
+            const response = await resGet.json();
+            const mantenimientoOriginal = response.success ? response.data : response;
+            
+            if (mantenimientoOriginal.insumos && mantenimientoOriginal.insumos.length > 0) {
+                for (const insumo of mantenimientoOriginal.insumos) {
+                    await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'reponer');
+                }
+            }
+        }
+        
         const res = await fetch(url, {
             method: method,
             headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -284,7 +290,7 @@ window.guardarMantenimiento = async function() {
         const result = await res.json();
         
         if (result.success || result.message) {
-            if (!idEditar && insumosMant.length > 0) {
+            if (insumosMant.length > 0) {
                 for (const insumo of insumosMant) {
                     await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'descontar');
                 }
@@ -413,8 +419,6 @@ window.eliminarMantenimiento = async function(id) {
 
 window.descargarPDFMantenimiento = async function(id) {
     try {
-        console.log('Generando PDF Mantenimiento');
-        
         const jsPDFLib = await asegurarLibreriasPDF();
         if (!jsPDFLib) throw new Error('No se pudo cargar jsPDF');
         
@@ -538,7 +542,6 @@ window.listarMantenimiento = listarMantenimiento;
 document.addEventListener('vista-cargada', function(e) {
     if (e.detail && e.detail.vista && 
         (e.detail.vista.includes('mantenimiento') || e.detail.vista.includes('Mantenimiento'))) {
-        console.log('Mantenimiento: Vista detectada, recargando...');
         setTimeout(listarMantenimiento, 300);
     }
 });
