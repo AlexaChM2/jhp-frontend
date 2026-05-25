@@ -2,7 +2,7 @@
 window.API_VENTAS = "https://jhpapi-production.up.railway.app/api/ventas";
 window.API_PRODUCTOS = "https://jhpapi-production.up.railway.app/api/producto";  // ← sin S
 window.API_CLIENTES = "https://jhpapi-production.up.railway.app/api/clientes";
-window.API_CAJA = "https://jhpapi-production.up.railway.app/api/control_caja";
+window.API_CAJA = "https://jhpapi-production.up.railway.app/api/caja";
 
 var carrito = [];
 var productoSeleccionado = null;
@@ -14,9 +14,12 @@ function verificarCajaParaVenta() {
     return fetch(`${window.API_CAJA}/estado`)
         .then(res => res.json())
         .then(data => {
-            if (data.status === 'success' && data.caja_abierta === true) {
+            console.log("Respuesta caja:", data);
+            
+            // Usar la misma validación que panel.js
+            if (data.caja_abierta === true) {
                 cajaActual = data;
-                console.log("Caja abierta, ID:", data.id_caja);
+                console.log("Caja abierta, ID:", data.id_caja || data.id);
                 return true;
             } else {
                 Swal.fire({
