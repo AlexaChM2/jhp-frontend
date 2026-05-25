@@ -253,7 +253,9 @@ window.guardarMantenimiento = async function() {
     const trabajo = document.getElementById("trabajo_realizado_mant")?.value;
     const estado = document.getElementById("estado_servicio_mant")?.value || "En Proceso";
 
-    if (!idCliente || !idMecanico || !modelo) return Swal.fire("Aviso", "Cliente, Mecánico y Modelo son obligatorios", "warning");
+    if (!idCliente || !idMecanico || !modelo) {
+        return Swal.fire("Aviso", "Cliente, Mecánico y Modelo son obligatorios", "warning");
+    }
 
     const url = idEditar ? `${API_MANT}/${idEditar}` : API_MANT;
     const method = idEditar ? 'PUT' : 'POST';
@@ -270,16 +272,6 @@ window.guardarMantenimiento = async function() {
     };
 
     try {
-        // Si es edición, calcular diferencias de stock
-        let insumosOriginales = [];
-        if (idEditar) {
-            const resGet = await fetch(`${API_MANT}/${idEditar}`);
-            const response = await resGet.json();
-            const mantenimientoOriginal = response.success ? response.data : response;
-            insumosOriginales = mantenimientoOriginal.insumos || [];
-        }
-        
-        // Enviar la petición de guardado
         const res = await fetch(url, {
             method: method,
             headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -288,18 +280,13 @@ window.guardarMantenimiento = async function() {
         const result = await res.json();
         
         if (result.success || result.message) {
-            // Gestionar stock según si es nuevo o edición
-            if (idEditar) {
-                // Para edición: ajustar stock basado en diferencias
-                await ajustarStockPorDiferencias(insumosOriginales, insumosMant);
-            } else {
-                // Para nuevo: solo descontar
-                for (const insumo of insumosMant) {
-                    await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'descontar');
-                }
-            }
-            
-            Swal.fire({ icon: 'success', title: idEditar ? 'Actualizado!' : 'Registrado!', timer: 1500, showConfirmButton: false });
+            // ELIMINA TODA LA LÓGICA DE STOCK - EL BACKEND DEBE MANEJARLO
+            Swal.fire({ 
+                icon: 'success', 
+                title: idEditar ? 'Actualizado!' : 'Registrado!', 
+                timer: 1500, 
+                showConfirmButton: false 
+            });
             bootstrap.Modal.getInstance(document.getElementById('modalMantenimientoPrev'))?.hide();
             listarMantenimiento();
         } else {
@@ -309,7 +296,6 @@ window.guardarMantenimiento = async function() {
         Swal.fire("Error", e.message, "error"); 
     }
 };
-
 // Nueva función auxiliar para ajustar stock por diferencias
 async function ajustarStockPorDiferencias(originales, nuevos) {
     // Crear mapas para fácil acceso
@@ -417,41 +403,7 @@ window.editarMantenimiento = async function(id) {
     } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
 };
 
-window.eliminarMantenimiento = async function(id) {
-    const result = await Swal.fire({
-        title: 'Eliminar mantenimiento',
-        text: 'Se devolverá el stock de los productos',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    });
-    
-    if (!result.isConfirmed) return;
-    
-    try {
-        const resGet = await fetch(`${API_MANT}/${id}`);
-        const response = await resGet.json();
-        const mantenimiento = response.success ? response.data : response;
-        
-        if (mantenimiento.insumos && mantenimiento.insumos.length > 0) {
-            for (const insumo of mantenimiento.insumos) {
-                await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'reponer');
-            }
-        }
-        
-        const resDel = await fetch(`${API_MANT}/${id}`, { method: 'DELETE' });
-        if (resDel.ok) {
-            Swal.fire('Eliminado', 'Mantenimiento eliminado y stock restaurado', 'success');
-            listarMantenimiento();
-        } else {
-            throw new Error('Error al eliminar');
-        }
-    } catch (error) {
-        Swal.fire('Error', 'No se pudo eliminar el mantenimiento', 'error');
-    }
-};
+
 
 window.descargarPDFMantenimiento = async function(id) {
     try {
