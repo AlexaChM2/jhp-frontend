@@ -147,7 +147,7 @@ async function registrarCliente(event) {
 }
 
 // ==========================================
-// INICIO DE SESIÓN
+// INICIO DE SESIÓN (login para clientes)
 // ==========================================
 async function iniciarSesion(event) {
     event.preventDefault();
@@ -162,7 +162,8 @@ async function iniciarSesion(event) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/auth/login`, {
+        // Primero intentar login normal (usuarios)
+        let response = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -174,15 +175,35 @@ async function iniciarSesion(event) {
             })
         });
 
-        const result = await response.json();
+        let result = await response.json();
 
+        // Si falla el login normal, intentar login de clientes
         if (!response.ok) {
-            throw new Error(result.message || 'Credenciales incorrectas');
+            // Intentar login como cliente
+            const clientResponse = await fetch(`${API_BASE}/clientes/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: correo,
+                    password: password
+                })
+            });
+
+            const clientResult = await clientResponse.json();
+
+            if (!clientResponse.ok) {
+                throw new Error(clientResult.message || 'Credenciales incorrectas');
+            }
+
+            result = clientResult;
         }
 
         if (result.token) {
             localStorage.setItem('token', result.token);
-            localStorage.setItem('user', JSON.stringify(result.user));
+            localStorage.setItem('user', JSON.stringify(result.user || result.data));
             
             showSuccess('¡Inicio de sesión exitoso!');
             
