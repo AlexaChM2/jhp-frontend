@@ -83,6 +83,9 @@
                         <button onclick="window.descargarPDFServicio(${m.id_mantenimiento})" title="Imprimir"
                             style="background:#17791f;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
                             <i class="fas fa-print"></i></button>
+                        <button onclick="window.eliminarServicioTabla(${m.id_mantenimiento})" title="Eliminar"
+                            style="background:#dc3545;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;margin:2px;">
+                            <i class="fas fa-trash"></i></button>
                     </td>
                 </tr>`;
             }).join('');
@@ -366,6 +369,72 @@
     };
 
     // ==========================================
+    // ELIMINAR SERVICIO (DESDE EL MODAL DE EDICIÓN)
+    // ==========================================
+    window.eliminarServicio = async function() {
+        const idEditar = document.getElementById("formMantenimiento").dataset.editarId;
+        if (!idEditar) return;
+
+        const result = await Swal.fire({
+            title: '¿Eliminar orden?',
+            text: 'Se devolverá el stock de los productos utilizados.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: '<i class="fas fa-trash"></i> Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            Swal.fire({ title: 'Eliminando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const res = await fetch(`${API_MANTENIMIENTO}/${idEditar}`, { method: 'DELETE' });
+
+            if (res.ok) {
+                Swal.fire({ icon: 'success', title: 'Eliminado', text: 'Orden eliminada y stock restaurado.', timer: 2000, showConfirmButton: false });
+                bootstrap.Modal.getInstance(document.getElementById('modalMantenimiento'))?.hide();
+                listarServicios();
+            } else {
+                throw new Error('Error al eliminar');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'No se pudo eliminar la orden.', 'error');
+        }
+    };
+
+    // ==========================================
+    // ELIMINAR SERVICIO (DESDE LA TABLA)
+    // ==========================================
+    window.eliminarServicioTabla = async function(id) {
+        const result = await Swal.fire({
+            title: '¿Eliminar orden #' + id + '?',
+            text: 'Se devolverá el stock de los productos utilizados.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: '<i class="fas fa-trash"></i> Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            Swal.fire({ title: 'Eliminando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const res = await fetch(`${API_MANTENIMIENTO}/${id}`, { method: 'DELETE' });
+
+            if (res.ok) {
+                Swal.fire({ icon: 'success', title: 'Eliminado', text: 'Orden eliminada y stock restaurado.', timer: 2000, showConfirmButton: false });
+                listarServicios();
+            } else {
+                throw new Error('Error al eliminar');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'No se pudo eliminar la orden.', 'error');
+        }
+    };
+
+    // ==========================================
     // ABRIR MODAL
     // ==========================================
     window.abrirModalServicio = function() {
@@ -380,6 +449,10 @@
         serviciosAgregados = [];
         insumosAgregados = [];
         insumosOriginalesMap = new Map();
+        
+        // OCULTAR botón eliminar (modo nuevo)
+        const btnEliminar = document.getElementById("btnEliminarServicio");
+        if (btnEliminar) btnEliminar.style.display = "none";
         
         const modalEl = document.getElementById('modalMantenimiento');
         const modal = new bootstrap.Modal(modalEl);
@@ -413,7 +486,6 @@
             return Swal.fire("Aviso", "Cliente, Mecánico y Modelo son obligatorios", "warning");
         }
 
-        // Eliminar duplicados
         const insumosUnicos = [];
         const mapaInsumos = new Map();
         for (const item of insumosAgregados) {
@@ -551,6 +623,11 @@
             document.getElementById("formMantenimiento").dataset.editarId = id;
             document.getElementById("tituloModal").textContent = "Editar Orden de Servicio";
             document.getElementById("btnGuardarServicio").innerHTML = '<i class="fas fa-save me-2"></i>Actualizar Orden';
+            
+            // MOSTRAR botón eliminar (modo edición)
+            const btnEliminar = document.getElementById("btnEliminarServicio");
+            if (btnEliminar) btnEliminar.style.display = "block";
+            
             new bootstrap.Modal(document.getElementById('modalMantenimiento')).show();
         } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
     };
