@@ -1,0 +1,106 @@
+<div class="container-fluid p-4">
+    <h2><i class="fas fa-user-circle"></i> Mi Perfil</h2>
+    <hr>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5>Información Personal</h5>
+                </div>
+                <div class="card-body" id="perfil-info">
+                    <p>Cargando datos...</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5>Cambiar Contraseña</h5>
+                </div>
+                <div class="card-body">
+                    <form id="formCambiarPassword">
+                        <div class="mb-3">
+                            <label>Contraseña Actual</label>
+                            <input type="password" id="pass_actual" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Nueva Contraseña</label>
+                            <input type="password" id="pass_nueva" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label>Confirmar Contraseña</label>
+                            <input type="password" id="pass_confirm" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Actualizar Contraseña</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    cargarPerfil();
+    
+    async function cargarPerfil() {
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        const perfilDiv = document.getElementById('perfil-info');
+        
+        try {
+            const response = await fetch(`https://jhpapi-production.up.railway.app/api/clientes/${user.id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            const data = result.data || result;
+            
+            perfilDiv.innerHTML = `
+                <p><strong>Nombre:</strong> ${data.cli_nombre || ''} ${data.cli_apaterno || ''} ${data.cli_amaterno || ''}</p>
+                <p><strong>Correo:</strong> ${data.cli_correo || ''}</p>
+                <p><strong>Teléfono:</strong> ${data.cli_telefono || 'No registrado'}</p>
+                <p><strong>Dirección:</strong> ${data.cli_direccion || 'No registrada'}</p>
+                <p><strong>Estado:</strong> <span class="badge bg-success">${data.cli_estado || 'Activo'}</span></p>
+            `;
+        } catch(e) {
+            perfilDiv.innerHTML = '<p class="text-danger">Error al cargar perfil</p>';
+        }
+    }
+    
+    document.getElementById('formCambiarPassword')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const actual = document.getElementById('pass_actual').value;
+        const nueva = document.getElementById('pass_nueva').value;
+        const confirm = document.getElementById('pass_confirm').value;
+        
+        if (nueva !== confirm) {
+            Swal.fire('Error', 'Las contraseñas no coinciden', 'error');
+            return;
+        }
+        
+        const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        const response = await fetch(`https://jhpapi-production.up.railway.app/api/password-reset/change`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                password_actual: actual,
+                password_nueva: nueva,
+                password_nueva_confirmation: confirm
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            Swal.fire('Éxito', 'Contraseña actualizada', 'success');
+            document.getElementById('formCambiarPassword').reset();
+        } else {
+            Swal.fire('Error', result.message, 'error');
+        }
+    });
+</script>

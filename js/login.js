@@ -162,7 +162,6 @@ async function iniciarSesion(event) {
     }
 
     try {
-        // Tu backend espera 'correo' (no 'email') y 'password'
         const response = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: {
@@ -170,7 +169,7 @@ async function iniciarSesion(event) {
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                correo: correo,   // ← CAMPO CORRECTO: 'correo'
+                correo: correo,
                 password: password
             })
         });
@@ -185,14 +184,19 @@ async function iniciarSesion(event) {
         if (result.success && result.data && result.data.token) {
             // Guardar token y datos del usuario
             localStorage.setItem('token', result.data.token);
-            localStorage.setItem('user', JSON.stringify(result.data.usuario));
+            
+            // Inicializar el sistema con el usuario
+            if (typeof inicializarSistema === 'function') {
+                inicializarSistema(result.data.usuario);
+            } else {
+                localStorage.setItem('user', JSON.stringify(result.data.usuario));
+            }
             
             showSuccess('¡Inicio de sesión exitoso!');
             
             setTimeout(() => {
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('main-system-section').classList.remove('hidden');
-                if (typeof cargarVista === 'function') cargarVista('views/panel.html');
             }, 1500);
         } else {
             throw new Error(result.message || 'No se recibió token de autenticación');
@@ -205,7 +209,7 @@ async function iniciarSesion(event) {
 }
 
 // ==========================================
-// RECUPERACIÓN DE CONTRASEÑA (CORREGIDO - usa 'correo')
+// RECUPERACIÓN DE CONTRASEÑA
 // ==========================================
 async function recuperarPassword(event) {
     event.preventDefault();
@@ -219,14 +223,13 @@ async function recuperarPassword(event) {
     }
 
     try {
-        // Tu backend espera 'correo' (no 'email')
         const response = await fetch(`${API_BASE}/password-reset/request`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ correo: correo })  // ← CAMPO CORRECTO: 'correo'
+            body: JSON.stringify({ correo: correo })
         });
 
         const result = await response.json();
@@ -250,6 +253,173 @@ async function recuperarPassword(event) {
 }
 
 // ==========================================
+// FUNCIONES PARA EL SISTEMA CON ROLES
+// ==========================================
+
+// Configuración de menús por rol
+const MENU_CONFIG = {
+    Administrador: [
+        { nombre: "Panel", vista: "views/panel.html", icono: "fa-tachometer-alt" },
+        { nombre: "Ventas", vista: "views/ventas.html", icono: "fa-shopping-cart" },
+        { nombre: "Compras", vista: "views/compras.html", icono: "fa-truck" },
+        { nombre: "Registros", vista: "views/catalogos.html", icono: "fa-database" },
+        { nombre: "Productos", vista: "views/productos.html", icono: "fa-motorcycle" },
+        { nombre: "Categoria", vista: "views/categorias.html", icono: "fa-layer-group" },
+        { nombre: "Cotizaciones", vista: "views/cotizaciones.html", icono: "fa-file-invoice" },
+        { nombre: "Reportes", vista: "views/reportes.html", icono: "fa-chart-bar" },
+        { nombre: "Agendas/citas", vista: "views/cita.html", icono: "fa-calendar-alt" },
+        { nombre: "Servicios", vista: "views/servicios.html", icono: "fa-wrench" },
+        { nombre: "Mantenimiento", vista: "views/mantenimiento_preventivo.html", icono: "fa-tools" },
+        { nombre: "Registro Servicios", vista: "views/servicios_catalogo.html", icono: "fa-clipboard-list" }
+    ],
+    
+    Empleado: [
+        { nombre: "Panel", vista: "views/panel.html", icono: "fa-tachometer-alt" },
+        { nombre: "Ventas", vista: "views/ventas.html", icono: "fa-shopping-cart" },
+        { nombre: "Compras", vista: "views/compras.html", icono: "fa-truck" },
+        { nombre: "Productos", vista: "views/productos.html", icono: "fa-motorcycle" },
+        { nombre: "Categoria", vista: "views/categorias.html", icono: "fa-layer-group" },
+        { nombre: "Cotizaciones", vista: "views/cotizaciones.html", icono: "fa-file-invoice" },
+        { nombre: "Reportes", vista: "views/reportes.html", icono: "fa-chart-bar" },
+        { nombre: "Agendas/citas", vista: "views/cita.html", icono: "fa-calendar-alt" },
+        { nombre: "Servicios", vista: "views/servicios.html", icono: "fa-wrench" },
+        { nombre: "Mantenimiento", vista: "views/mantenimiento_preventivo.html", icono: "fa-tools" },
+        { nombre: "Registro Servicios", vista: "views/servicios_catalogo.html", icono: "fa-clipboard-list" }
+    ],
+    
+    Vendedor: [
+        { nombre: "Panel", vista: "views/panel.html", icono: "fa-tachometer-alt" },
+        { nombre: "Ventas", vista: "views/ventas.html", icono: "fa-shopping-cart" },
+        { nombre: "Productos", vista: "views/productos.html", icono: "fa-motorcycle" },
+        { nombre: "Cotizaciones", vista: "views/cotizaciones.html", icono: "fa-file-invoice" },
+        { nombre: "Agendas/citas", vista: "views/cita.html", icono: "fa-calendar-alt" },
+        { nombre: "Servicios", vista: "views/servicios.html", icono: "fa-wrench" }
+    ],
+    
+    Cliente: [
+        { nombre: "Mi Perfil", vista: "views/cliente/perfil.html", icono: "fa-user-circle" },
+        { nombre: "Mis Citas", vista: "views/cliente/citas.html", icono: "fa-calendar-check" },
+        { nombre: "Mis Servicios", vista: "views/cliente/servicios.html", icono: "fa-tools" }
+    ],
+    
+    Mecanico: [
+        { nombre: "Panel", vista: "views/panel.html", icono: "fa-tachometer-alt" },
+        { nombre: "Servicios", vista: "views/servicios.html", icono: "fa-wrench" },
+        { nombre: "Mantenimiento", vista: "views/mantenimiento_preventivo.html", icono: "fa-tools" },
+        { nombre: "Agendas/citas", vista: "views/cita.html", icono: "fa-calendar-alt" }
+    ]
+};
+
+// Función para cargar el menú según el rol del usuario
+function cargarMenuPorRol(rol) {
+    const menuContainer = document.getElementById('menu-dinamico');
+    if (!menuContainer) return;
+    
+    const menuItems = MENU_CONFIG[rol] || MENU_CONFIG.Cliente;
+    
+    let menuHTML = '<h2>MENÚ</h2>';
+    
+    menuItems.forEach(item => {
+        menuHTML += `
+            <li onclick="cargarVistaConPermiso('${item.vista}')">
+                <i class="fas ${item.icono}"></i> ${item.nombre}
+            </li>
+        `;
+    });
+    
+    menuContainer.innerHTML = menuHTML;
+}
+
+// Función para actualizar la información del usuario en el header
+function actualizarInfoUsuario(user) {
+    const userNameSpan = document.getElementById('user-name');
+    const userRoleSpan = document.getElementById('user-role');
+    
+    if (userNameSpan) {
+        userNameSpan.textContent = user.nombre || user.name || 'Usuario';
+    }
+    
+    if (userRoleSpan) {
+        let roleClass = 'bg-secondary';
+        if (user.rol === 'Administrador') roleClass = 'bg-danger';
+        else if (user.rol === 'Empleado') roleClass = 'bg-primary';
+        else if (user.rol === 'Vendedor') roleClass = 'bg-info';
+        else if (user.rol === 'Cliente') roleClass = 'bg-success';
+        else if (user.rol === 'Mecanico') roleClass = 'bg-warning';
+        
+        userRoleSpan.className = `badge ${roleClass} ms-2`;
+        userRoleSpan.textContent = user.rol || 'Cliente';
+    }
+}
+
+// Función para verificar si el usuario tiene acceso a una vista
+function tieneAccesoAVista(vista, rol) {
+    const menuItems = MENU_CONFIG[rol] || MENU_CONFIG.Cliente;
+    return menuItems.some(item => item.vista === vista);
+}
+
+// Función para cargar vista con verificación de permisos
+function cargarVistaConPermiso(vista) {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+        cerrarSesion();
+        return;
+    }
+    
+    const user = JSON.parse(userStr);
+    const rol = user.rol || 'Cliente';
+    
+    if (tieneAccesoAVista(vista, rol)) {
+        if (typeof cargarVista === 'function') {
+            cargarVista(vista);
+        }
+    } else {
+        Swal.fire({
+            icon: 'error',
+            title: 'Acceso Denegado',
+            text: 'No tienes permiso para acceder a esta sección',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }
+}
+
+// Inicializar el sistema después del login
+function inicializarSistema(user) {
+    // Guardar usuario en localStorage
+    localStorage.setItem('user', JSON.stringify(user));
+    
+    // Cargar menú según el rol
+    cargarMenuPorRol(user.rol);
+    
+    // Actualizar información del usuario en el header
+    actualizarInfoUsuario(user);
+    
+    // Cargar la vista inicial según el rol
+    let vistaInicial = 'views/panel.html';
+    if (user.rol === 'Cliente') {
+        vistaInicial = 'views/cliente/perfil.html';
+    }
+    
+    if (typeof cargarVista === 'function') {
+        cargarVista(vistaInicial);
+    }
+}
+
+// Función global para cerrar sesión
+window.cerrarSesion = function() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    document.getElementById('main-system-section').classList.add('hidden');
+    document.getElementById('auth-section').classList.remove('hidden');
+    showLogin();
+};
+
+// Exponer funciones globalmente
+window.cargarVistaConPermiso = cargarVistaConPermiso;
+window.inicializarSistema = inicializarSistema;
+
+// ==========================================
 // EVENT LISTENERS
 // ==========================================
 document.getElementById('loginForm').addEventListener('submit', iniciarSesion);
@@ -261,22 +431,20 @@ document.getElementById('linkToRegister').addEventListener('click', showRegister
 document.getElementById('linkToLoginFromReg').addEventListener('click', showLogin);
 document.getElementById('linkToLoginFromRec').addEventListener('click', showLogin);
 
-// Función global para cerrar sesión
-window.cerrarSesion = function() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    document.getElementById('main-system-section').classList.add('hidden');
-    document.getElementById('auth-section').classList.remove('hidden');
-    showLogin();
-};
-
 // Verificar si ya hay sesión activa al cargar la página
 document.addEventListener('DOMContentLoaded', function() {
     const token = localStorage.getItem('token');
-    if (token) {
-        // Opcional: validar token con el backend
-        document.getElementById('auth-section').classList.add('hidden');
-        document.getElementById('main-system-section').classList.remove('hidden');
-        if (typeof cargarVista === 'function') cargarVista('views/panel.html');
+    const userStr = localStorage.getItem('user');
+    
+    if (token && userStr) {
+        try {
+            const user = JSON.parse(userStr);
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('main-system-section').classList.remove('hidden');
+            inicializarSistema(user);
+        } catch(e) {
+            console.error('Error al restaurar sesión:', e);
+            cerrarSesion();
+        }
     }
 });

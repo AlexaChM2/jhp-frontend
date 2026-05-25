@@ -247,25 +247,18 @@
                 <img src="img/logo.png" alt="Logo" style="height: 20px; width: auto;">
                 <span>JHP API</span>
             </div>
-            <div class="usuario-info">Administrador <button class="btn btn-sm btn-light ms-3" onclick="cerrarSesion()">Salir</button></div>
+            <div class="usuario-info">
+                <span id="user-name"></span>
+                <span id="user-role" class="badge ms-2"></span>
+                <button class="btn btn-sm btn-light ms-3" onclick="cerrarSesion()">Salir</button>
+            </div>
         </header>
 
         <div class="main-wrapper">
             <div class="menu">
-                <ul>   
+                <ul id="menu-dinamico">   
                     <h2>MENÚ</h2>
-                    <li onclick="cargarVista('views/panel.html')">Panel</li>
-                    <li onclick="cargarVista('views/ventas.html')">Ventas</li>
-                    <li onclick="cargarVista('views/compras.html')">Compras</li>
-                    <li onclick="cargarVista('views/catalogos.html')">Registros</li>
-                    <li onclick="cargarVista('views/productos.html')">Productos</li>
-                    <li onclick="cargarVista('views/categorias.html')">Categoria</li>
-                    <li onclick="cargarVista('views/cotizaciones.html')">Cotizaciones</li>               
-                    <li onclick="cargarVista('views/reportes.html')">Reportes</li>
-                    <li onclick="cargarVista('views/cita.html')">Agendas/citas</li>
-                    <li onclick="cargarVista('views/servicios.html')">Servicios</li>
-                    <li onclick="cargarVista('views/mantenimiento_preventivo.html')">Mantenimiento</li>
-                    <li onclick="cargarVista('views/servicios_catalogo.html')">Registro Servicios</li>
+                    <!-- El menú se cargará dinámicamente según el rol -->
                 </ul>                         
             </div>
 
@@ -282,6 +275,7 @@
     <script src="config.js"></script>
     <script src="js/app.js"></script>
     <script src="js/login.js"></script>
+    <script src="js/role-menu.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
