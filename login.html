@@ -11,13 +11,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px;
         }
 
         .form-container {
-            width: 350px;
-            height: auto;
+            width: 400px;
+            max-width: 100%;
             background-color: #ffffff;
             box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
             border-radius: 30px;
@@ -121,9 +122,30 @@
             border: 1px solid #c8e6c9;
         }
 
-     
         .hidden {
             display: none !important;
+        }
+
+        /* Estilos para el scroll en el formulario de registro */
+        #view-register {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* Ocultar scrollbar en Chrome/Safari pero mantener funcionalidad */
+        #view-register::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #view-register::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+
+        #view-register::-webkit-scrollbar-thumb {
+            background: #ff3d00;
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -132,11 +154,10 @@
     <div class="form-container">
         <p class="title" id="formTitle">Sistema de Motocicletas</p>
         
-       
         <div id="error-box" class="error-message"></div>
         <div id="success-box" class="success-message"></div>
 
-       
+        <!-- VISTA: INICIO DE SESIÓN -->
         <div id="view-login">
             <form class="form" id="loginForm">
                 <input type="email" id="correo" class="input" placeholder="Correo electrónico" required autocomplete="email">
@@ -154,13 +175,17 @@
             </p>
         </div>
 
-        <!--  REGISTRO -->
+        <!-- VISTA: REGISTRO DE CLIENTES (con campos completos como en catálogos) -->
         <div id="view-register" class="hidden">
             <form class="form" id="registerForm">
-                <input type="text" id="regNombre" class="input" placeholder="Nombre completo" required>
-                <input type="email" id="regCorreo" class="input" placeholder="Correo electrónico" required>
-                <input type="password" id="regPassword" class="input" placeholder="Contraseña (mín. 8 caracteres)" required>
-                <input type="password" id="regPassword_confirmation" class="input" placeholder="Confirmar contraseña" required>
+                <input type="text" id="regNombre" class="input" placeholder="Nombre *" required>
+                <input type="text" id="regApaterno" class="input" placeholder="Apellido Paterno *" required>
+                <input type="text" id="regAmaterno" class="input" placeholder="Apellido Materno">
+                <input type="email" id="regCorreo" class="input" placeholder="Correo electrónico *" required>
+                <input type="tel" id="regTelefono" class="input" placeholder="Teléfono (10 dígitos)" maxlength="10">
+                <input type="text" id="regDireccion" class="input" placeholder="Dirección">
+                <input type="password" id="regPassword" class="input" placeholder="Contraseña * (Mayúscula + minúscula + número)" required>
+                <input type="password" id="regPassword_confirmation" class="input" placeholder="Confirmar contraseña *" required>
                 
                 <button type="submit" class="form-btn">Crear Cuenta</button>
             </form>
@@ -170,7 +195,7 @@
             </p>
         </div>
 
-        <!--  RECUPERACIÓN -->
+        <!-- VISTA: RECUPERACIÓN DE CONTRASEÑA -->
         <div id="view-recovery" class="hidden">
             <form class="form" id="recoveryForm">
                 <p style="font-size: 13px; color: #555; margin-bottom: 15px; text-align: center;">
