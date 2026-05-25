@@ -214,6 +214,9 @@ async function iniciarSesion(event) {
 // ==========================================
 // RECUPERACIÓN DE CONTRASEÑA (MODIFICADA)
 // ==========================================
+// ==========================================
+// RECUPERACIÓN DE CONTRASEÑA (ACTUALIZADA)
+// ==========================================
 async function recuperarPassword(event) {
     event.preventDefault();
     hideMessages();
@@ -242,20 +245,21 @@ async function recuperarPassword(event) {
             throw new Error(result.message || 'Error al enviar instrucciones');
         }
 
-        // Mostrar el token en un modal para pruebas
-        if (result.debug_info && result.debug_info.token) {
-            const resetUrl = `${window.location.origin}/reset-password.html?token=${result.debug_info.token}&email=${encodeURIComponent(correo)}`;
+        // Manejar la respuesta correctamente (la estructura que devuelve tu API)
+        if (result.success && result.data && result.data.token) {
+            const token = result.data.token;
+            const resetUrl = `${window.location.origin}/reset-password.html?token=${token}&email=${encodeURIComponent(correo)}`;
             
             Swal.fire({
-                icon: 'info',
-                title: '🔐 Token de recuperación',
+                icon: 'success',
+                title: '¡Token generado!',
                 html: `
                     <div class="text-start">
                         <p><strong>Correo:</strong> ${correo}</p>
-                        <p><strong>Token:</strong> <code class="bg-light p-1" style="font-size: 11px; word-break: break-all;">${result.debug_info.token}</code></p>
+                        <p><strong>Token:</strong> <code class="bg-light p-1" style="font-size: 11px; word-break: break-all;">${token}</code></p>
                         <hr>
-                        <p class="text-muted">Usa este enlace para restablecer tu contraseña:</p>
-                        <a href="${resetUrl}" target="_blank" class="btn btn-primary btn-sm w-100">Restablecer Contraseña</a>
+                        <p>Usa este enlace para restablecer tu contraseña:</p>
+                        <a href="${resetUrl}" target="_blank" class="btn btn-primary btn-sm w-100" style="background: #ff3d00; color: white; text-decoration: none; display: inline-block; padding: 10px; border-radius: 10px;">Restablecer Contraseña</a>
                         <hr>
                         <small class="text-muted">En producción, esto se enviaría por correo electrónico</small>
                     </div>
@@ -278,7 +282,6 @@ async function recuperarPassword(event) {
         showError(error.message || 'Error al conectar con el servidor');
     }
 }
-
 // ==========================================
 // FUNCIONES PARA EL SISTEMA CON ROLES
 // ==========================================
