@@ -446,7 +446,7 @@ window.verProducto = function(id) {
     if (!p) return;
 
     Swal.fire({
-        title: `📦 ${p.pro_nombre}`,
+        title: ` ${p.pro_nombre}`,
         html: `
             <div style="text-align:left;">
                 <p><strong>Código:</strong> ${p.pro_codigo}</p>

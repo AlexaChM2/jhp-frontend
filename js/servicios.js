@@ -577,7 +577,7 @@
             }
 
             if (m.insumos?.length > 0) {
-                html += `<br><strong> Insumos:</strong><table style="width:100%;font-size:12px;margin-top:5px;">`;
+                html += `<br><strong>Insumos:</strong><table style="width:100%;font-size:12px;margin-top:5px;">`;
                 let totalIns = 0;
                 m.insumos.forEach(i => { const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0); totalIns += sub; html += `<tr><td>${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`; });
                 html += `<tr style="font-weight:bold;background:#f8f9fa;"><td colspan="3" style="text-align:right;">Total:</td><td style="text-align:right;">$${totalIns.toFixed(2)}</td></tr></table>`;
