@@ -247,7 +247,7 @@ async function abrirModalVisitas(idProveedor, nombreProveedor) {
 
     let visitas = [];
     try {
-        const res = await fetch(`${CONFIG.Proveedores.api}/${idProveedor}/visitas`, {
+         const res = await fetch(`${CONFIG.Proveedores.apiVisitas}/${idProveedor}`, {
             headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
