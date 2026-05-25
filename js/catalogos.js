@@ -1,6 +1,16 @@
 let seccionActual = "Clientes";
 let editandoID = null;
 
+const DIAS_SEMANA = [
+    { valor: 0, nombre: 'Domingo' },
+    { valor: 1, nombre: 'Lunes' },
+    { valor: 2, nombre: 'Martes' },
+    { valor: 3, nombre: 'Miércoles' },
+    { valor: 4, nombre: 'Jueves' },
+    { valor: 5, nombre: 'Viernes' },
+    { valor: 6, nombre: 'Sábado' },
+];
+
 const CONFIG = {
     Clientes: {
         api: "https://jhpapi-production.up.railway.app/api/clientes",
@@ -30,9 +40,10 @@ const CONFIG = {
     },
     Proveedores: {
         api: "https://jhpapi-production.up.railway.app/api/proveedores",
+        apiVisitas: "https://jhpapi-production.up.railway.app/api/proveedor-visitas",
         campos: ["prov_nombre", "prov_contacto", "prov_telefono", "prov_email", "prov_direccion"],
         labels: ["Empresa/Nombre *", "Contacto", "Teléfono", "Email", "Dirección"],
-        columnas: ["ID", "Proveedor", "Contacto", "Teléfono", "Email", "Acciones"],
+        columnas: ["ID", "Proveedor", "Contacto", "Teléfono", "Email", "Próx. Visita", "Acciones"],
         extraerDatos: (response) => {
             if (Array.isArray(response)) return response;
             if (response.success && Array.isArray(response.data)) return response.data;
@@ -45,6 +56,9 @@ const CONFIG = {
             <td>${reg.prov_contacto || 'N/A'}</td>
             <td>${reg.prov_telefono || 'N/A'}</td>
             <td>${reg.prov_email || 'N/A'}</td>
+            <td id="proxima-visita-${reg.id_proveedor}" class="text-center">
+                <span class="text-muted small">Cargando...</span>
+            </td>
         `
     },
     Empleados: {
@@ -82,6 +96,10 @@ const CONFIG = {
         `
     }
 };
+
+// ==========================================
+// FUNCIONES PRINCIPALES
+// ==========================================
 
 function cargarSeccion(nombre) {
     seccionActual = nombre;
@@ -134,12 +152,24 @@ function listarRegistros() {
             fila.innerHTML = config.formatearFila(reg);
             const tdAcciones = document.createElement('td');
             tdAcciones.style.whiteSpace = 'nowrap';
+
+            // Botón de visitas (solo Proveedores)
+            if (seccionActual === 'Proveedores') {
+                const btnVisitas = document.createElement('button');
+                btnVisitas.className = 'btn btn-sm btn-info me-1';
+                btnVisitas.innerHTML = '<i class="fas fa-calendar-alt"></i>';
+                btnVisitas.title = 'Días de visita';
+                btnVisitas.onclick = () => abrirModalVisitas(config.getId(reg), reg.prov_nombre);
+                tdAcciones.appendChild(btnVisitas);
+            }
+
             const btnEditar = document.createElement('button');
             btnEditar.className = 'btn btn-sm btn-warning me-1';
             btnEditar.innerHTML = '<i class="fas fa-edit"></i>';
             btnEditar.title = 'Editar';
             btnEditar.onclick = () => prepararEdicion(reg);
             tdAcciones.appendChild(btnEditar);
+
             const esAdmin = seccionActual === 'Empleados' && reg.emp_rol === 'Administrador';
             if (!esAdmin) {
                 const btnEliminar = document.createElement('button');
@@ -152,6 +182,11 @@ function listarRegistros() {
             fila.appendChild(tdAcciones);
             tbody.appendChild(fila);
         });
+
+        // Cargar próximas visitas si es Proveedores
+        if (seccionActual === 'Proveedores') {
+            setTimeout(cargarProximasVisitas, 500);
+        }
     })
     .catch(error => {
         const tbody = document.getElementById("tbodyDinamico");
@@ -166,15 +201,159 @@ function listarRegistros() {
     });
 }
 
+// ==========================================
+// PRÓXIMAS VISITAS (PROVEEDORES)
+// ==========================================
+
+async function cargarProximasVisitas() {
+    const token = localStorage.getItem('token');
+    const filas = document.querySelectorAll('#tbodyDinamico tr');
+
+    for (const fila of filas) {
+        const celdaVisita = fila.querySelector('[id^="proxima-visita-"]');
+        if (!celdaVisita) continue;
+        const idProveedor = celdaVisita.id.replace('proxima-visita-', '');
+
+        try {
+            const res = await fetch(`${CONFIG.Proveedores.api}/${idProveedor}/proxima-visita`, {
+                headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+
+            if (data.success && data.data && data.data.fecha_proxima) {
+                const fecha = new Date(data.data.fecha_proxima);
+                const hoy = new Date();
+                const diffDias = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
+
+                let badgeClass = 'bg-success';
+                if (diffDias <= 1) badgeClass = 'bg-danger';
+                else if (diffDias <= 3) badgeClass = 'bg-warning text-dark';
+
+                celdaVisita.innerHTML = `
+                    <span class="badge ${badgeClass}">${data.data.dia_nombre}</span><br>
+                    <small>${fecha.toLocaleDateString('es-MX')} ${data.data.hora?.substring(0, 5)}</small>
+                `;
+            } else {
+                celdaVisita.innerHTML = `<span class="text-muted small">Sin visita</span>`;
+            }
+        } catch (e) {
+            celdaVisita.innerHTML = `<span class="text-muted small">-</span>`;
+        }
+    }
+}
+
+async function abrirModalVisitas(idProveedor, nombreProveedor) {
+    const token = localStorage.getItem('token');
+
+    let visitas = [];
+    try {
+        const res = await fetch(`${CONFIG.Proveedores.api}/${idProveedor}/visitas`, {
+            headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        visitas = data.success ? data.data : [];
+    } catch (e) {}
+
+    let visitasHTML = visitas.length > 0
+        ? visitas.map(v => `
+            <div class="d-flex align-items-center justify-content-between bg-light p-2 mb-1 rounded">
+                <span>
+                    <strong>${DIAS_SEMANA[v.dia_semana]?.nombre || '?'}</strong> 
+                    a las ${v.hora_visita?.substring(0, 5)}
+                </span>
+                <button class="btn btn-sm btn-danger" onclick="eliminarVisita(${v.id_visita}, ${idProveedor})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `).join('')
+        : '<p class="text-muted text-center">Sin días de visita</p>';
+
+    const { value: formValues } = await Swal.fire({
+        title: `📅 Visitas - ${nombreProveedor}`,
+        html: `
+            <div class="mb-3">
+                <label class="form-label fw-bold">Días programados:</label>
+                <div id="listaVisitasActuales" style="max-height:150px;overflow-y:auto;">
+                    ${visitasHTML}
+                </div>
+            </div>
+            <hr>
+            <p class="fw-bold mb-2">Agregar día:</p>
+            <div class="row">
+                <div class="col-7">
+                    <select id="swal-dia-semana" class="form-select">
+                        ${DIAS_SEMANA.map(d => `<option value="${d.valor}">${d.nombre}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="col-5">
+                    <input type="time" id="swal-hora-visita" class="form-control" value="09:00">
+                </div>
+            </div>
+            <input type="hidden" id="swal-id-proveedor" value="${idProveedor}">
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Agregar día',
+        cancelButtonText: 'Cerrar',
+        confirmButtonColor: '#28a745',
+        preConfirm: async () => {
+            const dia = document.getElementById('swal-dia-semana').value;
+            const hora = document.getElementById('swal-hora-visita').value;
+            const idProv = document.getElementById('swal-id-proveedor').value;
+
+            if (!hora) { Swal.showValidationMessage('Selecciona una hora'); return false; }
+
+            try {
+                const res = await fetch(CONFIG.Proveedores.apiVisitas, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ id_proveedor: parseInt(idProv), dia_semana: parseInt(dia), hora_visita: hora + ':00' })
+                });
+                if (!res.ok) throw new Error('Error al guardar');
+                return true;
+            } catch (e) {
+                Swal.showValidationMessage(e.message);
+                return false;
+            }
+        }
+    });
+
+    if (formValues) {
+        Swal.fire({ icon: 'success', title: 'Día agregado', timer: 1000, showConfirmButton: false });
+        cargarProximasVisitas();
+    }
+}
+
+async function eliminarVisita(idVisita, idProveedor) {
+    const result = await Swal.fire({
+        title: '¿Eliminar día?', icon: 'warning',
+        showCancelButton: true, confirmButtonColor: '#d33',
+        confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar'
+    });
+    if (!result.isConfirmed) return;
+
+    const token = localStorage.getItem('token');
+    try {
+        await fetch(`${CONFIG.Proveedores.apiVisitas}/${idVisita}`, {
+            method: 'DELETE',
+            headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
+        });
+        Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1000, showConfirmButton: false });
+        cargarProximasVisitas();
+    } catch (e) {
+        Swal.fire('Error', 'No se pudo eliminar', 'error');
+    }
+}
+
+// ==========================================
+// MODAL DE REGISTRO
+// ==========================================
+
 function abrirModalRegistro() {
     editandoID = null;
     const titulo = document.getElementById("modalTitulo");
     if (titulo) titulo.innerText = "Nuevo " + seccionActual.slice(0, -1);
     const modal = document.getElementById("modalCatalogo");
-    if (modal) {
-        modal.style.display = "flex";
-        setTimeout(() => generarInputs(), 100);
-    }
+    if (modal) { modal.style.display = "flex"; setTimeout(() => generarInputs(), 100); }
 }
 
 function generarInputs(datos = null) {
@@ -299,10 +478,7 @@ function prepararEdicion(reg) {
     const titulo = document.getElementById("modalTitulo");
     if (titulo) titulo.innerText = "Editar " + seccionActual.slice(0, -1);
     const modal = document.getElementById("modalCatalogo");
-    if (modal) {
-        modal.style.display = "flex";
-        setTimeout(() => generarInputs(reg), 100);
-    }
+    if (modal) { modal.style.display = "flex"; setTimeout(() => generarInputs(reg), 100); }
 }
 
 function eliminarRegistro(id, reg) {
@@ -344,6 +520,9 @@ function filtrarTabla() {
     });
 }
 
+// ==========================================
+// INICIALIZACIÓN
+// ==========================================
 setTimeout(() => cargarSeccion('Clientes'), 100);
 
 window.cargarSeccion = cargarSeccion;
