@@ -14,6 +14,16 @@ const API = {
         RECOVERY: `${API_BASE}/auth/recovery`,
     },
 
+    // ==========================================
+    // AGREGAR RECUPERACIÓN DE CONTRASEÑA
+    // ==========================================
+    PASSWORD_RESET: {
+        REQUEST: `${API_BASE}/password-reset/request`,
+        VALIDATE_TOKEN: `${API_BASE}/password-reset/validate-token`,
+        RESET: `${API_BASE}/password-reset/reset`,
+        CHANGE: `${API_BASE}/password-reset/change`,
+    },
+
     // CATEGORÍAS
     CATEGORIAS: `${API_BASE}/categorias`,
 
