@@ -6,7 +6,12 @@ const API_PROD = "https://jhpapi-production.up.railway.app/api/producto";
 
 let serviciosMant = [];
 let insumosMant = [];
+let insumosOriginales = []; // 🔥 NUEVO: Guarda los insumos originales al editar
+let insumosEliminados = []; // 🔥 NUEVO: Tracking de insumos que se intentan eliminar
 
+// ==========================================
+// ASEGURAR LIBRERÍAS PDF
+// ==========================================
 async function asegurarLibreriasPDF() {
     let jsPDFLib = null;
     
@@ -41,22 +46,31 @@ async function asegurarLibreriasPDF() {
     return jsPDFLib || window.jspdf?.jsPDF || jspdf || window.jsPDF;
 }
 
+// ==========================================
+// ACTUALIZAR STOCK DE PRODUCTO
+// ==========================================
 async function actualizarStockProducto(idProducto, cantidad, operacion) {
     try {
+        console.log(`📦 ${operacion === 'descontar' ? 'Descontando' : 'Reponiendo'} ${cantidad} unidades del producto #${idProducto}`);
+        
         const res = await fetch(`${API_PROD}/${idProducto}`);
         const response = await res.json();
         const producto = response.success ? response.data : response;
         
+        if (!producto || producto.pro_stock === undefined) {
+            console.error(`❌ Producto #${idProducto} no encontrado`);
+            return false;
+        }
+        
         let nuevoStock = producto.pro_stock;
         if (operacion === 'descontar') {
             nuevoStock = producto.pro_stock - cantidad;
+            if (nuevoStock < 0) {
+                console.warn(`⚠️ Stock insuficiente para producto "${producto.pro_nombre}". Stock actual: ${producto.pro_stock}, solicitado: ${cantidad}`);
+                return false;
+            }
         } else if (operacion === 'reponer') {
             nuevoStock = producto.pro_stock + cantidad;
-        }
-        
-        if (nuevoStock < 0) {
-            console.warn(`Stock insuficiente para producto ${idProducto}`);
-            return false;
         }
         
         const updateRes = await fetch(`${API_PROD}/${idProducto}`, {
@@ -65,17 +79,26 @@ async function actualizarStockProducto(idProducto, cantidad, operacion) {
             body: JSON.stringify({ pro_stock: nuevoStock })
         });
         
-        return updateRes.ok;
+        if (updateRes.ok) {
+            console.log(`✅ Stock actualizado: ${producto.pro_nombre} (${producto.pro_stock} → ${nuevoStock})`);
+            return true;
+        } else {
+            console.error(`❌ Error al actualizar stock del producto #${idProducto}`);
+            return false;
+        }
     } catch (error) {
-        console.error('Error actualizando stock:', error);
+        console.error('❌ Error actualizando stock:', error);
         return false;
     }
 }
 
+// ==========================================
+// LISTAR MANTENIMIENTOS
+// ==========================================
 async function listarMantenimiento() {
     const tbody = document.getElementById("tablaMantenimiento");
     if (!tbody) return;
-    tbody.innerHTML = '<td><td colspan="8" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></td></tr>';
 
     try {
         const res = await fetch(API_MANT);
@@ -85,8 +108,8 @@ async function listarMantenimiento() {
 
         if (lista.length === 0) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-center py-3">No hay mantenimientos</td></tr>';
-            document.getElementById("totalMantPendientes").textContent = 0;
-            document.getElementById("totalMantCompletados").textContent = 0;
+            document.getElementById("totalMantPendientes").textContent = '0';
+            document.getElementById("totalMantCompletados").textContent = '0';
             document.getElementById("totalMantProximos").textContent = '-';
             return;
         }
@@ -131,10 +154,14 @@ async function listarMantenimiento() {
         document.getElementById("totalMantProximos").textContent = '-';
 
     } catch (e) {
+        console.error('❌ Error listando mantenimientos:', e);
         tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error al cargar</td></tr>';
     }
 }
 
+// ==========================================
+// CARGAR SELECTS
+// ==========================================
 async function cargarSelectsMant() {
     try {
         const [resCli, resEmp] = await Promise.all([fetch(API_CLI), fetch(API_EMP)]);
@@ -149,9 +176,12 @@ async function cargarSelectsMant() {
         const selMec = document.getElementById("id_mecanico_mant");
         if (selCli) selCli.innerHTML = '<option value="">Seleccione...</option>' + listaCli.map(c => `<option value="${c.id_cliente}">${c.cli_nombre||''} ${c.cli_apaterno||''}</option>`).join('');
         if (selMec) selMec.innerHTML = '<option value="">Seleccione...</option>' + listaEmp.filter(e => e.emp_rol==='Mecanico'||e.emp_rol==='Mecánico').map(e => `<option value="${e.id_empleados}">${e.emp_nombre}</option>`).join('');
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error('❌ Error cargando selects:', e); }
 }
 
+// ==========================================
+// CARGAR CATÁLOGO DE SERVICIOS
+// ==========================================
 async function cargarCatalogoServiciosMant() {
     try {
         const res = await fetch(API_SERV);
@@ -160,9 +190,12 @@ async function cargarCatalogoServiciosMant() {
         const servicios = Array.isArray(lista) ? lista : [];
         const sel = document.getElementById("servicio_id_mant");
         if (sel) sel.innerHTML = '<option value="">Seleccione...</option>' + servicios.map(s => `<option value="${s.id_servicio}" data-precio="${s.ser_precio_mano_obra}">${s.ser_nombre} - $${parseFloat(s.ser_precio_mano_obra).toFixed(2)}</option>`).join('');
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error('❌ Error cargando servicios:', e); }
 }
 
+// ==========================================
+// AGREGAR SERVICIO
+// ==========================================
 window.agregarServicioMant = function() {
     const sel = document.getElementById("servicio_id_mant");
     const precio = parseFloat(document.getElementById("servicio_precio_mant")?.value) || 0;
@@ -177,6 +210,9 @@ window.agregarServicioMant = function() {
     actualizarTotalesMant();
 };
 
+// ==========================================
+// BUSCAR INSUMO
+// ==========================================
 window.buscarInsumoMant = function(valor) {
     const lista = document.getElementById("listaResultadosInsumosMant");
     if (!lista || valor.trim().length < 2) { if (lista) lista.style.display = "none"; return; }
@@ -196,13 +232,31 @@ window.seleccionarInsumoMant = function(id, nombre, precio) {
     document.getElementById("listaResultadosInsumosMant").style.display = "none";
 };
 
+// ==========================================
+// AGREGAR INSUMO (SOLO NUEVOS)
+// ==========================================
 window.agregarInsumoMant = function() {
     const id = document.getElementById("buscarInsumoMant").dataset.idProducto;
     const nombre = document.getElementById("buscarInsumoMant").value;
     const cantidad = parseInt(document.getElementById("insumo_cantidad_mant").value) || 1;
     const precio = parseFloat(document.getElementById("insumo_precio_mant").value) || 0;
+    
     if (!id || !nombre) return Swal.fire("Aviso", "Busca y selecciona un producto", "warning");
-    insumosMant.push({ id_producto: parseInt(id), nombre, insumo_cantidad: cantidad, insumo_precio_unitario: precio });
+    
+    // Verificar si ya existe en la lista
+    const existente = insumosMant.find(i => i.id_producto === parseInt(id));
+    if (existente) {
+        return Swal.fire("Aviso", "Este producto ya está agregado", "warning");
+    }
+    
+    insumosMant.push({ 
+        id_producto: parseInt(id), 
+        nombre, 
+        insumo_cantidad: cantidad, 
+        insumo_precio_unitario: precio,
+        esNuevo: true // 🔥 Marcar como nuevo
+    });
+    
     document.getElementById("buscarInsumoMant").value = "";
     delete document.getElementById("buscarInsumoMant").dataset.idProducto;
     document.getElementById("insumo_cantidad_mant").value = 1;
@@ -210,32 +264,89 @@ window.agregarInsumoMant = function() {
     actualizarTotalesMant();
 };
 
+// ==========================================
+// ACTUALIZAR TOTALES (CON BLOQUEO DE ORIGINALES)
+// ==========================================
 function actualizarTotalesMant() {
     const totalServ = serviciosMant.reduce((s, i) => s + i.precio_aplicado, 0);
     const elServ = document.getElementById("total_mano_obra_mant");
     if (elServ) elServ.textContent = totalServ.toFixed(2);
+    
     const divS = document.getElementById("listaServiciosAgregadosMant");
-    if (divS) divS.innerHTML = serviciosMant.map((s, i) => `<div class="d-flex justify-content-between bg-light p-2 mb-1 rounded"><span><i class="fas fa-wrench text-success me-2"></i>${s.nombre}</span><span>$${s.precio_aplicado.toFixed(2)} <button class="btn btn-sm text-danger" onclick="window.quitarServicioMant(${i})">✕</button></span></div>`).join('');
+    if (divS) divS.innerHTML = serviciosMant.map((s, i) => `
+        <div class="d-flex justify-content-between bg-light p-2 mb-1 rounded">
+            <span><i class="fas fa-wrench text-success me-2"></i>${s.nombre}</span>
+            <span>$${s.precio_aplicado.toFixed(2)} 
+                <button class="btn btn-sm text-danger" onclick="window.quitarServicioMant(${i})">✕</button>
+            </span>
+        </div>`).join('');
 
     const totalIns = insumosMant.reduce((s, i) => s + (i.insumo_cantidad * i.insumo_precio_unitario), 0);
     const elIns = document.getElementById("total_insumos_mant");
     if (elIns) elIns.textContent = totalIns.toFixed(2);
+    
     const divI = document.getElementById("listaInsumosAgregadosMant");
-    if (divI) divI.innerHTML = insumosMant.map((item, i) => `<div class="d-flex justify-content-between bg-light p-2 mb-1 rounded"><span><i class="fas fa-box text-primary me-2"></i>${item.nombre} x${item.insumo_cantidad}</span><span>$${(item.insumo_cantidad*item.insumo_precio_unitario).toFixed(2)} <button class="btn btn-sm text-danger" onclick="window.quitarInsumoMant(${i})">✕</button></span></div>`).join('');
+    if (divI) {
+        divI.innerHTML = insumosMant.map((item, i) => {
+            // 🔥 Verificar si es un insumo original (no se puede eliminar)
+            const esOriginal = insumosOriginales.some(orig => orig.id_producto === item.id_producto);
+            const botonEliminar = esOriginal 
+                ? '<span class="badge bg-secondary ms-2" title="No se puede eliminar (ya descontado)"><i class="fas fa-lock"></i></span>'
+                : `<button class="btn btn-sm text-danger" onclick="window.quitarInsumoMant(${i})" title="Eliminar insumo nuevo">✕</button>`;
+            
+            return `
+            <div class="d-flex justify-content-between bg-light p-2 mb-1 rounded ${esOriginal ? 'border border-warning' : ''}">
+                <span>
+                    <i class="fas fa-box text-primary me-2"></i>${item.nombre} x${item.insumo_cantidad}
+                    ${esOriginal ? '<small class="text-warning ms-2">(Original)</small>' : '<small class="text-success ms-2">(Nuevo)</small>'}
+                </span>
+                <span>$${(item.insumo_cantidad*item.insumo_precio_unitario).toFixed(2)} ${botonEliminar}</span>
+            </div>`;
+        }).join('');
+    }
 
     const elTotal = document.getElementById("total_general_mant");
     if (elTotal) elTotal.textContent = (totalServ + totalIns).toFixed(2);
 }
 
-window.quitarServicioMant = function(i) { serviciosMant.splice(i, 1); actualizarTotalesMant(); };
-window.quitarInsumoMant = function(i) { insumosMant.splice(i, 1); actualizarTotalesMant(); };
+// ==========================================
+// QUITAR (SOLO NUEVOS)
+// ==========================================
+window.quitarServicioMant = function(i) { 
+    serviciosMant.splice(i, 1); 
+    actualizarTotalesMant(); 
+};
 
+window.quitarInsumoMant = function(i) { 
+    const item = insumosMant[i];
+    
+    // 🔥 Verificar si es original
+    const esOriginal = insumosOriginales.some(orig => orig.id_producto === item.id_producto);
+    
+    if (esOriginal) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'No se puede eliminar',
+            text: 'Este insumo ya fue descontado del stock. No se puede eliminar.',
+            confirmButtonColor: '#3085d6'
+        });
+        return;
+    }
+    
+    insumosMant.splice(i, 1); 
+    actualizarTotalesMant(); 
+};
+
+// ==========================================
+// ABRIR MODAL
+// ==========================================
 window.abrirModalMantenimiento = function() {
     const form = document.getElementById("formMantenimientoPrev");
     if (form) form.reset();
     delete form?.dataset.editarId;
     serviciosMant = [];
     insumosMant = [];
+    insumosOriginales = []; // 🔥 Limpiar originales
     actualizarTotalesMant();
     cargarSelectsMant();
     cargarCatalogoServiciosMant();
@@ -244,6 +355,9 @@ window.abrirModalMantenimiento = function() {
     new bootstrap.Modal(document.getElementById('modalMantenimientoPrev')).show();
 };
 
+// ==========================================
+// GUARDAR MANTENIMIENTO (CORREGIDO)
+// ==========================================
 window.guardarMantenimiento = async function() {
     const idEditar = document.getElementById("formMantenimientoPrev")?.dataset?.editarId;
     const idCliente = document.getElementById("id_cliente_mant")?.value;
@@ -272,6 +386,60 @@ window.guardarMantenimiento = async function() {
     };
 
     try {
+        // 🔥 LÓGICA CORREGIDA PARA MANEJO DE STOCK
+        if (idEditar) {
+            // Obtener el mantenimiento original para comparar
+            const resGet = await fetch(`${API_MANT}/${idEditar}`);
+            const response = await resGet.json();
+            const original = response.success ? response.data : response;
+            
+            // 1. Identificar insumos que ya NO están en la nueva lista (fueron eliminados)
+            if (original.insumos && original.insumos.length > 0) {
+                for (const insumoOriginal of original.insumos) {
+                    const siguePresente = insumosMant.find(i => i.id_producto === insumoOriginal.id_producto);
+                    
+                    if (!siguePresente) {
+                        // El insumo fue eliminado -> REPONER stock
+                        console.log(`🔄 Reponiendo stock de "${insumoOriginal.producto?.pro_nombre || 'Producto'}" (eliminado de la orden)`);
+                        await actualizarStockProducto(
+                            insumoOriginal.id_producto, 
+                            insumoOriginal.insumo_cantidad, 
+                            'reponer'
+                        );
+                    } else if (siguePresente.insumo_cantidad !== insumoOriginal.insumo_cantidad) {
+                        // La cantidad cambió -> Ajustar diferencia
+                        const diferencia = insumoOriginal.insumo_cantidad - siguePresente.insumo_cantidad;
+                        if (diferencia > 0) {
+                            // Se redujo la cantidad -> Reponer la diferencia
+                            console.log(`🔄 Reponiendo ${diferencia} unidades de "${insumoOriginal.producto?.pro_nombre || 'Producto'}" (cantidad reducida)`);
+                            await actualizarStockProducto(insumoOriginal.id_producto, diferencia, 'reponer');
+                        } else if (diferencia < 0) {
+                            // Se aumentó la cantidad -> Descontar la diferencia adicional
+                            const cantidadAdicional = Math.abs(diferencia);
+                            console.log(`📦 Descontando ${cantidadAdicional} unidades adicionales de "${insumoOriginal.producto?.pro_nombre || 'Producto'}"`);
+                            await actualizarStockProducto(insumoOriginal.id_producto, cantidadAdicional, 'descontar');
+                        }
+                    }
+                }
+            }
+            
+            // 2. Identificar insumos NUEVOS (no estaban en el original)
+            for (const insumoNuevo of insumosMant) {
+                const existiaEnOriginal = original.insumos?.find(i => i.id_producto === insumoNuevo.id_producto);
+                
+                if (!existiaEnOriginal) {
+                    // Es un insumo completamente nuevo -> Descontar stock
+                    console.log(`📦 Descontando ${insumoNuevo.insumo_cantidad} unidades de "${insumoNuevo.nombre}" (nuevo insumo)`);
+                    await actualizarStockProducto(
+                        insumoNuevo.id_producto, 
+                        insumoNuevo.insumo_cantidad, 
+                        'descontar'
+                    );
+                }
+            }
+        }
+        
+        // Guardar/Actualizar el mantenimiento
         const res = await fetch(url, {
             method: method,
             headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -280,51 +448,32 @@ window.guardarMantenimiento = async function() {
         const result = await res.json();
         
         if (result.success || result.message) {
-            // ELIMINA TODA LA LÓGICA DE STOCK - EL BACKEND DEBE MANEJARLO
+            // 🔥 Si es NUEVO mantenimiento, descontar todos los insumos
+            if (!idEditar && insumosMant.length > 0) {
+                for (const insumo of insumosMant) {
+                    await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'descontar');
+                }
+            }
+            
             Swal.fire({ 
                 icon: 'success', 
-                title: idEditar ? 'Actualizado!' : 'Registrado!', 
+                title: idEditar ? '¡Actualizado!' : '¡Registrado!', 
+                text: 'Stock actualizado correctamente',
                 timer: 1500, 
                 showConfirmButton: false 
             });
             bootstrap.Modal.getInstance(document.getElementById('modalMantenimientoPrev'))?.hide();
             listarMantenimiento();
-        } else {
-            throw new Error(result.message || 'Error al guardar');
         }
     } catch (e) { 
+        console.error('❌ Error al guardar:', e);
         Swal.fire("Error", e.message, "error"); 
     }
 };
-// Nueva función auxiliar para ajustar stock por diferencias
-async function ajustarStockPorDiferencias(originales, nuevos) {
-    // Crear mapas para fácil acceso
-    const originalMap = new Map();
-    for (const ins of originales) {
-        originalMap.set(ins.id_producto, ins.insumo_cantidad);
-    }
-    
-    const nuevosMap = new Map();
-    for (const ins of nuevos) {
-        nuevosMap.set(ins.id_producto, ins.insumo_cantidad);
-    }
-    
-    // Procesar todos los productos únicos
-    const todosIds = new Set([...originalMap.keys(), ...nuevosMap.keys()]);
-    
-    for (const idProducto of todosIds) {
-        const cantidadOriginal = originalMap.get(idProducto) || 0;
-        const cantidadNueva = nuevosMap.get(idProducto) || 0;
-        const diferencia = cantidadNueva - cantidadOriginal;
-        
-        if (diferencia !== 0) {
-            const operacion = diferencia > 0 ? 'descontar' : 'reponer';
-            const cantidadAbs = Math.abs(diferencia);
-            await actualizarStockProducto(idProducto, cantidadAbs, operacion);
-        }
-    }
-}
 
+// ==========================================
+// VER MANTENIMIENTO
+// ==========================================
 window.verMantenimiento = async function(id) {
     try {
         const res = await fetch(`${API_MANT}/${id}`);
@@ -347,7 +496,7 @@ window.verMantenimiento = async function(id) {
             </table>`;
 
         if (m.servicios?.length > 0) {
-            html += `<hr><strong>Mano de Obra:</strong>
+            html += `<hr><strong>🔧 Mano de Obra:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#d3a934;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
             let totalServ = 0;
@@ -359,14 +508,14 @@ window.verMantenimiento = async function(id) {
         }
 
         if (m.insumos?.length > 0) {
-            html += `<br><strong>Insumos:</strong>
+            html += `<br><strong>📦 Insumos:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#1b297a;color:white;"><th style="padding:5px;">Producto</th><th style="text-align:center;">Cant</th><th style="text-align:right;">P.Unit</th><th style="text-align:right;">Sub</th></tr>`;
             let totalIns = 0;
             m.insumos.forEach(i => {
                 const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0);
                 totalIns += sub;
-                html += `<tr><td style="padding:5px;">${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`;
+                html += `<tr><td>${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`;
             });
             html += `<tr style="font-weight:bold;background:#f8f9fa;"><td colspan="3" style="text-align:right;">Total:</td><td style="text-align:right;">$${totalIns.toFixed(2)}</td></tr></table>`;
         }
@@ -377,6 +526,9 @@ window.verMantenimiento = async function(id) {
     } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
 };
 
+// ==========================================
+// EDITAR MANTENIMIENTO (CON BLOQUEO DE ORIGINALES)
+// ==========================================
 window.editarMantenimiento = async function(id) {
     try {
         await cargarSelectsMant();
@@ -392,19 +544,121 @@ window.editarMantenimiento = async function(id) {
         document.getElementById("trabajo_realizado_mant").value = m.trabajo_realizado || "";
         document.getElementById("estado_servicio_mant").value = m.estado_servicio || "En Proceso";
 
-        serviciosMant = m.servicios?.map(s => ({ id_servicio: s.id_servicio, nombre: s.servicio?.ser_nombre||'Servicio', precio_aplicado: parseFloat(s.precio_aplicado||0) })) || [];
-        insumosMant = m.insumos?.map(i => ({ id_producto: i.id_producto, nombre: i.producto?.pro_nombre||'Producto', insumo_cantidad: i.insumo_cantidad, insumo_precio_unitario: parseFloat(i.insumo_precio_unitario||0) })) || [];
+        // Cargar servicios e insumos existentes
+        serviciosMant = m.servicios?.map(s => ({ 
+            id_servicio: s.id_servicio, 
+            nombre: s.servicio?.ser_nombre||'Servicio', 
+            precio_aplicado: parseFloat(s.precio_aplicado||0) 
+        })) || [];
+        
+        insumosMant = m.insumos?.map(i => ({ 
+            id_producto: i.id_producto, 
+            nombre: i.producto?.pro_nombre||'Producto', 
+            insumo_cantidad: i.insumo_cantidad, 
+            insumo_precio_unitario: parseFloat(i.insumo_precio_unitario||0),
+            esNuevo: false // 🔥 Marcar como original
+        })) || [];
+        
+        // 🔥 Guardar copia de los insumos originales
+        insumosOriginales = JSON.parse(JSON.stringify(insumosMant));
+        
         actualizarTotalesMant();
 
         document.getElementById("formMantenimientoPrev").dataset.editarId = id;
-        document.getElementById("tituloModalMant").textContent = "Editar Mantenimiento";
+        document.getElementById("tituloModalMant").textContent = `Editar Mantenimiento #${id}`;
         document.getElementById("btnGuardarMant").innerHTML = '<i class="fas fa-save me-2"></i>Actualizar';
-        new bootstrap.Modal(document.getElementById('modalMantenimientoPrev')).show();
-    } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalMantenimientoPrev'));
+        modal.show();
+        
+        // Mostrar información sobre insumos bloqueados
+        if (insumosOriginales.length > 0) {
+            setTimeout(() => {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Insumos existentes',
+                    html: `
+                        <p>Los insumos marcados como <span class="badge bg-warning">Original</span> ya fueron descontados del stock.</p>
+                        <p class="text-danger"><i class="fas fa-lock"></i> No se pueden eliminar, solo modificar cantidad.</p>
+                        <p class="text-success">Puedes agregar nuevos insumos normalmente.</p>
+                    `,
+                    confirmButtonColor: '#3085d6',
+                    toast: true,
+                    position: 'top-end',
+                    timer: 5000
+                });
+            }, 500);
+        }
+    } catch (e) { 
+        console.error('❌ Error al editar:', e);
+        Swal.fire("Error", "No se pudo cargar", "error"); 
+    }
 };
 
+// ==========================================
+// ELIMINAR MANTENIMIENTO
+// ==========================================
+window.eliminarMantenimiento = async function(id) {
+    const result = await Swal.fire({
+        title: '¿Eliminar mantenimiento?',
+        html: `
+            <p class="text-danger"><i class="fas fa-exclamation-triangle"></i> Esta acción no se puede deshacer</p>
+            <p>Se <strong>repondrá</strong> el stock de todos los insumos utilizados.</p>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: '<i class="fas fa-trash"></i> Sí, eliminar',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+        cancelButtonColor: '#3085d6'
+    });
+    
+    if (!result.isConfirmed) return;
+    
+    try {
+        Swal.fire({
+            title: 'Eliminando...',
+            text: 'Reponiendo stock y eliminando registro',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        // Obtener el mantenimiento para reponer stock
+        const resGet = await fetch(`${API_MANT}/${id}`);
+        const response = await resGet.json();
+        const mantenimiento = response.success ? response.data : response;
+        
+        // Reponer stock de todos los insumos
+        if (mantenimiento.insumos && mantenimiento.insumos.length > 0) {
+            for (const insumo of mantenimiento.insumos) {
+                await actualizarStockProducto(insumo.id_producto, insumo.insumo_cantidad, 'reponer');
+            }
+        }
+        
+        // Eliminar el mantenimiento
+        const resDel = await fetch(`${API_MANT}/${id}`, { method: 'DELETE' });
+        
+        if (resDel.ok) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Eliminado',
+                text: 'Mantenimiento eliminado y stock restaurado correctamente',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            listarMantenimiento();
+        } else {
+            throw new Error('Error al eliminar');
+        }
+    } catch (error) {
+        console.error('❌ Error al eliminar:', error);
+        Swal.fire('Error', 'No se pudo eliminar el mantenimiento. Intente nuevamente.', 'error');
+    }
+};
 
-
+// ==========================================
+// DESCARGAR PDF
+// ==========================================
 window.descargarPDFMantenimiento = async function(id) {
     try {
         const jsPDFLib = await asegurarLibreriasPDF();
@@ -416,6 +670,7 @@ window.descargarPDFMantenimiento = async function(id) {
         
         const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
         
+        // Encabezado
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
         doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
@@ -449,6 +704,7 @@ window.descargarPDFMantenimiento = async function(id) {
         y = addPDFLine(doc, "Descripción:", m.moto_llegada_descripcion || '-', y);
         y = addPDFLine(doc, "Trabajo Realizado:", m.trabajo_realizado || 'Pendiente', y);
         
+        // Tabla servicios
         if (m.servicios?.length > 0) {
             y += 5;
             doc.setFontSize(12);
@@ -477,6 +733,7 @@ window.descargarPDFMantenimiento = async function(id) {
             }
         }
         
+        // Tabla insumos
         if (m.insumos?.length > 0) {
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
@@ -509,6 +766,7 @@ window.descargarPDFMantenimiento = async function(id) {
             }
         }
         
+        // Total
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 190, y, { align: "right" });
@@ -525,8 +783,26 @@ window.descargarPDFMantenimiento = async function(id) {
     }
 };
 
+// ==========================================
+// EXPONER FUNCIONES
+// ==========================================
 window.listarMantenimiento = listarMantenimiento;
+window.agregarServicioMant = window.agregarServicioMant;
+window.buscarInsumoMant = window.buscarInsumoMant;
+window.seleccionarInsumoMant = window.seleccionarInsumoMant;
+window.agregarInsumoMant = window.agregarInsumoMant;
+window.quitarServicioMant = window.quitarServicioMant;
+window.quitarInsumoMant = window.quitarInsumoMant;
+window.abrirModalMantenimiento = window.abrirModalMantenimiento;
+window.guardarMantenimiento = window.guardarMantenimiento;
+window.verMantenimiento = window.verMantenimiento;
+window.editarMantenimiento = window.editarMantenimiento;
+window.eliminarMantenimiento = window.eliminarMantenimiento;
+window.descargarPDFMantenimiento = window.descargarPDFMantenimiento;
 
+// ==========================================
+// INICIALIZACIÓN
+// ==========================================
 document.addEventListener('vista-cargada', function(e) {
     if (e.detail && e.detail.vista && 
         (e.detail.vista.includes('mantenimiento') || e.detail.vista.includes('Mantenimiento'))) {
@@ -537,3 +813,5 @@ document.addEventListener('vista-cargada', function(e) {
 if (document.getElementById("tablaMantenimiento")) {
     listarMantenimiento();
 }
+
+console.log('✅ Módulo de mantenimiento cargado correctamente');
