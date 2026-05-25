@@ -10,6 +10,7 @@
 
     let serviciosAgregados = [];
     let insumosAgregados = [];
+    let insumosOriginalesMap = new Map();
     let inicializado = false;
 
     // ==========================================
@@ -190,48 +191,92 @@
                 );
 
                 lista.innerHTML = filtrados.map(p => `
-                    <button type="button" class="list-group-item list-group-item-action" onclick="window.seleccionarInsumo(${p.id_producto},'${p.pro_nombre.replace(/'/g, "\\'")}',${p.pro_precio_venta})">
+                    <button type="button" class="list-group-item list-group-item-action" onclick="window.seleccionarInsumo(${p.id_producto},'${p.pro_nombre.replace(/'/g, "\\'")}',${p.pro_precio_venta},${p.pro_stock})">
                         ${p.pro_nombre} - $${parseFloat(p.pro_precio_venta).toFixed(2)} (Stock: ${p.pro_stock})
                     </button>`).join('');
                 lista.style.display = filtrados.length ? "block" : "none";
             });
     };
 
-    window.seleccionarInsumo = function(id, nombre, precio) {
+    window.seleccionarInsumo = function(id, nombre, precio, stock) {
         document.getElementById("buscarInsumo").value = nombre;
         document.getElementById("buscarInsumo").dataset.idProducto = id;
+        document.getElementById("buscarInsumo").dataset.stock = stock;
         document.getElementById("insumo_precio").value = precio;
         document.getElementById("listaResultadosInsumos").style.display = "none";
     };
 
     // ==========================================
-    // AGREGAR INSUMO
+    // AGREGAR INSUMO (CON BLOQUEO DE ORIGINALES)
     // ==========================================
     window.agregarInsumo = function() {
-        const id = document.getElementById("buscarInsumo").dataset.idProducto;
+        const idProducto = document.getElementById("buscarInsumo").dataset.idProducto;
         const nombre = document.getElementById("buscarInsumo").value;
         const cantidad = parseInt(document.getElementById("insumo_cantidad").value) || 1;
         const precio = parseFloat(document.getElementById("insumo_precio").value) || 0;
+        const stock = parseInt(document.getElementById("buscarInsumo").dataset.stock) || 0;
 
-        if (!id || !nombre) return Swal.fire("Aviso", "Busca y selecciona un producto", "warning");
+        if (!idProducto || !nombre) return Swal.fire("Aviso", "Busca y selecciona un producto", "warning");
         if (cantidad <= 0) return Swal.fire("Aviso", "Cantidad inválida", "warning");
 
-        insumosAgregados.push({
-            id_producto: parseInt(id),
-            nombre: nombre,
-            insumo_cantidad: cantidad,
-            insumo_precio_unitario: precio
-        });
+        const idNum = parseInt(idProducto);
+        const indiceExistente = insumosAgregados.findIndex(i => i.id_producto === idNum);
 
-        document.getElementById("buscarInsumo").value = "";
-        delete document.getElementById("buscarInsumo").dataset.idProducto;
-        document.getElementById("insumo_cantidad").value = 1;
-        document.getElementById("insumo_precio").value = 0;
-        actualizarTotales();
+        if (indiceExistente !== -1) {
+            const existente = insumosAgregados[indiceExistente];
+            const cantidadTotal = existente.insumo_cantidad + cantidad;
+
+            if (cantidadTotal > stock) {
+                return Swal.fire("Aviso", `Stock insuficiente. Ya tienes ${existente.insumo_cantidad}, disponible: ${stock}`, "warning");
+            }
+
+            Swal.fire({
+                title: 'Producto ya agregado',
+                html: `<p><strong>${nombre}</strong> ya está en la lista con <strong>${existente.insumo_cantidad} unidad(es)</strong>.</p>
+                       <p>¿Agregar <strong>${cantidad}</strong> más?</p>
+                       <p class="text-muted">Nuevo total: <strong>${cantidadTotal} unidad(es)</strong></p>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, agregar más',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#28a745'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    insumosAgregados[indiceExistente].insumo_cantidad = cantidadTotal;
+                    insumosAgregados[indiceExistente].modificado = true;
+                    limpiarCamposInsumo();
+                    actualizarTotales();
+                }
+            });
+        } else {
+            if (cantidad > stock) {
+                return Swal.fire("Aviso", `Stock insuficiente. Disponible: ${stock}`, "warning");
+            }
+
+            insumosAgregados.push({
+                id_producto: idNum,
+                nombre: nombre,
+                insumo_cantidad: cantidad,
+                insumo_precio_unitario: precio,
+                esOriginal: false,
+                modificado: true
+            });
+
+            limpiarCamposInsumo();
+            actualizarTotales();
+        }
     };
 
+    function limpiarCamposInsumo() {
+        document.getElementById("buscarInsumo").value = "";
+        delete document.getElementById("buscarInsumo").dataset.idProducto;
+        delete document.getElementById("buscarInsumo").dataset.stock;
+        document.getElementById("insumo_cantidad").value = 1;
+        document.getElementById("insumo_precio").value = 0;
+    }
+
     // ==========================================
-    // ACTUALIZAR TOTALES
+    // ACTUALIZAR TOTALES (CON BLOQUEO VISUAL)
     // ==========================================
     function actualizarTotales() {
         const totalServicios = serviciosAgregados.reduce((s, item) => s + item.precio_aplicado, 0);
@@ -251,18 +296,74 @@
         
         const divInsumos = document.getElementById("listaInsumosAgregados");
         if (divInsumos) {
-            divInsumos.innerHTML = insumosAgregados.map((item, i) => `
-                <div class="d-flex justify-content-between align-items-center bg-light p-2 mb-1 rounded">
-                    <span><i class="fas fa-box text-primary me-2"></i>${item.nombre} x${item.insumo_cantidad}</span>
-                    <span>$${(item.insumo_cantidad * item.insumo_precio_unitario).toFixed(2)}
-                        <button class="btn btn-sm text-danger" onclick="window.quitarInsumo(${i})">✕</button></span></div>`).join('');
+            divInsumos.innerHTML = insumosAgregados.map((item, i) => {
+                const esOriginal = item.esOriginal && !item.modificado;
+                let botones = '';
+
+                if (esOriginal) {
+                    botones = `<span class="badge bg-warning text-dark ms-2" title="Insumo original - No modificable"><i class="fas fa-lock"></i> Original</span>`;
+                } else if (item.esOriginal && item.modificado) {
+                    const cantidadOriginal = insumosOriginalesMap.get(item.id_producto) || item.insumo_cantidad;
+                    botones = `
+                        <button class="btn btn-sm btn-outline-warning ms-1" onclick="window.restaurarCantidadServicio(${i})" title="Restaurar cantidad original (${cantidadOriginal})"><i class="fas fa-undo"></i></button>
+                        <button class="btn btn-sm text-danger ms-1" onclick="window.reducirInsumoServicio(${i})" title="Reducir cantidad"><i class="fas fa-minus"></i></button>`;
+                } else {
+                    botones = `<button class="btn btn-sm text-danger" onclick="window.quitarInsumo(${i})" title="Eliminar insumo"><i class="fas fa-trash"></i></button>`;
+                }
+
+                const claseFila = esOriginal ? 'border border-warning' : (item.modificado ? 'border border-info' : '');
+
+                return `
+                <div class="d-flex justify-content-between align-items-center bg-light p-2 mb-1 rounded ${claseFila}">
+                    <span><i class="fas fa-box text-primary me-2"></i>${item.nombre} <strong>x${item.insumo_cantidad}</strong></span>
+                    <span>$${(item.insumo_cantidad * item.insumo_precio_unitario).toFixed(2)} ${botones}</span>
+                </div>`;
+            }).join('');
         }
 
         document.getElementById("total_general").textContent = (totalServicios + totalInsumos).toFixed(2);
     }
 
     window.quitarServicio = function(i) { serviciosAgregados.splice(i, 1); actualizarTotales(); };
-    window.quitarInsumo = function(i) { insumosAgregados.splice(i, 1); actualizarTotales(); };
+    
+    window.quitarInsumo = function(i) {
+        const item = insumosAgregados[i];
+        if (item.esOriginal && !item.modificado) {
+            Swal.fire({ icon: 'warning', title: 'No se puede eliminar', text: 'Este insumo ya fue registrado.' });
+            return;
+        }
+        insumosAgregados.splice(i, 1);
+        actualizarTotales();
+    };
+
+    window.reducirInsumoServicio = function(i) {
+        const item = insumosAgregados[i];
+        Swal.fire({
+            title: 'Reducir cantidad',
+            html: `<p>Cantidad actual: <strong>${item.insumo_cantidad}</strong></p>
+                   <input type="number" id="nuevaCantidadServ" class="form-control" min="1" max="${item.insumo_cantidad}" value="${item.insumo_cantidad}">`,
+            showCancelButton: true,
+            confirmButtonText: 'Actualizar',
+            preConfirm: () => {
+                const nueva = parseInt(document.getElementById('nuevaCantidadServ').value);
+                if (!nueva || nueva < 1) { Swal.showValidationMessage('Cantidad inválida'); return false; }
+                return nueva;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) { item.insumo_cantidad = result.value; item.modificado = true; actualizarTotales(); }
+        });
+    };
+
+    window.restaurarCantidadServicio = function(i) {
+        const item = insumosAgregados[i];
+        const cantidadOriginal = insumosOriginalesMap.get(item.id_producto);
+        if (cantidadOriginal) {
+            item.insumo_cantidad = cantidadOriginal;
+            item.modificado = false;
+            actualizarTotales();
+            Swal.fire({ icon: 'success', title: 'Restaurado', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+        }
+    };
 
     // ==========================================
     // ABRIR MODAL
@@ -278,21 +379,17 @@
         
         serviciosAgregados = [];
         insumosAgregados = [];
+        insumosOriginalesMap = new Map();
         
         const modalEl = document.getElementById('modalMantenimiento');
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
         
         modalEl.addEventListener('shown.bs.modal', function() {
-            const titulo = document.getElementById("tituloModal");
-            if (titulo) titulo.textContent = "Nueva Orden de Servicio";
-            
-            const btnGuardar = document.getElementById("btnGuardarServicio");
-            if (btnGuardar) btnGuardar.innerHTML = '<i class="fas fa-save me-2"></i>Guardar Orden';
-
+            document.getElementById("tituloModal").textContent = "Nueva Orden de Servicio";
+            document.getElementById("btnGuardarServicio").innerHTML = '<i class="fas fa-save me-2"></i>Guardar Orden';
             const trabajo = document.getElementById("trabajo_realizado");
             if (trabajo) trabajo.value = "";
-            
             actualizarTotales();
         }, { once: true });
         
@@ -300,7 +397,7 @@
     };
 
     // ==========================================
-    // GUARDAR SERVICIO
+    // GUARDAR SERVICIO (CON ANTI-DUPLICADOS)
     // ==========================================
     window.guardarServicio = async function() {
         const idEditar = document.getElementById("formMantenimiento").dataset.editarId;
@@ -316,6 +413,22 @@
             return Swal.fire("Aviso", "Cliente, Mecánico y Modelo son obligatorios", "warning");
         }
 
+        // Eliminar duplicados
+        const insumosUnicos = [];
+        const mapaInsumos = new Map();
+        for (const item of insumosAgregados) {
+            if (mapaInsumos.has(item.id_producto)) {
+                mapaInsumos.get(item.id_producto).insumo_cantidad += item.insumo_cantidad;
+            } else {
+                mapaInsumos.set(item.id_producto, {
+                    id_producto: item.id_producto,
+                    insumo_cantidad: item.insumo_cantidad,
+                    insumo_precio_unitario: item.insumo_precio_unitario
+                });
+            }
+        }
+        for (const [id, insumo] of mapaInsumos) { insumosUnicos.push(insumo); }
+
         const url = idEditar ? `${API_MANTENIMIENTO}/${idEditar}` : API_MANTENIMIENTO;
         const method = idEditar ? 'PUT' : 'POST';
 
@@ -328,10 +441,12 @@
             trabajo_realizado: trabajoRealizado,
             estado_servicio: estado,
             servicios: serviciosAgregados,
-            insumos: insumosAgregados
+            insumos: insumosUnicos
         };
 
         try {
+            Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
             const res = await fetch(url, {
                 method: method,
                 headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -344,8 +459,7 @@
 
                 if (idCita && estado === 'Terminado') {
                     fetch(`${API_CITAS_SERV}/${idCita}`, {
-                        method: 'PUT',
-                        headers: { "Content-Type": "application/json" },
+                        method: 'PUT', headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ cita_estado: 'Realizada' })
                     }).catch(() => {});
                 }
@@ -373,57 +487,37 @@
             const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
             const response = await res.json();
             const m = response.success ? response.data : response;
+            const estadoColor = m.estado_servicio === 'Terminado' || m.estado_servicio === 'Entregado' ? '#28a745' : m.estado_servicio === 'En Proceso' ? '#117483' : '#ffc107';
 
-            const estadoColor = m.estado_servicio === 'Terminado' || m.estado_servicio === 'Entregado' ? '#28a745' :
-                               m.estado_servicio === 'En Proceso' ? '#117483' : '#ffc107';
-
-            let html = `
-            <div style="font-size:14px;">
-                <table style="width:100%;border-collapse:collapse;margin-bottom:15px;">
-                    <tr><td style="padding:5px;font-weight:bold;width:35%;">Folio:</td><td>#${m.id_mantenimiento}</td></tr>
-                    <tr><td style="padding:5px;font-weight:bold;">Cliente:</td><td>${m.cliente ? m.cliente.cli_nombre+' '+m.cliente.cli_apaterno : 'S/D'}</td></tr>
-                    <tr><td style="padding:5px;font-weight:bold;">Mecánico:</td><td>${m.mecanico ? m.mecanico.emp_nombre : 'S/D'}</td></tr>
-                    <tr><td style="padding:5px;font-weight:bold;">Modelo:</td><td>${m.moto_modelo||'N/A'}</td></tr>
-                    <tr><td style="padding:5px;font-weight:bold;">Descripción:</td><td>${m.moto_llegada_descripcion||'-'}</td></tr>
-                    <tr><td style="padding:5px;font-weight:bold;">Trabajo:</td><td>${m.trabajo_realizado||'Pendiente'}</td></tr>
-                    <tr><td style="padding:5px;font-weight:bold;">Estado:</td><td><span style="background:${estadoColor};color:white;padding:3px 10px;border-radius:12px;">${m.estado_servicio||'Pendiente'}</span></td></tr>
-                </table>`;
+            let html = `<div style="font-size:14px;"><table style="width:100%;border-collapse:collapse;margin-bottom:15px;">
+                <tr><td style="padding:5px;font-weight:bold;width:35%;">Folio:</td><td>#${m.id_mantenimiento}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Cliente:</td><td>${m.cliente ? m.cliente.cli_nombre+' '+m.cliente.cli_apaterno : 'S/D'}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Mecánico:</td><td>${m.mecanico ? m.mecanico.emp_nombre : 'S/D'}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Modelo:</td><td>${m.moto_modelo||'N/A'}</td></tr>
+                <tr><td style="padding:5px;font-weight:bold;">Estado:</td><td><span style="background:${estadoColor};color:white;padding:3px 10px;border-radius:12px;">${m.estado_servicio||'Pendiente'}</span></td></tr>
+            </table>`;
 
             if (m.servicios?.length > 0) {
-                html += `<hr><strong>🔧 Mano de Obra:</strong>
-                <table style="width:100%;font-size:12px;margin-top:5px;">
-                    <tr style="background:#d3a934;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
+                html += `<hr><strong>🔧 Mano de Obra:</strong><table style="width:100%;font-size:12px;margin-top:5px;">`;
                 let totalServ = 0;
-                m.servicios.forEach(s => {
-                    totalServ += parseFloat(s.precio_aplicado||0);
-                    html += `<tr><td style="padding:5px;">${s.servicio?.ser_nombre||'Servicio #'+s.id_servicio}</td><td style="text-align:right;">$${parseFloat(s.precio_aplicado||0).toFixed(2)}</td></tr>`;
-                });
+                m.servicios.forEach(s => { totalServ += parseFloat(s.precio_aplicado||0); html += `<tr><td>${s.servicio?.ser_nombre||'Servicio'}</td><td style="text-align:right;">$${parseFloat(s.precio_aplicado||0).toFixed(2)}</td></tr>`; });
                 html += `<tr style="font-weight:bold;background:#f8f9fa;"><td style="text-align:right;">Total:</td><td style="text-align:right;">$${totalServ.toFixed(2)}</td></tr></table>`;
             }
 
             if (m.insumos?.length > 0) {
-                html += `<br><strong>📦 Insumos:</strong>
-                <table style="width:100%;font-size:12px;margin-top:5px;">
-                    <tr style="background:#1b297a;color:white;"><th style="padding:5px;">Producto</th><th style="text-align:center;">Cant</th><th style="text-align:right;">P.Unit</th><th style="text-align:right;">Sub</th></tr>`;
+                html += `<br><strong>📦 Insumos:</strong><table style="width:100%;font-size:12px;margin-top:5px;">`;
                 let totalIns = 0;
-                m.insumos.forEach(i => {
-                    const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0);
-                    totalIns += sub;
-                    html += `<tr><td>${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`;
-                });
+                m.insumos.forEach(i => { const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0); totalIns += sub; html += `<tr><td>${i.producto?.pro_nombre||'Producto'}</td><td style="text-align:center;">${i.insumo_cantidad}</td><td style="text-align:right;">$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}</td><td style="text-align:right;">$${sub.toFixed(2)}</td></tr>`; });
                 html += `<tr style="font-weight:bold;background:#f8f9fa;"><td colspan="3" style="text-align:right;">Total:</td><td style="text-align:right;">$${totalIns.toFixed(2)}</td></tr></table>`;
             }
 
             html += `<div style="text-align:right;margin-top:15px;font-size:18px;"><strong>TOTAL: $${parseFloat(m.mantenimiento_total||0).toFixed(2)}</strong></div></div>`;
-
             Swal.fire({ title: `Servicio #${m.id_mantenimiento}`, html: html, width: '650px', confirmButtonColor: '#080522' });
-        } catch (e) {
-            Swal.fire("Error", "No se pudo cargar", "error");
-        }
+        } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
     };
 
     // ==========================================
-    // EDITAR SERVICIO
+    // EDITAR SERVICIO (CON BLOQUEO DE ORIGINALES)
     // ==========================================
     window.editarServicio = async function(id) {
         try {
@@ -441,26 +535,24 @@
             document.getElementById("estado_servicio").value = m.estado_servicio || "En Proceso";
 
             serviciosAgregados = m.servicios?.map(s => ({
-                id_servicio: s.id_servicio,
-                nombre: s.servicio?.ser_nombre || 'Servicio',
-                precio_aplicado: parseFloat(s.precio_aplicado || 0)
+                id_servicio: s.id_servicio, nombre: s.servicio?.ser_nombre || 'Servicio', precio_aplicado: parseFloat(s.precio_aplicado || 0)
             })) || [];
 
             insumosAgregados = m.insumos?.map(i => ({
-                id_producto: i.id_producto,
-                nombre: i.producto?.pro_nombre || 'Producto',
-                insumo_cantidad: i.insumo_cantidad,
-                insumo_precio_unitario: parseFloat(i.insumo_precio_unitario || 0)
+                id_producto: i.id_producto, nombre: i.producto?.pro_nombre || 'Producto',
+                insumo_cantidad: i.insumo_cantidad, insumo_precio_unitario: parseFloat(i.insumo_precio_unitario || 0),
+                esOriginal: true, modificado: false
             })) || [];
+
+            insumosOriginalesMap = new Map();
+            insumosAgregados.forEach(item => { insumosOriginalesMap.set(item.id_producto, item.insumo_cantidad); });
 
             actualizarTotales();
             document.getElementById("formMantenimiento").dataset.editarId = id;
             document.getElementById("tituloModal").textContent = "Editar Orden de Servicio";
             document.getElementById("btnGuardarServicio").innerHTML = '<i class="fas fa-save me-2"></i>Actualizar Orden';
             new bootstrap.Modal(document.getElementById('modalMantenimiento')).show();
-        } catch (e) {
-            Swal.fire("Error", "No se pudo cargar", "error");
-        }
+        } catch (e) { Swal.fire("Error", "No se pudo cargar", "error"); }
     };
 
     // ==========================================
@@ -472,10 +564,8 @@
             const response = await res.json();
             let cita = response.success ? response.data : response;
             if (!cita?.id_cita) throw new Error('Formato inválido');
-
             const modalEl = document.getElementById("modalMantenimiento");
             new bootstrap.Modal(modalEl).show();
-
             modalEl.addEventListener('shown.bs.modal', function fill() {
                 modalEl.removeEventListener('shown.bs.modal', fill);
                 document.getElementById("id_cita_input").value = id;
@@ -485,153 +575,73 @@
                 document.getElementById("estado_servicio").value = "En Proceso";
                 setTimeout(() => document.getElementById("moto_modelo")?.focus(), 300);
             });
-
             Swal.fire({ title: 'Servicio iniciado', text: `Desde cita #${id}`, icon: 'success', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
-        } catch (e) {
-            Swal.fire({ title: 'Error', text: e.message, icon: 'error' });
-        }
+        } catch (e) { Swal.fire({ title: 'Error', text: e.message, icon: 'error' }); }
     }
 
     // ==========================================
     // DESCARGAR PDF
     // ==========================================
-  // ==========================================
-// DESCARGAR PDF CON VERIFICACIÓN DE LIBRERÍAS
-// ==========================================
-
-
-// ==========================================
-// DESCARGAR PDF - SERVICIOS
-// ==========================================
-window.descargarPDFServicio = async function(id) {
-    try {
-        console.log('=== GENERANDO PDF SERVICIO ===');
-        
-        const jsPDFLib = await asegurarLibreriasPDF();
-        if (!jsPDFLib) throw new Error('No se pudo cargar jsPDF');
-        
-        const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
-        const response = await res.json();
-        const m = response.success ? response.data : response;
-        
-        const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
-        
-        // Encabezado
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text("Orden de Servicio", 105, 22, { align: "center" });
-        doc.line(10, 25, 200, 25);
-        
-        let y = 32;
-        
-        y = addPDFLine(doc, "Folio:", `#${m.id_mantenimiento}`, y);
-        y = addPDFLine(doc, "Fecha:", formatearFecha(m.fecha_inicio), y);
-        y = addPDFLine(doc, "Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D', y);
-        y = addPDFLine(doc, "Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D', y);
-        y = addPDFLine(doc, "Modelo:", m.moto_modelo || 'N/A', y);
-        y = addPDFLine(doc, "Estado:", m.estado_servicio || 'Pendiente', y);
-        y = addPDFLine(doc, "Descripción:", m.moto_llegada_descripcion || '-', y);
-        y = addPDFLine(doc, "Trabajo Realizado:", m.trabajo_realizado || 'Pendiente', y);
-        
-        // Tabla servicios
-        if (m.servicios?.length > 0) {
-            y += 5;
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("Servicios (Mano de Obra)", 15, y);
-            y += 6;
+    window.descargarPDFServicio = async function(id) {
+        try {
+            const jsPDFLib = await asegurarLibreriasPDF();
+            if (!jsPDFLib) throw new Error('No se pudo cargar jsPDF');
+            const res = await fetch(`${API_MANTENIMIENTO}/${id}`);
+            const response = await res.json();
+            const m = response.success ? response.data : response;
+            const doc = new jsPDFLib({ unit: 'mm', format: 'a4' });
             
-            const filas = m.servicios.map(s => [
-                s.servicio?.ser_nombre || 'Servicio #' + s.id_servicio,
-                `$${parseFloat(s.precio_aplicado || 0).toFixed(2)}`
-            ]);
-            const total = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado || 0), 0);
-            filas.push(["TOTAL MANO DE OBRA", `$${total.toFixed(2)}`]);
+            doc.setFontSize(16); doc.setFont("helvetica", "bold");
+            doc.text("JHP - Taller Mecánico", 105, 15, { align: "center" });
+            doc.setFontSize(10); doc.setFont("helvetica", "normal");
+            doc.text("Orden de Servicio", 105, 22, { align: "center" });
+            doc.line(10, 25, 200, 25);
             
-            if (typeof doc.autoTable === 'function') {
-                doc.autoTable({
-                    startY: y,
-                    head: [['Servicio', 'Precio']],
-                    body: filas,
-                    theme: 'striped',
-                    headStyles: { fillColor: [253, 126, 20] },
-                    margin: { left: 15, right: 15 },
-                    styles: { fontSize: 9 }
-                });
-                y = doc.lastAutoTable.finalY + 5;
+            let y = 32;
+            y = addPDFLine(doc, "Folio:", `#${m.id_mantenimiento}`, y);
+            y = addPDFLine(doc, "Fecha:", formatearFecha(m.fecha_inicio), y);
+            y = addPDFLine(doc, "Cliente:", m.cliente ? `${m.cliente.cli_nombre} ${m.cliente.cli_apaterno}` : 'S/D', y);
+            y = addPDFLine(doc, "Mecánico:", m.mecanico ? m.mecanico.emp_nombre : 'S/D', y);
+            y = addPDFLine(doc, "Modelo:", m.moto_modelo || 'N/A', y);
+            y = addPDFLine(doc, "Estado:", m.estado_servicio || 'Pendiente', y);
+            y = addPDFLine(doc, "Descripción:", m.moto_llegada_descripcion || '-', y);
+            y = addPDFLine(doc, "Trabajo Realizado:", m.trabajo_realizado || 'Pendiente', y);
+            
+            if (m.servicios?.length > 0) {
+                y += 5; doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("Servicios", 15, y); y += 6;
+                const filas = m.servicios.map(s => [s.servicio?.ser_nombre || 'Servicio', `$${parseFloat(s.precio_aplicado||0).toFixed(2)}`]);
+                const total = m.servicios.reduce((sum, s) => sum + parseFloat(s.precio_aplicado||0), 0);
+                filas.push(["TOTAL MANO DE OBRA", `$${total.toFixed(2)}`]);
+                if (typeof doc.autoTable === 'function') { doc.autoTable({ startY: y, head: [['Servicio', 'Precio']], body: filas, theme: 'striped', headStyles: { fillColor: [253, 126, 20] }, margin: { left: 15, right: 15 }, styles: { fontSize: 9 } }); y = doc.lastAutoTable.finalY + 5; }
             }
-        }
-        
-        // Tabla insumos
-        if (m.insumos?.length > 0) {
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("Insumos Utilizados", 15, y);
-            y += 6;
             
-            const filas = m.insumos.map(i => {
-                const sub = (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0);
-                return [
-                    i.producto?.pro_nombre || 'Producto',
-                    String(i.insumo_cantidad || 0),
-                    `$${parseFloat(i.insumo_precio_unitario || 0).toFixed(2)}`,
-                    `$${sub.toFixed(2)}`
-                ];
-            });
-            const total = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad || 0) * (i.insumo_precio_unitario || 0), 0);
-            filas.push(["TOTAL INSUMOS", "", "", `$${total.toFixed(2)}`]);
-            
-            if (typeof doc.autoTable === 'function') {
-                doc.autoTable({
-                    startY: y,
-                    head: [['Producto', 'Cant', 'P. Unit.', 'Subtotal']],
-                    body: filas,
-                    theme: 'striped',
-                    headStyles: { fillColor: [13, 110, 253] },
-                    margin: { left: 15, right: 15 },
-                    styles: { fontSize: 9 }
-                });
-                y = doc.lastAutoTable.finalY + 8;
+            if (m.insumos?.length > 0) {
+                doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("Insumos", 15, y); y += 6;
+                const filas = m.insumos.map(i => { const sub = (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0); return [i.producto?.pro_nombre||'Producto', String(i.insumo_cantidad||0), `$${parseFloat(i.insumo_precio_unitario||0).toFixed(2)}`, `$${sub.toFixed(2)}`]; });
+                const total = m.insumos.reduce((sum, i) => sum + (i.insumo_cantidad||0)*(i.insumo_precio_unitario||0), 0);
+                filas.push(["TOTAL INSUMOS", "", "", `$${total.toFixed(2)}`]);
+                if (typeof doc.autoTable === 'function') { doc.autoTable({ startY: y, head: [['Producto', 'Cant', 'P.Unit', 'Subtotal']], body: filas, theme: 'striped', headStyles: { fillColor: [13, 110, 253] }, margin: { left: 15, right: 15 }, styles: { fontSize: 9 } }); y = doc.lastAutoTable.finalY + 8; }
             }
-        }
-        
-        // Total
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total || 0).toFixed(2)}`, 190, y, { align: "right" });
-        
-        doc.setFontSize(8);
-        doc.text("JHP Taller Mecánico - Orden de Servicio", 105, 285, { align: "center" });
-        
-        const pdfBlob = doc.output('blob');
-        window.open(URL.createObjectURL(pdfBlob), '_blank');
-        
-    } catch (e) {
-        console.error('Error PDF:', e);
-        Swal.fire("Error", "No se pudo generar el PDF: " + e.message, "error");
-    }
-};
+            
+            doc.setFontSize(14); doc.setFont("helvetica", "bold");
+            doc.text(`TOTAL: $${parseFloat(m.mantenimiento_total||0).toFixed(2)}`, 190, y, { align: "right" });
+            doc.setFontSize(8); doc.text("JHP Taller Mecánico - Orden de Servicio", 105, 285, { align: "center" });
+            window.open(URL.createObjectURL(doc.output('blob')), '_blank');
+        } catch (e) { console.error('Error PDF:', e); Swal.fire("Error", "No se pudo generar el PDF", "error"); }
+    };
+
     // ==========================================
     // EXPONER E INICIALIZAR
     // ==========================================
     window.inicializarServicios = inicializarServicios;
     window.listarServicios = listarServicios;
 
-    // Inicialización al cargar
-    if (document.getElementById('tablaServicios')) {
-        inicializarServicios();
-    }
+    if (document.getElementById('tablaServicios')) { inicializarServicios(); }
 
-    // Reinicializar cuando se navega desde el menú
     document.addEventListener('vista-cargada', function(e) {
-        if (e.detail && e.detail.vista && 
-            (e.detail.vista.includes('servicio') || e.detail.vista.includes('Servicio'))) {
+        if (e.detail?.vista && (e.detail.vista.includes('servicio') || e.detail.vista.includes('Servicio'))) {
             inicializado = false;
             setTimeout(inicializarServicios, 300);
         }
     });
-
 })();
