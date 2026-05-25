@@ -650,7 +650,7 @@ function inicializarMapa(lat, lng) {
 
     L.marker([lat, lng], {icon: tallerIcon})
         .addTo(mapaRefacciones)
-        .bindPopup('<b>🏍️ JHP Taller Mecánico</b><br>Tu ubicación actual')
+        .bindPopup('<b> JHP Taller Mecánico</b><br>Tu ubicación actual')
         .openPopup();
 
     buscarRefaccionariasCercanas(lat, lng);
