@@ -36,6 +36,7 @@ function showLogin() {
     viewRegister.classList.add('hidden');
     viewRecovery.classList.add('hidden');
     hideMessages();
+    document.getElementById('loginForm').reset();
 }
 
 function showRegister() {
@@ -43,6 +44,7 @@ function showRegister() {
     viewRegister.classList.remove('hidden');
     viewRecovery.classList.add('hidden');
     hideMessages();
+    document.getElementById('registerForm').reset();
 }
 
 function showRecovery() {
@@ -50,6 +52,7 @@ function showRecovery() {
     viewRegister.classList.add('hidden');
     viewRecovery.classList.remove('hidden');
     hideMessages();
+    document.getElementById('recoveryForm').reset();
 }
 
 // ==========================================
@@ -60,17 +63,17 @@ async function registrarCliente(event) {
     hideMessages();
 
     const nombre = document.getElementById('regNombre').value.trim();
-    const apaterno = document.getElementById('regApaterno')?.value.trim() || '';
-    const amaterno = document.getElementById('regAmaterno')?.value.trim() || '';
+    const apaterno = document.getElementById('regApaterno').value.trim();
+    const amaterno = document.getElementById('regAmaterno').value.trim() || '';
     const correo = document.getElementById('regCorreo').value.trim();
-    const telefono = document.getElementById('regTelefono')?.value.trim() || '';
-    const direccion = document.getElementById('regDireccion')?.value.trim() || '';
+    const telefono = document.getElementById('regTelefono').value.trim() || '';
+    const direccion = document.getElementById('regDireccion').value.trim() || '';
     const password = document.getElementById('regPassword').value;
     const passwordConfirmation = document.getElementById('regPassword_confirmation').value;
 
     // Validaciones
-    if (!nombre || !correo || !password || !passwordConfirmation) {
-        showError('Los campos nombre, correo y contraseña son obligatorios');
+    if (!nombre || !apaterno || !correo || !password || !passwordConfirmation) {
+        showError('Los campos marcados con * son obligatorios');
         return;
     }
 
@@ -133,11 +136,8 @@ async function registrarCliente(event) {
         }
 
         showSuccess('¡Registro exitoso! Ahora puedes iniciar sesión');
-        
-        // Limpiar formulario
         document.getElementById('registerForm').reset();
         
-        // Cambiar a login después de 2 segundos
         setTimeout(() => {
             showLogin();
         }, 2000);
@@ -149,7 +149,7 @@ async function registrarCliente(event) {
 }
 
 // ==========================================
-// INICIO DE SESIÓN (Ruta corregida: /auth/login)
+// INICIO DE SESIÓN
 // ==========================================
 async function iniciarSesion(event) {
     event.preventDefault();
@@ -164,7 +164,6 @@ async function iniciarSesion(event) {
     }
 
     try {
-        // Ruta CORREGIDA: usa /auth/login en lugar de /login
         const response = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: {
@@ -172,7 +171,7 @@ async function iniciarSesion(event) {
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                email: correo,  // El backend espera 'email' no 'correo'
+                email: correo,
                 password: password
             })
         });
@@ -183,14 +182,12 @@ async function iniciarSesion(event) {
             throw new Error(result.message || 'Credenciales incorrectas');
         }
 
-        // Guardar token y datos del usuario
         if (result.token) {
             localStorage.setItem('token', result.token);
             localStorage.setItem('user', JSON.stringify(result.user));
             
             showSuccess('¡Inicio de sesión exitoso!');
             
-            // Redirigir al dashboard después de 1.5 segundos
             setTimeout(() => {
                 window.location.href = 'dashboard.html';
             }, 1500);
@@ -205,7 +202,7 @@ async function iniciarSesion(event) {
 }
 
 // ==========================================
-// RECUPERACIÓN DE CONTRASEÑA (Ruta corregida: /password-reset/request)
+// RECUPERACIÓN DE CONTRASEÑA
 // ==========================================
 async function recuperarPassword(event) {
     event.preventDefault();
@@ -219,7 +216,6 @@ async function recuperarPassword(event) {
     }
 
     try {
-        // Ruta CORREGIDA: usa /password-reset/request
         const response = await fetch(`${API_BASE}/password-reset/request`, {
             method: 'POST',
             headers: {
@@ -238,7 +234,6 @@ async function recuperarPassword(event) {
         showSuccess('Se han enviado las instrucciones a tu correo electrónico');
         document.getElementById('recoveryForm').reset();
         
-        // Volver al login después de 3 segundos
         setTimeout(() => {
             showLogin();
         }, 3000);
@@ -256,20 +251,7 @@ document.getElementById('loginForm').addEventListener('submit', iniciarSesion);
 document.getElementById('registerForm').addEventListener('submit', registrarCliente);
 document.getElementById('recoveryForm').addEventListener('submit', recuperarPassword);
 
-// Botones de navegación
-const btnForgot = document.getElementById('btnForgot');
-const linkToRegister = document.getElementById('linkToRegister');
-const linkToLoginFromReg = document.getElementById('linkToLoginFromReg');
-const linkToLoginFromRec = document.getElementById('linkToLoginFromRec');
-
-if (btnForgot) btnForgot.addEventListener('click', showRecovery);
-if (linkToRegister) linkToRegister.addEventListener('click', showRegister);
-if (linkToLoginFromReg) linkToLoginFromReg.addEventListener('click', showLogin);
-if (linkToLoginFromRec) linkToLoginFromRec.addEventListener('click', showLogin);
-
-// Verificar si ya hay sesión activa
-if (localStorage.getItem('token')) {
-    // Opcional: redirigir al dashboard si ya está logueado
-    // window.location.href = 'dashboard.html';
-    console.log('Usuario ya autenticado');
-}
+document.getElementById('btnForgot').addEventListener('click', showRecovery);
+document.getElementById('linkToRegister').addEventListener('click', showRegister);
+document.getElementById('linkToLoginFromReg').addEventListener('click', showLogin);
+document.getElementById('linkToLoginFromRec').addEventListener('click', showLogin);
