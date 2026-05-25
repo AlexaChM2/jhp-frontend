@@ -356,18 +356,41 @@ window.guardarProducto = function() {
 
     fetch(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(producto)
     })
-    .then(res => res.json())
+    .then(async res => {
+        const data = await res.json();
+        
+        if (!res.ok) {
+            // ✅ Mostrar errores de validación (422)
+            if (res.status === 422 && data.errors) {
+                const errores = Object.values(data.errors).flat().join('<br>');
+                throw new Error(errores);
+            }
+            throw new Error(data.message || 'Error del servidor');
+        }
+        
+        return data;
+    })
     .then(data => {
-        Swal.fire({ icon: 'success', title: '¡Éxito!', timer: 1500, showConfirmButton: false });
+        Swal.fire({ 
+            icon: 'success', 
+            title: '¡Guardado!', 
+            text: data.message || 'Producto registrado',
+            timer: 1500, 
+            showConfirmButton: false 
+        });
         bootstrap.Modal.getInstance(document.getElementById('modalProducto')).hide();
         listarProductos();
     })
     .catch(err => {
         console.error("Error:", err);
-        Swal.fire('Error', 'No se pudo guardar', 'error');
+        Swal.fire({ 
+            icon: 'error', 
+            title: 'Error', 
+            html: err.message || 'No se pudo guardar'
+        });
     });
 };
 
