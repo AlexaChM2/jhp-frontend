@@ -147,7 +147,7 @@ async function registrarCliente(event) {
 }
 
 // ==========================================
-// INICIO DE SESIÓN (CORREGIDO - usa 'correo' no 'email')
+// INICIO DE SESIÓN
 // ==========================================
 async function iniciarSesion(event) {
     event.preventDefault();
@@ -182,10 +182,8 @@ async function iniciarSesion(event) {
         }
 
         if (result.success && result.data && result.data.token) {
-            // Guardar token y datos del usuario
             localStorage.setItem('token', result.data.token);
             
-            // Inicializar el sistema con el usuario
             if (typeof inicializarSistema === 'function') {
                 inicializarSistema(result.data.usuario);
             } else {
@@ -209,13 +207,7 @@ async function iniciarSesion(event) {
 }
 
 // ==========================================
-// RECUPERACIÓN DE CONTRASEÑA
-// ==========================================
-// ==========================================
-// RECUPERACIÓN DE CONTRASEÑA (MODIFICADA)
-// ==========================================
-// ==========================================
-// RECUPERACIÓN DE CONTRASEÑA (ACTUALIZADA)
+// RECUPERACIÓN DE CONTRASEÑA (ACTUALIZADA - CON MENSAJE DE CORREO ENVIADO)
 // ==========================================
 async function recuperarPassword(event) {
     event.preventDefault();
@@ -245,31 +237,22 @@ async function recuperarPassword(event) {
             throw new Error(result.message || 'Error al enviar instrucciones');
         }
 
-        // Manejar la respuesta correctamente (la estructura que devuelve tu API)
-        if (result.success && result.data && result.data.token) {
-            const token = result.data.token;
-            const resetUrl = `${window.location.origin}/reset-password.html?token=${token}&email=${encodeURIComponent(correo)}`;
-            
-            Swal.fire({
-                icon: 'success',
-                title: '¡Token generado!',
-                html: `
-                    <div class="text-start">
-                        <p><strong>Correo:</strong> ${correo}</p>
-                        <p><strong>Token:</strong> <code class="bg-light p-1" style="font-size: 11px; word-break: break-all;">${token}</code></p>
-                        <hr>
-                        <p>Usa este enlace para restablecer tu contraseña:</p>
-                        <a href="${resetUrl}" target="_blank" class="btn btn-primary btn-sm w-100" style="background: #ff3d00; color: white; text-decoration: none; display: inline-block; padding: 10px; border-radius: 10px;">Restablecer Contraseña</a>
-                        <hr>
-                        <small class="text-muted">En producción, esto se enviaría por correo electrónico</small>
-                    </div>
-                `,
-                confirmButtonText: 'Entendido',
-                width: '500px'
-            });
-        } else {
-            showSuccess(result.message || 'Se han enviado las instrucciones a tu correo electrónico');
-        }
+        // Mostrar mensaje de éxito - correo enviado
+        Swal.fire({
+            icon: 'success',
+            title: '¡Correo enviado!',
+            html: `
+                <div class="text-start">
+                    <p>Hemos enviado las instrucciones de recuperación a:</p>
+                    <p><strong>${correo}</strong></p>
+                    <hr>
+                    <p><i class="fas fa-envelope"></i> Revisa tu bandeja de entrada y la carpeta de <strong>spam</strong> o <strong>correo no deseado</strong>.</p>
+                    <p class="text-muted">El enlace expirará en 24 horas.</p>
+                </div>
+            `,
+            confirmButtonText: 'Entendido',
+            width: '500px'
+        });
         
         document.getElementById('recoveryForm').reset();
         
@@ -282,6 +265,7 @@ async function recuperarPassword(event) {
         showError(error.message || 'Error al conectar con el servidor');
     }
 }
+
 // ==========================================
 // FUNCIONES PARA EL SISTEMA CON ROLES
 // ==========================================
@@ -416,16 +400,10 @@ function cargarVistaConPermiso(vista) {
 
 // Inicializar el sistema después del login
 function inicializarSistema(user) {
-    // Guardar usuario en localStorage
     localStorage.setItem('user', JSON.stringify(user));
-    
-    // Cargar menú según el rol
     cargarMenuPorRol(user.rol);
-    
-    // Actualizar información del usuario en el header
     actualizarInfoUsuario(user);
     
-    // Cargar la vista inicial según el rol
     let vistaInicial = 'views/panel.html';
     if (user.rol === 'Cliente') {
         vistaInicial = 'views/cliente/perfil.html';
