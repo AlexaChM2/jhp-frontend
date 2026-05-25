@@ -488,6 +488,9 @@ window.abrirModalMantenimiento = function() {
 // ==========================================
 // GUARDAR MANTENIMIENTO (SIN MANIPULAR STOCK)
 // ==========================================
+// ==========================================
+// GUARDAR MANTENIMIENTO (YA NO DESCUENTA STOCK)
+// ==========================================
 window.guardarMantenimiento = async function() {
     const idEditar = document.getElementById("formMantenimientoPrev")?.dataset?.editarId;
     const idCliente = document.getElementById("id_cliente_mant")?.value;
@@ -504,8 +507,8 @@ window.guardarMantenimiento = async function() {
     const url = idEditar ? `${API_MANT}/${idEditar}` : API_MANT;
     const method = idEditar ? 'PUT' : 'POST';
 
-    // 🔥 Enviar TODOS los insumos (originales + nuevos)
-    // El backend se encarga de reponer stock de los viejos y descontar los nuevos
+    // Enviar TODOS los insumos (originales + nuevos)
+    // EL BACKEND se encarga de reponer stock de viejos y descontar nuevos
     const body = {
         id_cliente: parseInt(idCliente),
         id_mecanico: parseInt(idMecanico),
@@ -524,7 +527,7 @@ window.guardarMantenimiento = async function() {
     try {
         Swal.fire({
             title: 'Guardando...',
-            text: 'Por favor espere',
+            text: 'Procesando orden de mantenimiento...',
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
@@ -541,7 +544,7 @@ window.guardarMantenimiento = async function() {
             Swal.fire({ 
                 icon: 'success', 
                 title: idEditar ? '¡Actualizado!' : '¡Registrado!', 
-                text: 'El stock se ha actualizado correctamente',
+                text: 'El stock se ha actualizado correctamente desde el servidor',
                 timer: 2000, 
                 showConfirmButton: false 
             });
@@ -552,8 +555,8 @@ window.guardarMantenimiento = async function() {
             throw new Error(result.message || result.error || 'Error al guardar');
         }
     } catch (e) { 
-        console.error('Error al guardar:', e);
-        Swal.fire("Error", e.message || "No se pudo guardar", "error"); 
+        console.error('❌ Error al guardar:', e);
+        Swal.fire("Error", e.message || "No se pudo guardar el mantenimiento", "error"); 
     }
 };
 
