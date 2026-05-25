@@ -407,7 +407,7 @@ window.editarProducto = function(id) {
     document.getElementById('producto_codigo').value = producto.pro_codigo || '';
     document.getElementById('producto_nombre').value = producto.pro_nombre || '';
     document.getElementById('producto_tipo').value = producto.pro_tipo || '';
-    document.getElementById('producto_marca').value = producto.pro_marca || '';
+    //document.getElementById('producto_marca').value = producto.pro_marca || '';
     document.getElementById('producto_descripcion').value = producto.pro_descripcion || '';
     document.getElementById('producto_precio').value = producto.pro_precio_venta || '';
     document.getElementById('producto_stock').value = producto.pro_stock || 0;
@@ -452,12 +452,21 @@ window.confirmarEliminar = function(id) {
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
-        confirmButtonText: 'Sí, eliminar'
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
             fetch(`${window.API_PRODUCTOS}/${id}`, { method: 'DELETE' })
-                .then(() => { Swal.fire('Eliminado', '', 'success'); listarProductos(); })
-                .catch(() => Swal.fire('Error', 'No se pudo eliminar', 'error'));
+                .then(async res => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Error al eliminar');
+                    return data;
+                })
+                .then(() => {
+                    Swal.fire('Eliminado', '', 'success');
+                    listarProductos();
+                })
+                .catch(err => Swal.fire('Error', err.message, 'error'));
         }
     });
 };
