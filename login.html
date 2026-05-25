@@ -5,9 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Motocicletas - Acceso</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f9;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -17,12 +23,12 @@
         }
 
         .form-container {
-            width: 400px;
+            width: 450px;
             max-width: 100%;
             background-color: #ffffff;
-            box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
+            box-shadow: rgba(0, 0, 0, 0.2) 0px 10px 15px -3px, rgba(0, 0, 0, 0.1) 0px 4px 6px -2px;
             border-radius: 30px;
-            padding: 30px;
+            padding: 35px;
             box-sizing: border-box;
         }
 
@@ -32,7 +38,15 @@
             font-weight: 900;
             font-size: 1.5em;
             margin-top: 10px;
-            color: rgb(22, 22, 22);
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 20px;
         }
 
         .form {
@@ -42,18 +56,30 @@
         }
 
         .input {
-            background-color: white;
+            background-color: #f8f9fa;
             border-radius: 10px;
-            border: 2px solid #c0c0c0;
-            margin-bottom: 15px;
-            padding: 12px;
+            border: 2px solid #e0e0e0;
+            margin-bottom: 12px;
+            padding: 12px 15px;
             font-size: 14px;
             outline: none;
-            transition: border-color 0.3s;
+            transition: all 0.3s;
         }
 
         .input:focus {
             border-color: #ff3d00;
+            background-color: #fff;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .input-group .input {
+            flex: 1;
+            margin-bottom: 0;
         }
 
         .page-link {
@@ -65,25 +91,30 @@
         .page-link-label {
             cursor: pointer;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
-            color: #1976d2;
+            color: #ff3d00;
+        }
+
+        .page-link-label:hover {
+            text-decoration: underline;
         }
 
         .form-btn {
             padding: 12px;
-            background-color: #ff3d00;
+            background: linear-gradient(135deg, #ff3d00 0%, #ff6b35 100%);
             border-radius: 10px;
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 700;
             color: white;
             border: none;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .form-btn:hover {
-            background-color: #e03500;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 61, 0, 0.3);
         }
 
         .sign-up-label {
@@ -97,7 +128,11 @@
             margin-left: 5px;
             cursor: pointer;
             font-weight: 700;
-            color: #1976d2;
+            color: #ff3d00;
+        }
+
+        .sign-up-link:hover {
+            text-decoration: underline;
         }
 
         .error-message {
@@ -126,16 +161,15 @@
             display: none !important;
         }
 
-        /* Estilos para el scroll en el formulario de registro */
+        /* Scroll para el registro */
         #view-register {
-            max-height: 500px;
+            max-height: 550px;
             overflow-y: auto;
-            padding-right: 5px;
+            padding-right: 8px;
         }
 
-        /* Ocultar scrollbar en Chrome/Safari pero mantener funcionalidad */
         #view-register::-webkit-scrollbar {
-            width: 5px;
+            width: 6px;
         }
 
         #view-register::-webkit-scrollbar-track {
@@ -152,7 +186,8 @@
 <body>
 
     <div class="form-container">
-        <p class="title" id="formTitle">Sistema de Motocicletas</p>
+        <p class="title" id="formTitle">🏍️ Sistema de Motocicletas</p>
+        <p class="subtitle">Tu tienda de confianza</p>
         
         <div id="error-box" class="error-message"></div>
         <div id="success-box" class="success-message"></div>
@@ -160,8 +195,8 @@
         <!-- VISTA: INICIO DE SESIÓN -->
         <div id="view-login">
             <form class="form" id="loginForm">
-                <input type="email" id="correo" class="input" placeholder="Correo electrónico" required autocomplete="email">
-                <input type="password" id="password" class="input" placeholder="Contraseña" required autocomplete="current-password">
+                <input type="email" id="correo" class="input" placeholder="📧 Correo electrónico" required autocomplete="email">
+                <input type="password" id="password" class="input" placeholder="🔒 Contraseña" required autocomplete="current-password">
                 
                 <p class="page-link">
                     <span class="page-link-label" id="btnForgot">¿Olvidaste tu contraseña?</span>
@@ -171,27 +206,29 @@
             </form>
             
             <p class="sign-up-label">
-                ¿No tienes cuenta? <span class="sign-up-link" id="linkToRegister">Regístrate</span>
+                ¿No tienes cuenta? <span class="sign-up-link" id="linkToRegister">Regístrate aquí</span>
             </p>
         </div>
 
-        <!-- VISTA: REGISTRO DE CLIENTES (con campos completos como en catálogos) -->
+        <!-- VISTA: REGISTRO DE CLIENTES -->
         <div id="view-register" class="hidden">
             <form class="form" id="registerForm">
-                <input type="text" id="regNombre" class="input" placeholder="Nombre *" required>
-                <input type="text" id="regApaterno" class="input" placeholder="Apellido Paterno *" required>
+                <div class="input-group">
+                    <input type="text" id="regNombre" class="input" placeholder="Nombre *" required>
+                    <input type="text" id="regApaterno" class="input" placeholder="A. Paterno *" required>
+                </div>
                 <input type="text" id="regAmaterno" class="input" placeholder="Apellido Materno">
-                <input type="email" id="regCorreo" class="input" placeholder="Correo electrónico *" required>
-                <input type="tel" id="regTelefono" class="input" placeholder="Teléfono (10 dígitos)" maxlength="10">
-                <input type="text" id="regDireccion" class="input" placeholder="Dirección">
-                <input type="password" id="regPassword" class="input" placeholder="Contraseña * (Mayúscula + minúscula + número)" required>
-                <input type="password" id="regPassword_confirmation" class="input" placeholder="Confirmar contraseña *" required>
+                <input type="email" id="regCorreo" class="input" placeholder="📧 Correo electrónico *" required>
+                <input type="tel" id="regTelefono" class="input" placeholder="📱 Teléfono (10 dígitos)" maxlength="10">
+                <input type="text" id="regDireccion" class="input" placeholder="📍 Dirección">
+                <input type="password" id="regPassword" class="input" placeholder="🔒 Contraseña * (Mayúscula + minúscula + número)" required>
+                <input type="password" id="regPassword_confirmation" class="input" placeholder="🔒 Confirmar contraseña *" required>
                 
                 <button type="submit" class="form-btn">Crear Cuenta</button>
             </form>
             
             <p class="sign-up-label">
-                ¿Ya tienes cuenta? <span class="sign-up-link" id="linkToLoginFromReg">Inicia Sesión</span>
+                ¿Ya tienes cuenta? <span class="sign-up-link" id="linkToLoginFromReg">Inicia Sesión aquí</span>
             </p>
         </div>
 
