@@ -615,7 +615,7 @@ window.verMantenimiento = async function(id) {
             </table>`;
 
         if (m.servicios?.length > 0) {
-            html += `<hr><strong>🔧 Mano de Obra:</strong>
+            html += `<hr><strong> Mano de Obra:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#d3a934;color:white;"><th style="padding:5px;">Servicio</th><th style="padding:5px;text-align:right;">Precio</th></tr>`;
             let totalServ = 0;
@@ -627,7 +627,7 @@ window.verMantenimiento = async function(id) {
         }
 
         if (m.insumos?.length > 0) {
-            html += `<br><strong>📦 Insumos:</strong>
+            html += `<br><strong> Insumos:</strong>
             <table style="width:100%;font-size:12px;margin-top:5px;">
                 <tr style="background:#1b297a;color:white;"><th style="padding:5px;">Producto</th><th style="text-align:center;">Cant</th><th style="text-align:right;">P.Unit</th><th style="text-align:right;">Sub</th></tr>`;
             let totalIns = 0;
