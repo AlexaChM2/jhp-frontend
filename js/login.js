@@ -147,7 +147,7 @@ async function registrarCliente(event) {
 }
 
 // ==========================================
-// INICIO DE SESIÓN (login para clientes)
+// INICIO DE SESIÓN (CORREGIDO - usa 'correo' no 'email')
 // ==========================================
 async function iniciarSesion(event) {
     event.preventDefault();
@@ -162,48 +162,30 @@ async function iniciarSesion(event) {
     }
 
     try {
-        // Primero intentar login normal (usuarios)
-        let response = await fetch(`${API_BASE}/auth/login`, {
+        // Tu backend espera 'correo' (no 'email') y 'password'
+        const response = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                email: correo,
+                correo: correo,   // ← CAMPO CORRECTO: 'correo'
                 password: password
             })
         });
 
-        let result = await response.json();
+        const result = await response.json();
+        console.log('Respuesta login:', result);
 
-        // Si falla el login normal, intentar login de clientes
         if (!response.ok) {
-            // Intentar login como cliente
-            const clientResponse = await fetch(`${API_BASE}/clientes/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    email: correo,
-                    password: password
-                })
-            });
-
-            const clientResult = await clientResponse.json();
-
-            if (!clientResponse.ok) {
-                throw new Error(clientResult.message || 'Credenciales incorrectas');
-            }
-
-            result = clientResult;
+            throw new Error(result.message || 'Credenciales incorrectas');
         }
 
-        if (result.token) {
-            localStorage.setItem('token', result.token);
-            localStorage.setItem('user', JSON.stringify(result.user || result.data));
+        if (result.success && result.data && result.data.token) {
+            // Guardar token y datos del usuario
+            localStorage.setItem('token', result.data.token);
+            localStorage.setItem('user', JSON.stringify(result.data.usuario));
             
             showSuccess('¡Inicio de sesión exitoso!');
             
@@ -213,7 +195,7 @@ async function iniciarSesion(event) {
                 if (typeof cargarVista === 'function') cargarVista('views/panel.html');
             }, 1500);
         } else {
-            throw new Error('No se recibió token de autenticación');
+            throw new Error(result.message || 'No se recibió token de autenticación');
         }
 
     } catch (error) {
@@ -223,7 +205,7 @@ async function iniciarSesion(event) {
 }
 
 // ==========================================
-// RECUPERACIÓN DE CONTRASEÑA
+// RECUPERACIÓN DE CONTRASEÑA (CORREGIDO - usa 'correo')
 // ==========================================
 async function recuperarPassword(event) {
     event.preventDefault();
@@ -237,22 +219,24 @@ async function recuperarPassword(event) {
     }
 
     try {
+        // Tu backend espera 'correo' (no 'email')
         const response = await fetch(`${API_BASE}/password-reset/request`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ email: correo })
+            body: JSON.stringify({ correo: correo })  // ← CAMPO CORRECTO: 'correo'
         });
 
         const result = await response.json();
+        console.log('Respuesta recuperación:', result);
 
         if (!response.ok) {
             throw new Error(result.message || 'Error al enviar instrucciones');
         }
 
-        showSuccess('Se han enviado las instrucciones a tu correo electrónico');
+        showSuccess(result.message || 'Se han enviado las instrucciones a tu correo electrónico');
         document.getElementById('recoveryForm').reset();
         
         setTimeout(() => {
@@ -285,3 +269,14 @@ window.cerrarSesion = function() {
     document.getElementById('auth-section').classList.remove('hidden');
     showLogin();
 };
+
+// Verificar si ya hay sesión activa al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    const token = localStorage.getItem('token');
+    if (token) {
+        // Opcional: validar token con el backend
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('main-system-section').classList.remove('hidden');
+        if (typeof cargarVista === 'function') cargarVista('views/panel.html');
+    }
+});
