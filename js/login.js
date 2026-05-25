@@ -53,20 +53,24 @@ function showRecovery() {
 }
 
 // ==========================================
-// REGISTRO DE CLIENTES (usa la misma API que catálogos)
+// REGISTRO DE CLIENTES
 // ==========================================
 async function registrarCliente(event) {
     event.preventDefault();
     hideMessages();
 
     const nombre = document.getElementById('regNombre').value.trim();
+    const apaterno = document.getElementById('regApaterno')?.value.trim() || '';
+    const amaterno = document.getElementById('regAmaterno')?.value.trim() || '';
     const correo = document.getElementById('regCorreo').value.trim();
+    const telefono = document.getElementById('regTelefono')?.value.trim() || '';
+    const direccion = document.getElementById('regDireccion')?.value.trim() || '';
     const password = document.getElementById('regPassword').value;
     const passwordConfirmation = document.getElementById('regPassword_confirmation').value;
 
     // Validaciones
     if (!nombre || !correo || !password || !passwordConfirmation) {
-        showError('Todos los campos son obligatorios');
+        showError('Los campos nombre, correo y contraseña son obligatorios');
         return;
     }
 
@@ -77,7 +81,13 @@ async function registrarCliente(event) {
         return;
     }
 
-    // Validar contraseña (mínimo 6 caracteres, mayúscula, minúscula, número)
+    // Validar teléfono si se proporcionó
+    if (telefono && !/^\d{10}$/.test(telefono)) {
+        showError('El teléfono debe tener exactamente 10 dígitos');
+        return;
+    }
+
+    // Validar contraseña
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/;
     if (!passwordRegex.test(password)) {
         showError('La contraseña debe tener: 1 mayúscula, 1 minúscula, 1 número y mínimo 6 caracteres');
@@ -89,18 +99,14 @@ async function registrarCliente(event) {
         return;
     }
 
-    // Separar nombre completo (asumiendo formato: "Nombre ApellidoPaterno ApellidoMaterno")
-    const nombrePartes = nombre.split(' ');
-    const cli_nombre = nombrePartes[0] || '';
-    const cli_apaterno = nombrePartes[1] || '';
-    const cli_amaterno = nombrePartes[2] || '';
-
-    // Datos para enviar a la API (mismos que usa el módulo de catálogos)
+    // Datos para enviar a la API de clientes
     const data = {
-        cli_nombre: cli_nombre,
-        cli_apaterno: cli_apaterno,
-        cli_amaterno: cli_amaterno,
+        cli_nombre: nombre,
+        cli_apaterno: apaterno,
+        cli_amaterno: amaterno,
         cli_correo: correo,
+        cli_telefono: telefono,
+        cli_direccion: direccion,
         cli_password: password,
         cli_password_confirmation: passwordConfirmation,
         cli_estado: 'Activo'
@@ -119,7 +125,6 @@ async function registrarCliente(event) {
         const result = await response.json();
 
         if (!response.ok) {
-            // Manejar errores de validación de Laravel
             if (result.errors) {
                 const firstError = Object.values(result.errors)[0];
                 throw new Error(firstError[0]);
@@ -144,7 +149,7 @@ async function registrarCliente(event) {
 }
 
 // ==========================================
-// INICIO DE SESIÓN
+// INICIO DE SESIÓN (Ruta corregida: /auth/login)
 // ==========================================
 async function iniciarSesion(event) {
     event.preventDefault();
@@ -159,14 +164,15 @@ async function iniciarSesion(event) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/login`, {
+        // Ruta CORREGIDA: usa /auth/login en lugar de /login
+        const response = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
-                correo: correo,
+                email: correo,  // El backend espera 'email' no 'correo'
                 password: password
             })
         });
@@ -184,10 +190,10 @@ async function iniciarSesion(event) {
             
             showSuccess('¡Inicio de sesión exitoso!');
             
-            // Redirigir al dashboard después de 1 segundo
+            // Redirigir al dashboard después de 1.5 segundos
             setTimeout(() => {
-                window.location.href = 'dashboard.html'; // Cambia por la ruta de tu dashboard
-            }, 1000);
+                window.location.href = 'dashboard.html';
+            }, 1500);
         } else {
             throw new Error('No se recibió token de autenticación');
         }
@@ -199,7 +205,7 @@ async function iniciarSesion(event) {
 }
 
 // ==========================================
-// RECUPERACIÓN DE CONTRASEÑA
+// RECUPERACIÓN DE CONTRASEÑA (Ruta corregida: /password-reset/request)
 // ==========================================
 async function recuperarPassword(event) {
     event.preventDefault();
@@ -213,7 +219,8 @@ async function recuperarPassword(event) {
     }
 
     try {
-        const response = await fetch(`${API_BASE}/password/email`, {
+        // Ruta CORREGIDA: usa /password-reset/request
+        const response = await fetch(`${API_BASE}/password-reset/request`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -250,13 +257,19 @@ document.getElementById('registerForm').addEventListener('submit', registrarClie
 document.getElementById('recoveryForm').addEventListener('submit', recuperarPassword);
 
 // Botones de navegación
-document.getElementById('btnForgot').addEventListener('click', showRecovery);
-document.getElementById('linkToRegister').addEventListener('click', showRegister);
-document.getElementById('linkToLoginFromReg').addEventListener('click', showLogin);
-document.getElementById('linkToLoginFromRec').addEventListener('click', showLogin);
+const btnForgot = document.getElementById('btnForgot');
+const linkToRegister = document.getElementById('linkToRegister');
+const linkToLoginFromReg = document.getElementById('linkToLoginFromReg');
+const linkToLoginFromRec = document.getElementById('linkToLoginFromRec');
+
+if (btnForgot) btnForgot.addEventListener('click', showRecovery);
+if (linkToRegister) linkToRegister.addEventListener('click', showRegister);
+if (linkToLoginFromReg) linkToLoginFromReg.addEventListener('click', showLogin);
+if (linkToLoginFromRec) linkToLoginFromRec.addEventListener('click', showLogin);
 
 // Verificar si ya hay sesión activa
 if (localStorage.getItem('token')) {
     // Opcional: redirigir al dashboard si ya está logueado
     // window.location.href = 'dashboard.html';
+    console.log('Usuario ya autenticado');
 }
