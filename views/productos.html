@@ -1,31 +1,26 @@
+<div class="container-fluid mt-4">
+    <h2 class="mb-4"><i class="fas fa-boxes me-2"></i>Productos</h2>
 
-    <div class="container-fluid mt-4">
-        <h2 class="mb-4"><i class="fas fa-boxes me-2"></i>Productos</h2>
-
-      
-        <div class="row mb-4">
-            <div class="col-md-8">
-                <div class="input-group">
-                    <input type="text" class="form-control form-control-lg" id="inputBuscarProducto" 
-                           placeholder="Buscar por código, nombre o marca..." 
-                           onkeyup="window.buscarEnTiempoReal()">
-                    <button  class="btn btn-dark" type="button" onclick="window.buscarProductos()">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
-                </div>
-            </div>
-
-
-
-            <div class="col-md-4">
-                <button  class="btn btn-dark btn-lg w-100" onclick="window.abrirModalProducto()">
-                    <i class="fas fa-plus-circle"></i> Nuevo Producto
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" class="form-control form-control-lg" id="inputBuscarProducto" 
+                       placeholder="Buscar por código, nombre o marca..." 
+                       onkeyup="window.buscarEnTiempoReal()">
+                <button class="btn btn-dark" type="button" onclick="window.buscarProductos()">
+                    <i class="fas fa-search"></i> Buscar
                 </button>
-                
             </div>
         </div>
 
-        <div class="row mb-2">
+        <div class="col-md-4">
+            <button class="btn btn-dark btn-lg w-100" onclick="window.abrirModalProducto()">
+                <i class="fas fa-plus-circle"></i> Nuevo Producto
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-2">
         <label class="form-label small fw-bold">Imprimir Inventario por:</label>
         <div class="input-group">
             <select id="filtro_categoria_print" class="form-select">
@@ -36,189 +31,185 @@
             </button>
         </div>
     </div>
-        
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card text-white bg-danger">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Productos</h5>
-                        <h3 id="totalProductos">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-white bg-success">
-                    <div class="card-body">
-                        <h5 class="card-title">Stock Total</h5>
-                        <h3 id="totalStock">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-white bg-info">
-                    <div class="card-body">
-                        <h5 class="card-title">Valor Inventario</h5>
-                        <h3 id="valorInventario">$0.00</h3>
-                    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h5 class="card-title">Total Productos</h5>
+                    <h3 id="totalProductos">0</h3>
                 </div>
             </div>
         </div>
-
-
-        
-       
-        <div class="card shadow">
-             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped table-hover">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>FOLIO</th>
-                                <th>Código</th>
-                                <th>Nombre</th>
-                                <th>Tipo</th>
-                                <th>Marca</th>
-                                <th>Descripción</th>
-                                <th>Precio Venta</th>
-                                <th>Stock</th>
-                                <th>Categoría</th>
-                                <th>Proveedor</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaProductos">
-                            <tr>
-                                <td colspan="11" class="text-center">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Cargando...</span>
-                                    </div>
-                                    <br>Cargando productos...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">Stock Total</h5>
+                    <h3 id="totalStock">0</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">Valor Inventario</h5>
+                    <h3 id="valorInventario">$0.00</h3>
                 </div>
             </div>
         </div>
     </div>
 
-    
-    <div class="modal fade" id="modalProducto" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="modalProductoTitle">
-                        <i class="fas fa-box me-2"></i> Registrar Nuevo Producto
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    
-                   
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"> <i class="fas fa-barcode"></i>Código </span>
-                                <input type="text" id="producto_codigo" class="form-control" 
-                                       placeholder="Ingrese código único" maxlength="50">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="fas fa-tag"></i> Nombre*</span>
-                                <input type="text" id="producto_nombre" class="form-control" 
-                                       placeholder="Ingrese nombre del producto">
-                            </div>
-                        </div>
-                    </div>
-
-                   
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="fas fa-list"></i> Tipo</span>
-                                <input type="text" id="producto_tipo" class="form-control" 
-                                       placeholder="Ej: Refacción, Accesorio">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                           
-    <label class="form-label fw-bold">Marca</label>
-    <select id="producto_marca_select" class="form-select">
-        <option value="">Seleccionar marca...</option>
-    </select>
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>FOLIO</th>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Marca</th>
+                            <th>Descripción</th>
+                            <th>Precio Venta</th>
+                            <th>Stock</th>
+                            <th>Categoría</th>
+                            <th>Proveedor</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaProductos">
+                        <tr>
+                            <td colspan="11" class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <br>Cargando productos...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- MODAL DE PRODUCTO CORREGIDO -->
+<div class="modal fade" id="modalProducto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalProductoTitle">
+                    <i class="fas fa-box me-2"></i> Registrar Nuevo Producto
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Fila 1: Código y Nombre -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-barcode"></i> Código</span>
+                            <input type="text" id="producto_codigo" class="form-control" 
+                                   placeholder="Ingrese código único" maxlength="50">
                         </div>
                     </div>
-
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="fas fa-dollar-sign"></i> Precio Venta*</span>
-                                <input type="number" id="producto_precio" class="form-control" 
-                                       placeholder="0.00" step="0.01" min="0">
-                                <span class="input-group-text">MXN</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="fas fa-cubes"></i> Stock</span>
-                                <input type="number" id="producto_stock" class="form-control" 
-                                       placeholder="0" min="0" value="0">
-                            </div>
+                    <div class="col-md-6">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-tag"></i> Nombre*</span>
+                            <input type="text" id="producto_nombre" class="form-control" 
+                                   placeholder="Ingrese nombre del producto">
                         </div>
                     </div>
-
-                    <!-- Categoría y Proveedor -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="fas fa-folder"></i> Categoría</span>
-                                <select id="producto_categoria" class="form-select">
-                                    <option value="">Seleccionar categoría...</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="input-group mb-3">
-                                <span class="input-group-text"><i class="fas fa-truck"></i> Proveedor</span>
-                                <select id="producto_proveedor" class="form-select">
-                                    <option value="">Seleccionar proveedor...</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    
-                    <div class="input-group mb-3">
-                        <span class="input-group-text"><i class="fas fa-align-left"></i> Descripción</span>
-                        <textarea class="form-control" id="producto_descripcion" 
-                                  placeholder="Descripción detallada del producto" rows="3"></textarea>
-                    </div>
-
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> Los campos marcados con * son obligatorios.
-                    </div>
-
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times"></i> Cancelar
+
+                <!-- Fila 2: Tipo y Marca -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-list"></i> Tipo</span>
+                            <input type="text" id="producto_tipo" class="form-control" 
+                                   placeholder="Ej: Refacción, Accesorio">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-trademark"></i> Marca</span>
+                            <select id="producto_marca_select" class="form-select">
+                                <option value="">Seleccionar marca...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila 3: Precio y Stock -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-dollar-sign"></i> Precio Venta*</span>
+                            <input type="number" id="producto_precio" class="form-control" 
+                                   placeholder="0.00" step="0.01" min="0">
+                            <span class="input-group-text">MXN</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-cubes"></i> Stock</span>
+                            <input type="number" id="producto_stock" class="form-control" 
+                                   placeholder="0" min="0" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila 4: Categoría y Proveedor -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-folder"></i> Categoría</span>
+                            <select id="producto_categoria" class="form-select">
+                                <option value="">Seleccionar categoría...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group mb-3">
+                            <span class="input-group-text"><i class="fas fa-truck"></i> Proveedor</span>
+                            <select id="producto_proveedor" class="form-select">
+                                <option value="">Seleccionar proveedor...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Descripción -->
+                <div class="input-group mb-3">
+                    <span class="input-group-text"><i class="fas fa-align-left"></i> Descripción</span>
+                    <textarea class="form-control" id="producto_descripcion" 
+                              placeholder="Descripción detallada del producto" rows="3"></textarea>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Los campos marcados con * son obligatorios.
+                </div>
+
+                <!-- BOTONES DEBAJO DEL FORMULARIO (UNO DEBAJO DEL OTRO) -->
+                <div class="d-flex flex-column gap-2 mt-4 pt-3 border-top">
+                    <button type="button" class="btn btn-success btn-lg" onclick="window.guardarProducto()">
+                        <i class="fas fa-save me-2"></i> Guardar Producto
                     </button>
-                    <button type="button" class="btn btn-success" onclick="window.guardarProducto()">
-                        <i class="fas fa-save"></i> Guardar Producto
+                    <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i> Cancelar
                     </button>
                 </div>
             </div>
+            <!-- NO HAY modal-footer -->
         </div>
     </div>
+</div>
 
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-    
-    <script src="../js/producto.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="../js/producto.js"></script>
 </body>
 </html>
